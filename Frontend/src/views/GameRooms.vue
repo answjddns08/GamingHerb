@@ -1,11 +1,17 @@
 <template>
   <main>
-    <header class="">
+    <header class="flex items-center px-3 justify-between">
       <div>
         <h1 class="text-2xl font-bold mb-4">This place is Game Rooms</h1>
         <p class="text-gray-700 mb-4">Explore a Game Rooms and start playing with your friends!</p>
       </div>
-      <div></div>
+      <div>
+        <RouterLink :to="{ name: 'make-room', params: { gameId: i } }">
+          <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
+            Make New Room
+          </button>
+        </RouterLink>
+      </div>
     </header>
     <div class="grid grid-cols-4 gap-5 p-4">
       <div v-for="i in 25" :key="i" class="bg-gray-300 p-4 rounded-lg shadow-md">
@@ -24,11 +30,9 @@
           <p class="text-gray-500 text-sm">Created by: User {{ i }}</p>
           <p class="text-gray-500 text-sm">TimeStamp: {{ new Date().toLocaleString() }}</p>
         </div>
-        <RouterLink :to="{ name: 'make-room', params: { gameId: i } }">
-          <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
-            View Details
-          </button>
-        </RouterLink>
+        <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
+          View Details
+        </button>
       </div>
     </div>
   </main>
