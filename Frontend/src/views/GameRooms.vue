@@ -30,9 +30,13 @@
           <p class="text-gray-500 text-sm">Created by: User {{ i }}</p>
           <p class="text-gray-500 text-sm">TimeStamp: {{ new Date().toLocaleString() }}</p>
         </div>
-        <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
-          View Details
-        </button>
+        <RouterLink :to="{ name: 'waiting-room', params: { roomId: i } }">
+          <button
+            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition mt-2"
+          >
+            Join Game
+          </button>
+        </RouterLink>
       </div>
     </div>
   </main>

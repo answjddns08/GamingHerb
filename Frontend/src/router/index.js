@@ -16,7 +16,13 @@ const router = createRouter({
       props: true,
     },
     {
-      path: "/games/:gameId/ready",
+      path: "/games/:roomId",
+      name: "waiting-room",
+      component: () => import("../views/WaitingRoom.vue"),
+      props: true,
+    },
+    {
+      path: "/games/:gameId/newRoom",
       name: "make-room",
       component: () => import("../views/MakeRoom.vue"),
       props: true,
