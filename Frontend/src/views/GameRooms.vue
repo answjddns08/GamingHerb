@@ -6,7 +6,7 @@
         <p class="text-gray-700 mb-4">Explore a Game Rooms and start playing with your friends!</p>
       </div>
       <div>
-        <RouterLink :to="{ name: 'make-room', params: { gameId: i } }">
+        <RouterLink :to="{ name: 'make-room', params: { gameId: route.params.gameId } }">
           <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
             Make New Room
           </button>
@@ -30,7 +30,9 @@
           <p class="text-gray-500 text-sm">Created by: User {{ i }}</p>
           <p class="text-gray-500 text-sm">TimeStamp: {{ new Date().toLocaleString() }}</p>
         </div>
-        <RouterLink :to="{ name: 'waiting-room', params: { roomId: i } }">
+        <RouterLink
+          :to="{ name: 'waiting-room', params: { gameId: route.params.gameId, roomId: i } }"
+        >
           <button
             class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition mt-2"
           >

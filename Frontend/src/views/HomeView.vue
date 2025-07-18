@@ -7,17 +7,21 @@
       </p>
     </header>
     <div class="grid grid-cols-4 gap-5 p-4">
-      <div v-for="i in 25" :key="i" class="bg-gray-300 p-4 rounded-lg shadow-md">
+      <div v-for="game in games" :key="game.id" class="bg-gray-300 p-4 rounded-lg shadow-md">
         <img
           src="https://studiomeal.com/wp-content/uploads/2020/01/02-2.jpg"
           alt="Placeholder Image"
           class="w-full object-cover rounded-lg mb-2"
         />
-        <h2 class="text-lg font-semibold mb-1">Game {{ i }}</h2>
+        <h2 class="text-lg font-semibold mb-1">{{ game.name }}</h2>
         <p class="text-gray-700 mb-2">
-          This is a description of game {{ i }}. It has some interesting details.
+          {{ game.description }}
         </p>
-        <RouterLink :to="{ name: 'game-rooms', params: { gameId: i } }">
+        <div class="text-sm text-gray-600 mb-2">
+          <span>👥 {{ game.minPlayers }}-{{ game.maxPlayers }}명</span>
+          <span class="ml-2">📂 {{ game.category.join(", ") }}</span>
+        </div>
+        <RouterLink :to="{ name: 'game-rooms', params: { gameId: game.id } }">
           <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
             View Details
           </button>
@@ -29,6 +33,20 @@
 
 <script setup>
 import { RouterLink } from "vue-router";
+import { onMounted, ref } from "vue";
+import { getAvailableGames } from "../utils/gameLoader.js";
+
+const games = ref([]);
+
+onMounted(() => {
+  try {
+    games.value = getAvailableGames();
+    console.log(`Total games available: ${games.value.length}`);
+    console.log("Games:", games.value);
+  } catch (error) {
+    console.error("게임 목록 로드 실패:", error);
+  }
+});
 </script>
 
 <style scoped></style>
