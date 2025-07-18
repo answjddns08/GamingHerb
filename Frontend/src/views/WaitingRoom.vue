@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, shallowRef } from "vue";
 import { useRoute } from "vue-router";
 import { loadGameComponent, getGameInfo } from "../utils/gameLoader.js";
 
@@ -51,7 +51,7 @@ const route = useRoute();
 const roomId = ref(route.params.roomId || "default-room");
 const gameId = ref(route.params.gameId || "GomokuGame"); // URL params에서 gameId 가져오기
 const gameStarted = ref(false);
-const GameComponent = ref(null);
+const GameComponent = shallowRef(null); // shallowRef 사용으로 변경
 const gameInfo = ref(null);
 
 // 게임 시작 함수
