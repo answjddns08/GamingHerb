@@ -31,7 +31,7 @@ export async function loadGameComponent(gameId) {
 
   try {
     // 동적 import를 사용하여 게임 컴포넌트 로드
-    const gameModule = await import(gameInfo.path);
+    const gameModule = await import(/* @vite-ignore */ gameInfo.path);
     return gameModule.default;
   } catch (error) {
     throw new Error(`게임 컴포넌트 로드 실패: ${error.message}`);
