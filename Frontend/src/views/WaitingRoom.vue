@@ -1,5 +1,5 @@
 <template>
-  <div class="waiting-room">
+  <main class="waiting-room">
     <div v-if="!gameStarted" class="waiting-content">
       <h1>Waiting Room</h1>
       <p>Please wait while we set up the game...</p>
@@ -13,13 +13,6 @@
       <div v-else class="game-info">
         <p>Game ID: {{ gameId }}</p>
       </div>
-
-      <button
-        @click="startGame"
-        class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
-      >
-        Start Game
-      </button>
     </div>
 
     <!-- 동적으로 게임 컴포넌트 로드 -->
@@ -38,6 +31,15 @@
         돌아가기
       </button>
     </div>
+  </main>
+  <div class="player-card">
+    <p class="font-bold text-3xl">Player Card</p>
+    <p>Player Name: Test Player</p>
+    <p>Room ID: {{ roomId }}</p>
+    <p>Game: {{ gameId }}</p>
+  </div>
+  <div class="start-card">
+    <button @click="startGame">Start Game</button>
   </div>
 </template>
 
@@ -53,6 +55,12 @@ const gameId = ref(route.params.gameId || "GomokuGame"); // URL params에서 gam
 const gameStarted = ref(false);
 const GameComponent = shallowRef(null); // shallowRef 사용으로 변경
 const gameInfo = ref(null);
+
+/**
+ * @todo
+ * - 게임 기다리기 지루할까봐 간단한 2D 멀티플레이 게임 구현(그냥 플레이어가 이동하는 정도)
+ * - 게임 위에 플레이어가 적힌 카드 생성(z index가 높아야 함)
+ */
 
 // 게임 시작 함수
 const startGame = async () => {
@@ -133,7 +141,34 @@ onMounted(() => {
 }
 
 button {
-  margin-top: 20px;
   cursor: pointer;
+}
+
+.player-card {
+  position: absolute;
+
+  top: 20px;
+  left: 20px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  z-index: 10; /* 플레이어 카드가 게임 위에 표시되도록 */
+  background-color: rgba(255, 255, 255, 0.8);
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.start-card {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+
+  background-color: #4caf50;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
 }
 </style>
