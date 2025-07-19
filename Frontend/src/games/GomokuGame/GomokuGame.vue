@@ -1,0 +1,233 @@
+<template>
+  <main class="gomoku-game">
+    <header class="game-header">
+      <h1>{{ gameInfo.name }}</h1>
+      <div class="game-meta">
+        <span>Room: {{ roomId }}</span>
+        <span>Players: {{ gameInfo.minPlayers }}-{{ gameInfo.maxPlayers }}</span>
+      </div>
+    </header>
+
+    <div class="game-content">
+      <div class="game-description" v-if="showDescription">
+        <div v-html="description"></div>
+        <button @click="startGame" class="start-btn">게임 시작</button>
+      </div>
+
+      <div class="game-board" v-else>
+        <p>오목 게임이 시작되었습니다!</p>
+        <div class="board-placeholder">
+          <!-- 실제 게임 보드가 여기에 들어갑니다 -->
+          <div class="board-grid">
+            <div v-for="i in 225" :key="i" class="cell" @click="placeStone(i)">
+              <div v-if="board[i]" :class="['stone', board[i]]"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="game-controls">
+          <button @click="resetGame" class="reset-btn">다시 시작</button>
+          <button @click="showDescription = true" class="info-btn">게임 정보</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</template>
+
+<script setup>
+import { ref, onMounted } from "vue";
+import { getGameDescription } from "./utils.js";
+import gameConfig from "./config.js";
+
+// Props
+const props = defineProps({
+  roomId: {
+    type: String,
+    default: "default-room",
+  },
+});
+
+// State
+const showDescription = ref(true);
+const description = ref("");
+const gameInfo = ref(gameConfig);
+const board = ref({});
+const currentPlayer = ref("black");
+
+// Methods
+const startGame = () => {
+  showDescription.value = false;
+  initializeBoard();
+};
+
+const initializeBoard = () => {
+  board.value = {};
+  currentPlayer.value = "black";
+};
+
+const placeStone = (position) => {
+  if (!board.value[position]) {
+    board.value[position] = currentPlayer.value;
+    currentPlayer.value = currentPlayer.value === "black" ? "white" : "black";
+  }
+};
+
+const resetGame = () => {
+  initializeBoard();
+};
+
+// Lifecycle
+onMounted(async () => {
+  console.log(`Gomoku Game mounted for room: ${props.roomId}`);
+
+  try {
+    description.value = await getGameDescription();
+  } catch (error) {
+    console.error("게임 설명 로드 실패:", error);
+    description.value = "<p>게임 설명을 불러올 수 없습니다.</p>";
+  }
+});
+</script>
+
+<style scoped>
+.gomoku-game {
+  width: 100%;
+  height: 100vh;
+  padding: 20px;
+  background: #f5f5f5;
+}
+
+.game-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.game-header h1 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.game-meta {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  color: #666;
+  font-size: 14px;
+}
+
+.game-content {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.game-description {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.start-btn {
+  background: #4caf50;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 20px;
+  transition: background 0.3s;
+}
+
+.start-btn:hover {
+  background: #45a049;
+}
+
+.game-board {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(15, 1fr);
+  gap: 1px;
+  background: #8b4513;
+  padding: 10px;
+  border-radius: 8px;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.cell {
+  width: 30px;
+  height: 30px;
+  background: #deb887;
+  border: 1px solid #8b4513;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cell:hover {
+  background: #d2b48c;
+}
+
+.stone {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.stone.black {
+  background: #000;
+  box-shadow: inset 2px 2px 4px rgba(255, 255, 255, 0.3);
+}
+
+.stone.white {
+  background: #fff;
+  border: 1px solid #ccc;
+  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.game-controls {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.reset-btn,
+.info-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s;
+}
+
+.reset-btn {
+  background: #f44336;
+  color: white;
+}
+
+.reset-btn:hover {
+  background: #da190b;
+}
+
+.info-btn {
+  background: #2196f3;
+  color: white;
+}
+
+.info-btn:hover {
+  background: #0b7dda;
+}
+</style>

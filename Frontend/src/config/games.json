@@ -4,21 +4,29 @@
       "name": "오목 게임",
       "description": "5개의 돌을 연속으로 놓아 승리하는 게임",
       "component": "GomokuGame",
-      "path": "../games/GomokuGame.vue",
+      "path": "../games/GomokuGame/GomokuGame.vue",
+      "configPath": "../games/GomokuGame/config.js",
+      "readmePath": "../games/GomokuGame/README.md",
       "minPlayers": 2,
       "maxPlayers": 2,
       "category": ["보드게임"],
-      "platform": ["web(PC)", "mobile"]
+      "platform": ["web(PC)", "mobile"],
+      "difficulty": "Easy",
+      "estimatedTime": "10-30분"
     },
     "AnotherTestGame": {
       "name": "또 다른 테스트 게임",
-      "description": "테스트용 게임입니다",
+      "description": "다양한 기능을 테스트할 수 있는 게임",
       "component": "AnotherTestGame", 
-      "path": "../games/AnotherTestGame.vue",
+      "path": "../games/AnotherTestGame/AnotherTestGame.vue",
+      "configPath": "../games/AnotherTestGame/config.js",
+      "readmePath": "../games/AnotherTestGame/README.md",
       "minPlayers": 1,
       "maxPlayers": 4,
       "category": ["테스트"],
-      "platform": ["web(PC)", "mobile"]
+      "platform": ["web(PC)", "mobile"],
+      "difficulty": "Beginner",
+      "estimatedTime": "5-15분"
     }
   }
 }
