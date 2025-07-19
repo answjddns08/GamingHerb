@@ -9,13 +9,7 @@
     </header>
 
     <div class="game-content">
-      <div class="game-description" v-if="showDescription">
-        <div v-html="description"></div>
-        <button @click="startGame" class="start-btn">게임 시작</button>
-      </div>
-
-      <div class="game-board" v-else>
-        <p>오목 게임이 시작되었습니다!</p>
+      <div class="game-board">
         <div class="board-placeholder">
           <!-- 실제 게임 보드가 여기에 들어갑니다 -->
           <div class="board-grid">
@@ -36,7 +30,6 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
-import { getGameDescription } from "./utils.js";
 import gameConfig from "./config.js";
 
 // Props
@@ -49,16 +42,9 @@ const props = defineProps({
 
 // State
 const showDescription = ref(true);
-const description = ref("");
 const gameInfo = ref(gameConfig);
 const board = ref({});
 const currentPlayer = ref("black");
-
-// Methods
-const startGame = () => {
-  showDescription.value = false;
-  initializeBoard();
-};
 
 const initializeBoard = () => {
   board.value = {};
@@ -80,12 +66,7 @@ const resetGame = () => {
 onMounted(async () => {
   console.log(`Gomoku Game mounted for room: ${props.roomId}`);
 
-  try {
-    description.value = await getGameDescription();
-  } catch (error) {
-    console.error("게임 설명 로드 실패:", error);
-    description.value = "<p>게임 설명을 불러올 수 없습니다.</p>";
-  }
+  initializeBoard();
 });
 </script>
 

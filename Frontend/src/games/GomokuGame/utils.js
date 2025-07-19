@@ -1,9 +1,11 @@
+import { markdownToHtml } from "../../utils/markdownConvert.js";
+
 /**
  * 게임 설명을 마크다운 파일에서 읽어오는 함수
  */
 export async function getGameDescription() {
   try {
-    const response = await fetch("/src/games/GomokuGame/README.md");
+    const response = await fetch("/src/games/GomokuGame/Description.md");
     const markdown = await response.text();
 
     // 간단한 마크다운 to HTML 변환
@@ -28,25 +30,6 @@ export async function getGameDescription() {
       <p>바둑판의 교차점을 클릭하여 돌을 놓을 수 있습니다.</p>
     `;
   }
-}
-
-/**
- * 간단한 마크다운을 HTML로 변환하는 함수
- */
-function markdownToHtml(markdown) {
-  return markdown
-    .replace(/^# (.*$)/gim, "<h1>$1</h1>")
-    .replace(/^## (.*$)/gim, "<h2>$1</h2>")
-    .replace(/^### (.*$)/gim, "<h3>$1</h3>")
-    .replace(/^\* (.*$)/gim, "<li>$1</li>")
-    .replace(/^- (.*$)/gim, "<li>$1</li>")
-    .replace(/\*\*(.*)\*\*/gim, "<strong>$1</strong>")
-    .replace(/\*(.*)\*/gim, "<em>$1</em>")
-    .replace(/\n\n/gim, "</p><p>")
-    .replace(/(<li>.*<\/li>)/gims, "<ul>$1</ul>")
-    .replace(/<\/ul>\s*<ul>/gim, "")
-    .replace(/^(?!<[hul])/gim, "<p>")
-    .replace(/(?<![>])\n$/gim, "</p>");
 }
 
 /**
