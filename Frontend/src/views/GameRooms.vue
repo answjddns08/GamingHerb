@@ -14,7 +14,7 @@
       </div>
     </header>
     <div class="grid grid-cols-4 gap-5 p-4">
-      <div v-for="i in 25" :key="i" class="bg-gray-300 p-4 rounded-lg shadow-md">
+      <div v-for="i in 10" :key="i" class="bg-gray-300 p-4 rounded-lg shadow-md">
         <img
           src="https://studiomeal.com/wp-content/uploads/2020/01/02-2.jpg"
           alt="Placeholder Image"
