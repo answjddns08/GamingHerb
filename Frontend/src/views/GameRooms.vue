@@ -6,7 +6,7 @@
         <p class="text-gray-700 mb-4">Explore a Game Rooms and start playing with your friends!</p>
       </div>
       <div>
-        <RouterLink :to="{ name: 'make-room', params: { gameId: route.params.gameId } }">
+        <RouterLink :to="{ name: 'make-room', params: { gameId: props.gameId } }">
           <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
             Make New Room
           </button>
@@ -30,9 +30,7 @@
           <p class="text-gray-500 text-sm">Created by: User {{ i }}</p>
           <p class="text-gray-500 text-sm">TimeStamp: {{ new Date().toLocaleString() }}</p>
         </div>
-        <RouterLink
-          :to="{ name: 'waiting-room', params: { gameId: route.params.gameId, roomId: i } }"
-        >
+        <RouterLink :to="{ name: 'waiting-room', params: { gameId: props.gameId, roomId: i } }">
           <button
             class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition mt-2"
           >
@@ -53,14 +51,18 @@
 
 <script setup>
 import { onMounted } from "vue";
-import { useRoute } from "vue-router";
 import { RouterLink } from "vue-router";
 
-const route = useRoute();
+const props = defineProps({
+  gameId: {
+    type: String,
+    required: false,
+    default: "",
+  },
+});
 
 onMounted(() => {
-  const gameId = route.params.gameId;
-  console.log("Game ID:", gameId);
+  console.log("Game ID:", props.gameId);
   // Fetch game details using the gameId
   // For example, you can use an API call to get the game details
 });

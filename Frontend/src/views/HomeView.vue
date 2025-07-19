@@ -33,7 +33,7 @@
         />
         <h2 class="text-lg font-semibold mb-1">{{ game.name }}</h2>
         <p class="text-gray-700 mb-2">
-          {{ game.description }}
+          {{ game.summary }}
         </p>
         <div class="text-sm text-gray-600 mb-2">
           <span>👥 {{ game.minPlayers }}-{{ game.maxPlayers }}명</span>
