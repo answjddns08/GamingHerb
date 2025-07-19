@@ -18,6 +18,13 @@
       </button>
     </div>
   </main>
+  <div class="goBack-card">
+    <RouterLink :to="{ name: 'game-rooms' }">
+      <button class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition">
+        Go Back
+      </button>
+    </RouterLink>
+  </div>
 </template>
 
 <script setup>
@@ -65,5 +72,13 @@ onMounted(() => {
   grid-area: settings;
 
   border: 1px solid #000000;
+}
+
+.goBack-card {
+  position: fixed;
+
+  bottom: 20px;
+  left: 20px;
+  padding: 10px;
 }
 </style>

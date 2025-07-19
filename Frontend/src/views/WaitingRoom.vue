@@ -41,6 +41,13 @@
   <div class="start-card">
     <button @click="startGame">Start Game</button>
   </div>
+  <div class="goBack-card">
+    <RouterLink :to="{ name: 'game-rooms' }">
+      <button class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition">
+        Go Back
+      </button>
+    </RouterLink>
+  </div>
 </template>
 
 <script setup>
@@ -170,5 +177,13 @@ button {
   color: white;
   padding: 10px 20px;
   border-radius: 5px;
+}
+
+.goBack-card {
+  position: fixed;
+
+  bottom: 20px;
+  left: 20px;
+  padding: 10px;
 }
 </style>
