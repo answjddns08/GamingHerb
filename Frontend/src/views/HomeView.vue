@@ -1,10 +1,28 @@
 <template>
   <main>
-    <header>
-      <h1 class="text-2xl font-bold mb-4">Welcome to the Game Hub</h1>
-      <p class="text-gray-700 mb-4">
-        Explore a variety of games and start playing with your friends!
-      </p>
+    <header class="flex justify-between items-center p-4">
+      <div>
+        <h1 class="text-2xl font-bold mb-4">Welcome to the Game Hub</h1>
+        <p class="text-gray-700 mb-4">
+          Explore a variety of games and start playing with your friends!
+        </p>
+      </div>
+      <div>
+        <form>
+          <input
+            type="text"
+            placeholder="Enter game code"
+            class="border border-gray-300 rounded px-3 py-2 mr-2"
+          />
+          <button
+            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
+            type="submit"
+            @click.prevent
+          >
+            Join with a code
+          </button>
+        </form>
+      </div>
     </header>
     <div class="grid grid-cols-4 gap-5 p-4">
       <div v-for="game in games" :key="game.id" class="bg-gray-300 p-4 rounded-lg shadow-md">
