@@ -3,7 +3,8 @@ import { markdownToHtml } from "./markdownConvert";
 
 const configModules = import.meta.glob("../games/**/config.js");
 const descriptionModules = import.meta.glob("../games/**/*.md", {
-  as: "raw",
+  query: "?raw",
+  import: "default",
 });
 
 /**
