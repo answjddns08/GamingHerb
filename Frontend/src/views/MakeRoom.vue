@@ -14,6 +14,10 @@
     </div>
     <div class="settings" v-if="gameSetting">
       <h1>Settings</h1>
+      <div class="flex gap-2">
+        <label for="roomName">Room Name</label>
+        <input type="text" id="roomName" v-model="gameSetting.roomName" />
+      </div>
       <div v-for="(value, key) in gameSetting.settings" :key="key" class="setting-item">
         <label :for="key">{{ key }}</label>
         <!-- Boolean: 토글 버튼 -->
