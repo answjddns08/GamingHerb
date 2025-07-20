@@ -3,11 +3,25 @@ export default {
   BOARD_SIZE: 15,
   WIN_CONDITION: 5,
 
-  // 게임 설정
+  Players: 2, // 플레이어 수(솔로 모드 활성화 시 1)
+
+  /**
+   * 게임 설정
+   * @type {Object}
+   * boolean → 토글 버튼
+   * number  → 슬라이더
+   */
   settings: {
-    maxPlayers: 2,
-    timerEnabled: false,
-    playerTimeLimit: 60, // 플레이어당 시간 제한 (초)
-    spectatorMode: true,
+    soloEnabled: false, // 솔로 모드 비활성화
+    timerEnabled: false, // 타이머 기능 비활성화
+    playerTimeLimit: {
+      // 플레이어당 시간 제한 (초)
+      value: 60,
+      min: 10,
+      max: 300,
+      step: 5,
+      unit: "초",
+    },
+    spectatorMode: true, // 관전자 모드 활성화
   },
 };

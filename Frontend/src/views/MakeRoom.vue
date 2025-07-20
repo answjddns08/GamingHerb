@@ -12,10 +12,38 @@
     <div class="desc" v-else>
       <h1>Loading...</h1>
     </div>
-    <div class="settings">
+    <div class="settings" v-if="gameSetting">
       <h1>Settings</h1>
-      <p>Adjust your game settings here.</p>
-      <button class="start-btn">Start Game</button>
+      <div v-for="(value, key) in gameSetting.settings" :key="key" class="setting-item">
+        <label :for="key">{{ key }}</label>
+        <!-- Boolean: 토글 버튼 -->
+        <template v-if="typeof value === 'boolean'">
+          <button
+            :id="key"
+            @click="gameSetting.settings[key] = !gameSetting.settings[key]"
+            :class="{ active: gameSetting.settings[key] }"
+            class="toggle-btn"
+          >
+            {{ gameSetting.settings[key] ? "ON" : "OFF" }}
+          </button>
+        </template>
+        <!-- Number: 슬라이더 -->
+        <!-- 숫자형: 객체로 min/max/step 접근 -->
+        <template v-else-if="typeof value === 'object' && value !== null && 'value' in value">
+          <input
+            type="range"
+            :id="key"
+            v-model.number="gameSetting.settings[key].value"
+            :min="value.min"
+            :max="value.max"
+            :step="value.step"
+          />
+          <input type="number" v-model.number="gameSetting.settings[key].value" class="w-15" />
+          <span>{{ value.unit || "seconds" }}</span>
+        </template>
+        <!-- 기타 타입은 필요시 추가 -->
+      </div>
+      <button class="start-btn" @click="StartGame">Start Game</button>
     </div>
   </main>
 </template>
@@ -43,6 +71,16 @@ onMounted(async () => {
 
   console.log("Game Info:", game.value);
 });
+
+function StartGame() {
+  // 게임 시작 로직 구현
+  console.log("게임 시작!");
+
+  console.log("게임 설정:", gameSetting.value);
+
+  // 예: 게임 방으로 이동
+  // router.push({ name: 'game-room', params: { gameId: game.value.id } });
+}
 </script>
 
 <style scoped>
@@ -66,6 +104,8 @@ h1 {
 .desc {
   padding: 1rem;
 
+  height: inherit;
+
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -74,7 +114,12 @@ h1 {
 }
 
 .game-description {
-  max-height: 80vh;
+  flex-grow: 1;
+
+  word-break: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+
   overflow-y: auto;
   padding-right: 8px; /* 스크롤바 공간 확보(선택) */
 }
@@ -109,6 +154,9 @@ h1 {
 .game-description ::v-deep p {
   font-size: 1.1rem;
   line-height: 1.6;
+  word-break: normal;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .game-description ::v-deep ul {
@@ -130,6 +178,27 @@ h1 {
   flex: 1;
 
   padding: 1rem;
+}
+
+.setting-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.toggle-btn.active {
+  background: #4caf50;
+  color: #fff;
+}
+
+.toggle-btn {
+  background: #ccc;
+  color: #333;
+  border: none;
+  border-radius: 5px;
+  padding: 0.3rem 1rem;
+  cursor: pointer;
 }
 
 .start-btn {
