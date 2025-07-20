@@ -1,6 +1,11 @@
 import gamesConfig from "../config/games.json";
 import { markdownToHtml } from "./markdownConvert";
 
+const configModules = import.meta.glob("../games/**/config.js");
+const descriptionModules = import.meta.glob("../../public/games/**/*.md", {
+  as: "raw",
+});
+
 /**
  * Game Object
  * @typedef {Object} Game
@@ -36,11 +41,13 @@ export async function getGameConfig(gameId) {
   if (!gameInfo || !gameInfo.configPath) {
     throw new Error(`게임 ID "${gameId}"에 해당하는 설정을 찾을 수 없습니다.`);
   }
-  try {
-    const configModule = await import(/* @vite-ignore */ gameInfo.configPath);
-    return configModule.default;
-  } catch (error) {
-    throw new Error(`게임 설정 로드 실패: ${error.message}`);
+
+  const path = gameInfo.configPath;
+  if (configModules[path]) {
+    const module = await configModules[path]();
+    return module.default;
+  } else {
+    throw new Error(`설정 파일을 찾을 수 없습니다: ${path}`);
   }
 }
 
@@ -51,24 +58,20 @@ export async function getGameConfig(gameId) {
  */
 export async function getGameDescription(gameId) {
   const gameInfo = getGameInfo(gameId);
+  const path = `../../public${gameInfo.desPath}`;
 
-  const descriptionPath = gameInfo ? gameInfo.desPath : null;
-
-  if (!descriptionPath) {
-    throw new Error(`게임 ID "${gameId}"에 해당하는 설명을 찾을 수 없습니다.`);
-  }
-
-  try {
-    const response = await fetch(descriptionPath);
-    if (!response.ok) {
-      throw new Error(`설명 파일 로드 실패: ${response.statusText}`);
+  if (descriptionModules[path]) {
+    try {
+      const markdown = await descriptionModules[path]();
+      return markdownToHtml(markdown);
+    } catch (error) {
+      console.error("설명 파일 로드 실패:", error);
+      return `<h2>${gameInfo.name} 게임 설명</h2>
+        <p>게임 설명을 불러오는 데 실패했습니다. 나중에 다시 시도해주세요.</p>`;
     }
-    const markdown = await response.text();
-    return markdownToHtml(markdown);
-  } catch (error) {
-    console.error("설명 파일 로드 실패:", error);
+  } else {
     return `<h2>${gameInfo.name} 게임 설명</h2>
-      <p>게임 설명을 불러오는 데 실패했습니다. 나중에 다시 시도해주세요.</p>`;
+      <p>게임 설명을 찾을 수 없습니다.</p>`;
   }
 }
 
