@@ -1,45 +1,55 @@
 <template>
   <main class="layout">
-    <div class="desc">
-      <h1>Game Details</h1>
-      <p>This section will display the game description and other details.</p>
+    <div class="desc" v-if="game">
+      <h1>{{ game.name }}</h1>
+      <div v-html="gameDes"></div>
+      <RouterLink :to="{ name: 'game-rooms' }" class="goBack-btn">
+        <button class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition">
+          Go Back
+        </button>
+      </RouterLink>
     </div>
-    <div class="start">
-      <h2>Start Game</h2>
-      <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
-        Start Game
-      </button>
+    <div class="desc" v-else>
+      <h1>Loading...</h1>
     </div>
     <div class="settings">
-      <h2>Settings</h2>
+      <h1>Settings</h1>
       <p>Adjust your game settings here.</p>
-      <button class="bg-gray-300 text-black px-4 py-2 rounded hover:bg-gray-400 transition">
-        Change Settings
-      </button>
+      <div class="flex gap-2">
+        <label for="maxPlayers">Max Players:</label>
+        <input type="number" id="maxPlayers" />
+      </div>
+      <div class="flex gap-2">
+        <label for="gameRules">Game Rules:</label>
+        <textarea id="gameRules"></textarea>
+      </div>
+      <button class="start-btn">Start Game</button>
     </div>
   </main>
-  <div class="goBack-card">
-    <RouterLink :to="{ name: 'game-rooms' }">
-      <button class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition">
-        Go Back
-      </button>
-    </RouterLink>
-  </div>
 </template>
 
 <script setup>
-import { onMounted } from "vue";
+import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
+import { RouterLink } from "vue-router";
+import { getGameInfo, getGameDescription, getGameConfig } from "../utils/gameLoader.js";
 
 const route = useRoute();
 
-onMounted(() => {
-  /* const gameId = route.params.gameId;
-  console.log("Game ID:", gameId); */
+const game = ref(null);
 
-  console.log("Game Rooms View Mounted:", route.params);
-  // Fetch game details using the gameId
-  // For example, you can use an API call to get the game details
+const gameSetting = ref(null);
+
+const gameDes = ref("");
+
+onMounted(async () => {
+  game.value = getGameInfo(route.params.gameId);
+
+  gameSetting.value = await getGameConfig(route.params.gameId);
+
+  gameDes.value = await getGameDescription(route.params.gameId);
+
+  console.log("Game Info:", game.value);
 });
 </script>
 
@@ -50,35 +60,57 @@ onMounted(() => {
   gap: 1rem;
 
   display: grid;
-  grid-template-areas:
-    "desc desc start"
-    "desc desc settings";
+  grid-template-columns: 2fr 1fr;
+}
 
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: 1fr 2fr;
+h1 {
+  font-size: 2rem;
+
+  font-weight: bold;
+
+  margin-bottom: 1rem;
 }
 
 .desc {
-  grid-area: desc;
+  padding: 1rem;
+
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 
   border: 1px solid #000000;
 }
-.start {
-  grid-area: start;
 
-  border: 1px solid #000000;
-}
 .settings {
-  grid-area: settings;
-
   border: 1px solid #000000;
+
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+
+  flex: 1;
+
+  padding: 1rem;
 }
 
-.goBack-card {
-  position: fixed;
+.start-btn {
+  background-color: #4caf50;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
 
-  bottom: 20px;
-  left: 20px;
-  padding: 10px;
+  transition: background-color 0.3s ease;
+
+  margin-top: auto; /* 버튼을 맨 아래로 밀어줌 */
+}
+
+.start-btn:hover {
+  background-color: #2c7930;
+}
+
+.goBack-btn {
+  margin-top: auto;
 }
 </style>

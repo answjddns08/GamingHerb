@@ -5,8 +5,9 @@ export default {
 
   // 게임 설정
   settings: {
-    allowUndo: true,
+    maxPlayers: 2,
     timerEnabled: false,
+    playerTimeLimit: 60, // 플레이어당 시간 제한 (초)
     spectatorMode: true,
   },
 };
