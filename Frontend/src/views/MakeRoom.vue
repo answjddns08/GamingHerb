@@ -124,7 +124,7 @@ h1 {
   padding-right: 8px; /* 스크롤바 공간 확보(선택) */
 }
 
-.game-description ::v-deep h1 {
+.game-description :deep(h1) {
   color: #2196f3;
 
   font-size: 2rem;
@@ -133,7 +133,7 @@ h1 {
   margin-bottom: 1rem;
 }
 
-.game-description ::v-deep h2 {
+.game-description :deep(h2) {
   color: #2196f3;
 
   font-size: 1.5rem;
@@ -142,7 +142,7 @@ h1 {
   margin-bottom: 1rem;
 }
 
-.game-description ::v-deep h3 {
+.game-description :deep(h3) {
   color: #2196f3;
 
   font-size: 1.25rem;
@@ -151,7 +151,7 @@ h1 {
   margin-bottom: 1rem;
 }
 
-.game-description ::v-deep p {
+.game-description :deep(p) {
   font-size: 1.1rem;
   line-height: 1.6;
   word-break: normal;
@@ -159,12 +159,12 @@ h1 {
   overflow-wrap: break-word;
 }
 
-.game-description ::v-deep ul {
+.game-description :deep(ul) {
   padding-left: 1.5rem;
   list-style-type: disc;
 }
 
-.game-description ::v-deep strong {
+.game-description :deep(strong) {
   color: #e91e63;
 }
 
