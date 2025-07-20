@@ -2,7 +2,7 @@ import gamesConfig from "../config/games.json";
 import { markdownToHtml } from "./markdownConvert";
 
 const configModules = import.meta.glob("../games/**/config.js");
-const descriptionModules = import.meta.glob("../../public/games/**/*.md", {
+const descriptionModules = import.meta.glob("../games/**/*.md", {
   as: "raw",
 });
 
@@ -58,7 +58,7 @@ export async function getGameConfig(gameId) {
  */
 export async function getGameDescription(gameId) {
   const gameInfo = getGameInfo(gameId);
-  const path = `../../public${gameInfo.desPath}`;
+  const path = gameInfo.desPath;
 
   if (descriptionModules[path]) {
     try {

@@ -22,6 +22,6 @@ export default {
       step: 5,
       unit: "초",
     },
-    spectatorMode: true, // 관전자 모드 활성화
+    allowSpectator: true, // 관전자 모드 활성화
   },
 };
