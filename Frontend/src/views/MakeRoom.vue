@@ -2,7 +2,7 @@
   <main class="layout">
     <div class="desc" v-if="game">
       <h1>{{ game.name }}</h1>
-      <div v-html="gameDes"></div>
+      <div v-html="gameDes" class="game-description"></div>
       <RouterLink :to="{ name: 'game-rooms' }" class="goBack-btn">
         <button class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition">
           Go Back
@@ -15,14 +15,6 @@
     <div class="settings">
       <h1>Settings</h1>
       <p>Adjust your game settings here.</p>
-      <div class="flex gap-2">
-        <label for="maxPlayers">Max Players:</label>
-        <input type="number" id="maxPlayers" />
-      </div>
-      <div class="flex gap-2">
-        <label for="gameRules">Game Rules:</label>
-        <textarea id="gameRules"></textarea>
-      </div>
       <button class="start-btn">Start Game</button>
     </div>
   </main>
@@ -79,6 +71,53 @@ h1 {
   gap: 1rem;
 
   border: 1px solid #000000;
+}
+
+.game-description {
+  max-height: 80vh;
+  overflow-y: auto;
+  padding-right: 8px; /* 스크롤바 공간 확보(선택) */
+}
+
+.game-description ::v-deep h1 {
+  color: #2196f3;
+
+  font-size: 2rem;
+  font-weight: bold;
+
+  margin-bottom: 1rem;
+}
+
+.game-description ::v-deep h2 {
+  color: #2196f3;
+
+  font-size: 1.5rem;
+  font-weight: bold;
+
+  margin-bottom: 1rem;
+}
+
+.game-description ::v-deep h3 {
+  color: #2196f3;
+
+  font-size: 1.25rem;
+  font-weight: bold;
+
+  margin-bottom: 1rem;
+}
+
+.game-description ::v-deep p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.game-description ::v-deep ul {
+  padding-left: 1.5rem;
+  list-style-type: disc;
+}
+
+.game-description ::v-deep strong {
+  color: #e91e63;
 }
 
 .settings {
