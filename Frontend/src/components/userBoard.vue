@@ -1,5 +1,5 @@
 <template>
-  <div class="p-4 bg-gray-100 rounded-lg">
+  <div class="p-4 rounded-lg">
     <div class="flex items-center gap-3 bg-gray-200 rounded-lg p-3">
       <span class="text-gray-700 font-semibold">{{ userStore.name }}</span>
       <button
