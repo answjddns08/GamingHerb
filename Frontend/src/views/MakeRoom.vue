@@ -80,7 +80,13 @@ function StartGame() {
   // 게임 시작 로직 구현
   console.log("게임 시작!");
 
+  // 현재 설정에 따른 플레이어 수 계산
+  const playerCount = gameSetting.value.getCurrentPlayerCount();
+
   console.log("게임 설정:", gameSetting.value);
+  console.log(
+    `플레이어 수: ${playerCount}명 (솔로모드: ${gameSetting.value.settings.soloEnabled ? "ON" : "OFF"})`,
+  );
 
   // 예: 게임 방으로 이동
   // router.push({ name: 'game-room', params: { gameId: game.value.id } });

@@ -3,7 +3,22 @@ export default {
   BOARD_SIZE: 15,
   WIN_CONDITION: 5,
 
-  Players: 2, // 플레이어 수(솔로 모드 활성화 시 1)
+  /**
+   * 솔로 모드 활성화 여부에 따른 플레이어 수 반환
+   * @param {boolean} soloEnabled - 솔로 모드 활성화 여부
+   * @returns {number} 플레이어 수 (솔로: 1, 멀티: 2)
+   */
+  getPlayerCount(soloEnabled = false) {
+    return soloEnabled ? 1 : 2;
+  },
+
+  /**
+   * 현재 설정을 기반으로 플레이어 수 반환
+   * @returns {number} 현재 설정에 따른 플레이어 수
+   */
+  getCurrentPlayerCount() {
+    return this.getPlayerCount(this.settings.soloEnabled);
+  },
 
   /**
    * 게임 설정
