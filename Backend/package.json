@@ -4,12 +4,25 @@
   "description": "a backend for GamingHerb discord activity",
   "main": "index.js",
   "scripts": {
-    "start":"NODE_ENV=production node index.js",
-    "dev":"NODE_ENV=development nodemon --delay 500ms index.js",
+    "start": "NODE_ENV=production node index.js",
+    "dev": "NODE_ENV=development nodemon --delay 500ms index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["backend", "GamingHerb", "discord"],
+  "keywords": [
+    "backend",
+    "GamingHerb",
+    "discord"
+  ],
   "author": "redeyes",
   "license": "ISC",
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "express": "^5.1.0",
+    "socket.io": "^4.8.1"
+  }
 }
