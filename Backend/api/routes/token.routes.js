@@ -1,4 +1,4 @@
-import { getToken } from "../controllers/token.controller";
+import { getToken } from "../controllers/token.controller.js";
 import { Router } from "express";
 
 const router = Router();
