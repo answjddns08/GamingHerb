@@ -1,5 +1,4 @@
-import dotenv from "dotenv";
-dotenv.config({ path: "../.env" });
+import fetch from "node-fetch";
 
 /**
  * Get token from discord API
@@ -16,14 +15,21 @@ async function getToken(req, res) {
 		},
 		body: new URLSearchParams({
 			client_id: process.env.VITE_DISCORD_CLIENT_ID,
-			client_secret: process.env.DISCORD_CLIENT_SECRET,
+			client_secret: process.env.VITE_DISCORD_CLIENT_SECRET,
 			grant_type: "authorization_code",
 			code: req.body.code,
 		}),
 	});
 
-	// Retrieve the access_token from the response
-	const { access_token } = await response.json();
+	const discordResponse = await response.json();
+	const { access_token } = discordResponse;
+
+	if (!access_token) {
+		console.error("Discord token error:", discordResponse);
+		return res
+			.status(400)
+			.json({ error: "Failed to get access token", details: discordResponse });
+	}
 
 	// Return the access_token to our client as { access_token: "..."}
 	res.send({ access_token });

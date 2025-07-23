@@ -24,6 +24,13 @@ export default defineConfig({
         secure: false,
         ws: true,
       },
+      // Discord Activity 로컬 테스트용 프록시
+      "/.proxy": {
+        target: "https://gamingherb.redeyes.dev",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/\.proxy/, ""),
+      },
     },
   },
   build: {

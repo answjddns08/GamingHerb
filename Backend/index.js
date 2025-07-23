@@ -1,6 +1,9 @@
 import express from "express";
 import cors from "cors";
 import tokenRouter from "./api/routes/token.routes.js";
+import dotenv from "dotenv";
+
+dotenv.config({ path: "../.env" });
 
 const app = express();
 
@@ -23,8 +26,6 @@ app.use(
 // JSON body parser with increased limit
 app.use(express.json({ limit: "50mb" }));
 
-app.use("/api/token", tokenRouter);
-
 // 요청 로그
 if (process.env.NODE_ENV !== "production") {
 	app.use((req, res, next) => {
@@ -32,6 +33,8 @@ if (process.env.NODE_ENV !== "production") {
 		next();
 	});
 }
+
+app.use("/api/token", tokenRouter);
 
 app.listen(PORT, () => {
 	console.log(`Server is listening on port ${PORT}`);

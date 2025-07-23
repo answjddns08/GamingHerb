@@ -167,9 +167,12 @@ export const useUserStore = defineStore("user", {
       try {
         // Check for required environment variables
         const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID;
+
         if (!clientId) {
           throw new Error("Discord Client ID is not configured");
         }
+
+        console.log(`Discord Client ID: ${clientId}`);
 
         console.log("Loading Discord SDK in background...");
 
@@ -189,9 +192,10 @@ export const useUserStore = defineStore("user", {
         // Authorize with Discord Client
         const { code } = await discordSdk.commands.authorize({
           client_id: clientId,
+          response_type: "code",
           state: "",
           prompt: "none",
-          scope: ["identify", "guilds"],
+          scope: ["identify", "guilds", "applications.commands", "activities.read"],
         });
 
         // Retrieve an access_token from your activity's server
