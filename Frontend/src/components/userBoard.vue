@@ -4,7 +4,6 @@
       <span class="text-gray-700 font-semibold">{{ userStore.name }}</span>
       <button
         @click="openModal"
-        :disabled="userStore.isDiscordUser"
         class="p-1 rounded hover:bg-gray-300 disabled:opacity-50"
         title="닉네임 수정"
       >
@@ -50,6 +49,7 @@
         <div class="flex justify-between items-center">
           <!-- 프로필 초기화 버튼 -->
           <button
+            v-show="!userStore.isDiscordUser"
             @click="resetProfile"
             class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
           >
@@ -104,15 +104,13 @@ const showModal = ref(false);
 const newNickname = ref("");
 
 const openModal = () => {
-  if (!userStore.isDiscordUser) {
-    newNickname.value = userStore.name;
-    showModal.value = true;
-    setTimeout(() => {
-      // autofocus input
-      const input = document.querySelector("input[autofocus]");
-      if (input) input.focus();
-    }, 50);
-  }
+  newNickname.value = userStore.name;
+  showModal.value = true;
+  setTimeout(() => {
+    // autofocus input
+    const input = document.querySelector("input[autofocus]");
+    if (input) input.focus();
+  }, 50);
 };
 
 const closeModal = () => {

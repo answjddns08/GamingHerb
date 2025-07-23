@@ -6,7 +6,6 @@ const app = express();
 
 const PORT = process.env.PORT || 3001;
 
-console.log(`Server is running on port ${PORT}`);
 console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
 
 // CORS settings

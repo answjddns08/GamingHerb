@@ -5,6 +5,7 @@ export const useUserStore = defineStore("user", {
     id: null,
     name: null,
     isDiscordUser: false,
+    auth: null, // Discord authentication object
   }),
 
   getters: {
@@ -33,26 +34,87 @@ export const useUserStore = defineStore("user", {
     },
 
     /**
-     * MOCK: In a real scenario, you would use the Discord SDK here.
-     * This function checks if the app is running inside Discord.
+     * Detects if the app is running inside Discord Activity.
+     * This function checks multiple indicators to determine Discord environment.
+     * @returns {boolean} True if running in Discord, false otherwise.
      */
     isDiscordEmbedded() {
-      // For testing purposes, you can simulate being in Discord
-      // by adding ?discord=true to the URL.
-      // return window.location.search.includes('discord=true');
-      return false;
-    },
+      try {
+        // 1. Check URL parameters that Discord activities receive
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasDiscordParams =
+          urlParams.has("frame_id") ||
+          urlParams.has("instance_id") ||
+          urlParams.has("platform") ||
+          urlParams.has("channel_id") ||
+          urlParams.has("guild_id");
 
-    /**
-     * MOCK: This function simulates fetching user data from the Discord SDK.
-     */
-    async getDiscordUserInfo() {
-      console.log("Fetching Discord user info...");
-      // In a real implementation, this would be an async call to the Discord SDK
-      return Promise.resolve({
-        id: "discord-user-12345",
-        global_name: "DiscordUser",
-      });
+        // 2. Check if running in iframe (Discord activities run in iframes)
+        const isInIframe = window !== window.top;
+
+        // 3. Check for Discord-specific global objects or parent communication
+        const hasDiscordGlobals =
+          typeof window.DiscordSDK !== "undefined" || (window.parent && window.parent !== window);
+
+        // 4. Check referrer for Discord domains (가장 신뢰할 수 있는 지표)
+        const referrer = document.referrer || "";
+        const isDiscordReferrer =
+          referrer.includes("discord.com") ||
+          referrer.includes("discord.gg") ||
+          referrer.includes("discordapp.com");
+
+        // 5. Check hostname for Discord-specific patterns
+        const hostname = window.location.hostname || "";
+        const isDiscordHostname =
+          hostname.includes("discord") ||
+          hostname.includes("cdn.discordapp.com") ||
+          hostname.includes("discordapp.net");
+
+        // 6. Additional Discord-specific checks
+        const hasDiscordUrl = window.location.href.includes("discord");
+
+        // Log detection results for debugging
+        console.log("Discord Detection Results:", {
+          hasDiscordParams,
+          isInIframe,
+          hasDiscordGlobals,
+          isDiscordReferrer,
+          isDiscordHostname,
+          hasDiscordUrl,
+          url: window.location.href,
+          hostname: hostname,
+          referrer: referrer,
+        });
+
+        // Improved detection logic with priority:
+        // 1. Strong indicators: Discord params + iframe environment
+        if (hasDiscordParams && isInIframe) {
+          console.log("✅ Discord detected: URL params + iframe");
+          return true;
+        }
+
+        // 2. Discord referrer + iframe (very reliable)
+        if (isDiscordReferrer && isInIframe) {
+          console.log("✅ Discord detected: Discord referrer + iframe");
+          return true;
+        }
+
+        // 4. Multiple weak indicators combined
+        const weakIndicatorCount = [hasDiscordUrl, isDiscordHostname, hasDiscordGlobals].filter(
+          Boolean,
+        ).length;
+
+        if (isInIframe && weakIndicatorCount >= 2) {
+          console.log("✅ Discord detected: iframe + multiple weak indicators");
+          return true;
+        }
+
+        console.log("❌ Discord not detected: insufficient indicators");
+        return false;
+      } catch (error) {
+        console.error("Error detecting Discord environment:", error);
+        return false;
+      }
     },
 
     /**
@@ -62,43 +124,114 @@ export const useUserStore = defineStore("user", {
       let userId = localStorage.getItem("userId");
       let userName = localStorage.getItem("userName");
 
-      if (this.isDiscordEmbedded()) {
-        try {
-          const discordUser = await this.getDiscordUserInfo();
-          this.id = discordUser.id;
-          this.name = discordUser.global_name;
-          this.isDiscordUser = true;
-          // Note: We don't save Discord info to localStorage for privacy.
-          // It will be fetched on each load when in the Discord client.
-        } catch (error) {
-          console.error("Failed to fetch Discord user info, falling back to local user.", error);
-          // If Discord auth fails, fall back to localStorage or generate a new user
-          if (!userId || !userName) {
-            this.id = this.generateUUID();
-            this.name = this.generateRandomNickname();
-            localStorage.setItem("userId", this.id);
-            localStorage.setItem("userName", this.name);
-          } else {
-            this.id = userId;
-            this.name = userName;
-          }
-          this.isDiscordUser = false;
-        }
+      // Check if running in Discord environment
+      const isDiscord = this.isDiscordEmbedded();
+      console.log(`Environment detected: ${isDiscord ? "Discord Activity" : "Web Browser"}`);
+
+      if (isDiscord) {
+        // Fast initialization: Set up temporary user first, then upgrade to Discord user
+        this.initializeTempUser(userId, userName);
+
+        // Initialize Discord in background (non-blocking)
+        this.initializeDiscordUser();
       } else {
         // Standard web browser flow
-        if (!userId || !userName) {
-          this.id = this.generateUUID();
-          this.name = this.generateRandomNickname();
-          localStorage.setItem("userId", this.id);
-          localStorage.setItem("userName", this.name);
-        } else {
-          this.id = userId;
-          this.name = userName;
-        }
-        this.isDiscordUser = false;
+        console.log("Running in standard web browser mode");
+        this.initializeTempUser(userId, userName);
       }
 
-      console.log(`User initialized: ${this.name} (${this.id})`);
+      console.log(`User initialized: ${this.name} (${this.id}) - Discord: ${this.isDiscordUser}`);
+    },
+
+    /**
+     * Initialize temporary user for immediate UI display
+     */
+    initializeTempUser(userId, userName) {
+      if (!userId || !userName) {
+        this.id = this.generateUUID();
+        this.name = this.generateRandomNickname();
+        localStorage.setItem("userId", this.id);
+        localStorage.setItem("userName", this.name);
+      } else {
+        this.id = userId;
+        this.name = userName;
+      }
+      this.isDiscordUser = false;
+      console.log(`Temporary user initialized: ${this.name} (${this.id})`);
+    },
+
+    /**
+     * Initialize Discord user in background (non-blocking)
+     */
+    async initializeDiscordUser() {
+      try {
+        // Check for required environment variables
+        const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID;
+        if (!clientId) {
+          throw new Error("Discord Client ID is not configured");
+        }
+
+        console.log("Loading Discord SDK in background...");
+
+        // Start Discord SDK import early
+        const sdkImportPromise = import("@discord/embedded-app-sdk");
+
+        // Dynamically import Discord SDK only when needed
+        const { DiscordSDK } = await sdkImportPromise;
+
+        console.log("Initializing Discord SDK...");
+
+        // Discord SDK 초기화
+        const discordSdk = new DiscordSDK(clientId);
+
+        await discordSdk.ready();
+
+        // Authorize with Discord Client
+        const { code } = await discordSdk.commands.authorize({
+          client_id: clientId,
+          state: "",
+          prompt: "none",
+          scope: ["identify", "guilds"],
+        });
+
+        // Retrieve an access_token from your activity's server
+        // Note: We need to prefix our backend `/api/token` route with `/.proxy` to stay compliant with the CSP.
+        // Read more about constructing a full URL and using external resources at
+        // https://discord.com/developers/docs/activities/development-guides#construct-a-full-url
+        const response = await fetch("/.proxy/api/token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            code,
+          }),
+        });
+
+        const { access_token } = await response.json();
+
+        // Authenticate with Discord client (using the access_token)
+        this.auth = await discordSdk.commands.authenticate({
+          access_token,
+        });
+
+        if (this.auth == null) {
+          throw new Error("Authenticate command failed");
+        }
+
+        this.isDiscordUser = true;
+
+        console.log(
+          `Discord user loaded: ${this.name} (${this.id}), discord user: ${this.isDiscordUser}`,
+        );
+        // Note: We don't save Discord info to localStorage for privacy.
+        // It will be fetched on each load when in the Discord client.
+      } catch (error) {
+        console.error("Failed to initialize Discord SDK:", error.message);
+        console.log("Continuing with temporary user...");
+        // Keep the temporary user we already set up
+        this.isDiscordUser = false;
+      }
     },
 
     /**
