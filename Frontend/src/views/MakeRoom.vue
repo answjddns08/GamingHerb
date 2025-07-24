@@ -58,12 +58,14 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, ref, useRouter } from "vue";
 import { useRoute } from "vue-router";
 import { RouterLink } from "vue-router";
 import { getGameInfo, getGameDescription, getGameConfig } from "../utils/gameLoader.js";
 
 const route = useRoute();
+
+const router = useRouter();
 
 const game = ref(null);
 
@@ -81,7 +83,7 @@ onMounted(async () => {
   console.log("Game Info:", game.value);
 });
 
-function StartGame() {
+async function StartGame() {
   // 게임 시작 로직 구현
   console.log("게임 시작!");
 
@@ -92,6 +94,45 @@ function StartGame() {
   console.log(
     `플레이어 수: ${playerCount}명 (솔로모드: ${gameSetting.value.settings.soloEnabled ? "ON" : "OFF"})`,
   );
+
+  const checkRoomName = await fetch("/api/rooms/check", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      roomName: gameSetting.value.roomName,
+    }),
+  });
+
+  if (!checkRoomName.ok) {
+    console.error("방 이름 중복 확인 실패:", checkRoomName.statusText);
+    return;
+  }
+
+  const response = await fetch("/api/rooms/create", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      gameId: game.value.id,
+      settings: gameSetting.value.settings,
+    }),
+  });
+
+  if (!response.ok) {
+    console.error("게임 시작 실패:", response.statusText);
+    return;
+  }
+
+  const data = await response.json();
+  console.log("게임 시작 성공:", data);
+
+  router.push({
+    name: "waiting-room",
+    params: { gameId: game.value.id, roomName: gameSetting.value.roomName },
+  });
 
   // 예: 게임 방으로 이동
   // router.push({ name: 'game-room', params: { gameId: game.value.id } });

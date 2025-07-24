@@ -2,9 +2,8 @@ import fetch from "node-fetch";
 
 /**
  * Get token from discord API
- * @param {import { Request, Response } from "express";}
- * @param {Request} req - Express request object
- * @param {Response} res - Express response object
+ * @param {import("express").Request} req - Express request object
+ * @param {import("express").Response} res - Express response object
  */
 async function getToken(req, res) {
 	// Exchange the code for an access_token

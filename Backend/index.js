@@ -1,11 +1,19 @@
+// library imports
 import express from "express";
 import cors from "cors";
-import tokenRouter from "./api/routes/token.routes.js";
 import dotenv from "dotenv";
+import WebSocket from "ws";
+import setupWebsocket from "./websockets/socket.js";
+
+// routes
+import tokenRouter from "./api/routes/token.routes.js";
+import roomsRouter from "./api/routes/rooms.routes.js";
 
 dotenv.config({ path: "../.env" });
 
 const app = express();
+
+const wss = new WebSocket.Server({ noServer: true });
 
 const PORT = process.env.PORT || 3001;
 
@@ -35,7 +43,17 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 app.use("/api/token", tokenRouter);
+app.use("/api/rooms", roomsRouter);
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
 	console.log(`Server is listening on port ${PORT}`);
 });
+
+server.on("upgrade", (request, socket, head) => {
+	// TODO: 인증 로직 추가
+	wss.handleUpgrade(request, socket, head, (ws) => {
+		wss.emit("connection", ws, request);
+	});
+});
+
+setupWebsocket(wss);
