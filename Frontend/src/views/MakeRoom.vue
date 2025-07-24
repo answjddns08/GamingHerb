@@ -16,7 +16,12 @@
       <h1>Settings</h1>
       <div class="flex gap-2">
         <label for="roomName">Room Name</label>
-        <input type="text" id="roomName" v-model="gameSetting.roomName" />
+        <input
+          class="border rounded-lg p-1"
+          type="text"
+          id="roomName"
+          v-model="gameSetting.roomName"
+        />
       </div>
       <div v-for="(value, key) in gameSetting.settings" :key="key" class="setting-item">
         <label :for="key">{{ key }}</label>
