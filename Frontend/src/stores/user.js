@@ -11,6 +11,7 @@ export const useUserStore = defineStore("user", {
   getters: {
     isLoggedIn: (state) => state.id !== null,
     displayName: (state) => state.name || "Anonymous",
+    apiPrefix: (state) => (state.isDiscordUser ? "/.proxy" : ""),
   },
 
   actions: {
@@ -202,7 +203,8 @@ export const useUserStore = defineStore("user", {
         // Note: We need to prefix our backend `/api/token` route with `/.proxy` to stay compliant with the CSP.
         // Read more about constructing a full URL and using external resources at
         // https://discord.com/developers/docs/activities/development-guides#construct-a-full-url
-        const response = await fetch("/.proxy/api/token", {
+        const apiPrefix = this.isDiscordUser ? "/.proxy" : "";
+        const response = await fetch(`${apiPrefix}/api/token`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
