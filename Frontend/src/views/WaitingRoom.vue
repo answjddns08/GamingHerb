@@ -52,13 +52,21 @@
 
 <script setup>
 import { ref, onMounted, shallowRef } from "vue";
-import { useRoute } from "vue-router";
 import { loadGameComponent, getGameInfo } from "../utils/gameLoader.js";
 
-const route = useRoute();
+const props = defineProps({
+  gameId: {
+    type: String,
+    default: "GomokuGame",
+    required: true,
+  },
+  roomId: {
+    type: String,
+    default: "default-room",
+    required: true,
+  },
+});
 
-const roomId = ref(route.params.roomId || "default-room");
-const gameId = ref(route.params.gameId || "GomokuGame"); // URL params에서 gameId 가져오기
 const gameStarted = ref(false);
 const GameComponent = shallowRef(null); // shallowRef 사용으로 변경
 const gameInfo = ref(null);
@@ -75,14 +83,14 @@ const startGame = async () => {
     gameStarted.value = true;
 
     // 게임 정보 가져오기
-    gameInfo.value = getGameInfo(gameId.value);
+    gameInfo.value = getGameInfo(props.gameId);
 
     if (gameInfo.value) {
       // 게임 컴포넌트 동적 로드
-      GameComponent.value = await loadGameComponent(gameId.value);
-      console.log(`${gameInfo.value.name} (${gameId.value}) 게임이 로드되었습니다.`);
+      GameComponent.value = await loadGameComponent(props.gameId);
+      console.log(`${gameInfo.value.name} (${props.gameId}) 게임이 로드되었습니다.`);
     } else {
-      console.error(`게임 ID "${gameId.value}"에 해당하는 게임을 찾을 수 없습니다.`);
+      console.error(`게임 ID "${props.gameId}"에 해당하는 게임을 찾을 수 없습니다.`);
       GameComponent.value = null;
     }
   } catch (error) {
@@ -98,14 +106,14 @@ const goBack = () => {
 };
 
 onMounted(() => {
-  console.log("대기방 마운트됨:", { roomId: roomId.value, gameId: gameId.value });
+  console.log("대기방 마운트됨:", { roomId: props.roomId, gameId: props.gameId });
 
   // 게임 정보 미리 로드
-  gameInfo.value = getGameInfo(gameId.value);
+  gameInfo.value = getGameInfo(props.gameId);
   if (gameInfo.value) {
     console.log("게임 정보 로드됨:", gameInfo.value.name);
   } else {
-    console.warn(`게임 ID "${gameId.value}"에 대한 정보를 찾을 수 없습니다.`);
+    console.warn(`게임 ID "${props.gameId}"에 대한 정보를 찾을 수 없습니다.`);
   }
 });
 </script>

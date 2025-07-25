@@ -75,8 +75,8 @@ import userBoard from "../components/userBoard.vue";
 const props = defineProps({
   gameId: {
     type: String,
-    required: false,
-    default: "",
+    default: "GomokuGame",
+    required: true,
   },
 });
 

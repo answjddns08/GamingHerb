@@ -21,7 +21,7 @@
       <div v-for="(value, key) in gameSetting.settings" :key="key" class="setting-item">
         <label :for="key">{{ key }}</label>
         <!-- Boolean: 토글 버튼 -->
-        <template v-if="typeof value === 'boolean'">
+        <div v-if="typeof value === 'boolean'">
           <button
             :id="key"
             @click="gameSetting.settings[key] = !gameSetting.settings[key]"
@@ -30,10 +30,10 @@
           >
             {{ gameSetting.settings[key] ? "ON" : "OFF" }}
           </button>
-        </template>
+        </div>
         <!-- Number: 슬라이더 -->
         <!-- 숫자형: 객체로 min/max/step 접근 -->
-        <template v-else-if="typeof value === 'object' && value !== null && 'value' in value">
+        <div v-else-if="typeof value === 'object' && value !== null && 'value' in value">
           <input
             type="range"
             :id="key"
@@ -44,7 +44,7 @@
           />
           <input type="number" v-model.number="gameSetting.settings[key].value" class="w-15" />
           <span>{{ value.unit || "seconds" }}</span>
-        </template>
+        </div>
         <!-- 기타 타입은 필요시 추가 -->
       </div>
       <div class="mt-auto flex flex-col gap-2 items-center">
