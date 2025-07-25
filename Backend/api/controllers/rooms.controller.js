@@ -1,14 +1,19 @@
 /**
  * a array to store roomNames and their details
- * @type {Object.<string, {gameId: string, settings: object}>}
- * @description This object will hold room names as keys and their details as values.
+ * @type {Object.<gameId : string, Object.<roomName : string, settings: object>>}
+ * @description This object will hold room names in specific game as keys and their details as values.
  */
 const rooms = {};
 
 /* Example structure of rooms object:
 {
-	"RoomName1": { gameId: "Gomoku", settings: { ... } },
-	"RoomName2": { gameId: "Pong", settings: { ... } }
+	"Gomoku": {
+		"roomName": { "settings": { "maxPlayers": 4, "private": false } },
+		"roomName2": { "settings": { "maxPlayers": 2, "private": true } }
+	},
+	"Chess": {
+		"roomName3": { "settings": { "maxPlayers": 2, "private": false } }
+	}
 } */
 
 /**
@@ -21,14 +26,18 @@ function createRoom(req, res) {
 
 	console.log("Creating room:", newRoom);
 
-	const roomExists = newRoom.roomName in rooms;
+	if (!rooms[newRoom.gameId]) {
+		rooms[newRoom.gameId] = {};
+	}
+
+	const roomExists = newRoom.roomName in rooms[newRoom.gameId];
 
 	if (roomExists) {
 		console.log(`Room name ${newRoom.settings.roomName} already exists.`);
 		return res.status(409).json({ message: "Room name already exists" });
 	}
 
-	rooms[newRoom.settings.roomName] = {
+	rooms[newRoom.gameId][newRoom.settings.roomName] = {
 		gameId: newRoom.gameId,
 		settings: newRoom.settings,
 	};
