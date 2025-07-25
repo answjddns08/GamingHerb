@@ -1,7 +1,7 @@
 <template>
   <main class="layout">
-    <div class="desc" v-if="game">
-      <h1>{{ game.name }}</h1>
+    <div class="desc" v-if="gameId">
+      <h1>{{ gameId.name }}</h1>
       <div v-html="gameDes" class="game-description"></div>
       <RouterLink :to="{ name: 'game-rooms' }" class="goBack-btn">
         <button class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition">
@@ -16,12 +16,7 @@
       <h1>Settings</h1>
       <div class="flex gap-2">
         <label for="roomName">Room Name</label>
-        <input
-          class="border rounded-lg p-1"
-          type="text"
-          id="roomName"
-          v-model="gameSetting.roomName"
-        />
+        <input class="border rounded-lg p-1" type="text" id="roomName" v-model="roomName" />
       </div>
       <div v-for="(value, key) in gameSetting.settings" :key="key" class="setting-item">
         <label :for="key">{{ key }}</label>
@@ -52,40 +47,55 @@
         </template>
         <!-- 기타 타입은 필요시 추가 -->
       </div>
-      <button class="start-btn" @click="StartGame">Start Game</button>
+      <div class="mt-auto flex flex-col gap-2 items-center">
+        <p class="text-red-500 font-bold text-2xl">
+          {{ alarm }}
+        </p>
+        <button class="start-btn" @click="StartGame">Start Game</button>
+      </div>
     </div>
   </main>
 </template>
 
 <script setup>
-import { onMounted, ref, useRouter } from "vue";
-import { useRoute } from "vue-router";
-import { RouterLink } from "vue-router";
-import { getGameInfo, getGameDescription, getGameConfig } from "../utils/gameLoader.js";
+import { onMounted, ref } from "vue";
+import { useRoute, RouterLink, useRouter } from "vue-router";
+import { getGameDescription, getGameConfig } from "../utils/gameLoader.js";
+import { useUserStore } from "../stores/user.js";
 
 const route = useRoute();
 
 const router = useRouter();
 
-const game = ref(null);
+const userStore = useUserStore();
+
+const alarm = ref("");
+
+const gameId = ref(null);
 
 const gameSetting = ref(null);
 
 const gameDes = ref("");
 
+const roomName = ref("");
+
 onMounted(async () => {
-  game.value = getGameInfo(route.params.gameId);
+  gameId.value = route.params.gameId;
 
   gameSetting.value = await getGameConfig(route.params.gameId);
 
   gameDes.value = await getGameDescription(route.params.gameId);
-
-  console.log("Game Info:", game.value);
 });
 
 async function StartGame() {
-  // 게임 시작 로직 구현
-  console.log("게임 시작!");
+  alarm.value = ""; // 초기화
+
+  if (!roomName.value.trim()) {
+    alarm.value = "방 이름을 입력해주세요.";
+    return;
+  }
+
+  console.log("roomName:", roomName.value);
 
   // 현재 설정에 따른 플레이어 수 계산
   const playerCount = gameSetting.value.getCurrentPlayerCount();
@@ -95,29 +105,16 @@ async function StartGame() {
     `플레이어 수: ${playerCount}명 (솔로모드: ${gameSetting.value.settings.soloEnabled ? "ON" : "OFF"})`,
   );
 
-  const checkRoomName = await fetch("/api/rooms/check", {
+  const apiPrefix = userStore.apiPrefix;
+  const response = await fetch(`${apiPrefix}/api/rooms/create`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      roomName: gameSetting.value.roomName,
-    }),
-  });
-
-  if (!checkRoomName.ok) {
-    console.error("방 이름 중복 확인 실패:", checkRoomName.statusText);
-    return;
-  }
-
-  const response = await fetch("/api/rooms/create", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      gameId: game.value.id,
+      gameId: gameId.value,
       settings: gameSetting.value.settings,
+      roomName: roomName.value,
     }),
   });
 
@@ -129,9 +126,13 @@ async function StartGame() {
   const data = await response.json();
   console.log("게임 시작 성공:", data);
 
+  alarm.value = "게임 방이 생성되었습니다.";
+
+  console.log("게임 방으로 이동:", data.roomName, gameId.value);
+
   router.push({
     name: "waiting-room",
-    params: { gameId: game.value.id, roomName: gameSetting.value.roomName },
+    params: { gameId: gameId.value, roomId: data.roomName },
   });
 
   // 예: 게임 방으로 이동
@@ -265,9 +266,9 @@ h1 {
   border-radius: 5px;
   cursor: pointer;
 
-  transition: background-color 0.3s ease;
+  width: 100%;
 
-  margin-top: auto; /* 버튼을 맨 아래로 밀어줌 */
+  transition: background-color 0.3s ease;
 }
 
 .start-btn:hover {
