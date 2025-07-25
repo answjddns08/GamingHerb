@@ -2,7 +2,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import WebSocket from "ws";
+import { WebSocketServer } from "ws";
 import setupWebsocket from "./websockets/socket.js";
 
 // routes
@@ -13,7 +13,7 @@ dotenv.config({ path: "../.env" });
 
 const app = express();
 
-const wss = new WebSocket.Server({ noServer: true });
+const wss = new WebSocketServer({ noServer: true });
 
 const PORT = process.env.PORT || 3001;
 
