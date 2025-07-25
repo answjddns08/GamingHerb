@@ -71,11 +71,11 @@ import { onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 import SettingIcon from "../components/settingIcon.vue";
 import userBoard from "../components/userBoard.vue";
-import { getApiPrefix } from "@/stores/user";
+import { useUserStore } from "@/stores/user";
 
 const rooms = ref([]);
 
-const apiPrefix = getApiPrefix();
+const userStore = useUserStore();
 
 const props = defineProps({
   gameId: {
@@ -88,8 +88,10 @@ const props = defineProps({
 onMounted(async () => {
   console.log("Game ID:", props.gameId);
 
-  const fetchRooms = await fetch(`${apiPrefix}/api/rooms/${props.gameId}`);
+  const fetchRooms = await fetch(`${userStore.apiPrefix}/api/rooms/${props.gameId}`);
   rooms.value = await fetchRooms.json();
+
+  console.log("Rooms fetched:", rooms.value);
 });
 </script>
 
