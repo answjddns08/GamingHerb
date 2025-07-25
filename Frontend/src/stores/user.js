@@ -241,6 +241,14 @@ export const useUserStore = defineStore("user", {
     },
 
     /**
+     * Returns the api prefix based on the user's environment.
+     * @returns {string} The API prefix to use for requests.
+     */
+    getApiPrefix() {
+      return this.isDiscordUser ? "/.proxy" : "";
+    },
+
+    /**
      * Updates the user's name and saves to localStorage (if not Discord user)
      */
     updateUserName(newName) {
