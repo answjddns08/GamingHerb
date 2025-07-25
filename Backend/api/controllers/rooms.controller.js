@@ -19,9 +19,12 @@ const rooms = {};
 function createRoom(req, res) {
 	const newRoom = req.body;
 
-	const roomExists = newRoom.settings.roomName in rooms;
+	console.log("Creating room:", newRoom);
+
+	const roomExists = newRoom.roomName in rooms;
 
 	if (roomExists) {
+		console.log(`Room name ${newRoom.settings.roomName} already exists.`);
 		return res.status(409).json({ message: "Room name already exists" });
 	}
 
@@ -32,7 +35,7 @@ function createRoom(req, res) {
 
 	res.status(201).json({
 		message: "Room created successfully",
-		roomName: newRoom.settings.roomName,
+		roomName: newRoom.roomName,
 	});
 }
 
