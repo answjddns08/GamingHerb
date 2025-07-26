@@ -106,13 +106,16 @@ async function StartGame() {
   );
 
   const apiPrefix = userStore.apiPrefix;
-  const response = await fetch(`${apiPrefix}/api/rooms/create`, {
+  const response = await fetch(`${apiPrefix}/api/rooms/create?gameId=${gameId.value}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      gameId: gameId.value,
+      host: userStore.displayName,
+      hostId: userStore.userId, // for checking host in waiting room
+      status: "waiting",
+      playerCount: 1, // host joined, if 0 then delete the room
       settings: gameSetting.value.settings,
       roomName: roomName.value,
     }),
@@ -132,7 +135,7 @@ async function StartGame() {
 
   router.push({
     name: "waiting-room",
-    params: { gameId: gameId.value, roomId: data.roomName },
+    params: { gameId: gameId.value, roomId: roomName.value },
   });
 
   // 예: 게임 방으로 이동

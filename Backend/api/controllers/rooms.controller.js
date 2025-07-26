@@ -19,29 +19,30 @@ const rooms = {};
 /**
  * Create a new room
  * @param {import("express").Request} req - Express request object
- * @param {string} req.body.gameId - The ID of the game for which the room is being created
+ * @param {string} req.query.gameId - The ID of the game for which the room is being created
  * @param {string} req.body.roomName - The name of the room to be created
  * @param {Object} req.body.settings - The settings for the room
  * @param {import("express").Response} res - Express response object
  */
 function createRoom(req, res) {
 	const newRoom = req.body;
+	const gameId = req.query.gameId;
 
 	console.log("Creating room:", newRoom);
 
-	if (!rooms[newRoom.gameId]) {
-		rooms[newRoom.gameId] = {};
+	if (!rooms[gameId]) {
+		rooms[gameId] = {};
 	}
 
-	const roomExists = newRoom.roomName in rooms[newRoom.gameId];
+	const roomExists = newRoom.roomName in rooms[gameId];
 
 	if (roomExists) {
 		console.log(`Room name ${newRoom.settings.roomName} already exists.`);
 		return res.status(409).json({ message: "Room name already exists" });
 	}
 
-	rooms[newRoom.gameId][newRoom.roomName] = {
-		gameId: newRoom.gameId,
+	rooms[gameId][newRoom.roomName] = {
+		gameId: gameId,
 		settings: newRoom.settings,
 	};
 
