@@ -31,23 +31,29 @@
       </div>
     </header>
     <div class="grid grid-cols-4 gap-5 p-4">
-      <div v-for="i in 10" :key="i" class="bg-gray-300 p-4 rounded-lg shadow-md">
+      <div
+        v-for="roomName in Object.keys(rooms)"
+        :key="roomName"
+        class="bg-gray-300 p-4 rounded-lg shadow-md"
+      >
         <img
           src="https://i.namu.wiki/i/Z4ZyjNsQ1Fvlz8QQHhfcrrTo4xgEyAf_D4S7J1p3LGT7wh-zIo_74MpSFAM0PUwyPOy5qpnQZGXM-bbqCKtJTA.webp"
           alt="Placeholder Image"
           class="w-full object-cover rounded-lg mb-2"
         />
-        <h2 class="text-lg font-semibold mb-1">Game Title {{ i }}</h2>
+        <h2 class="text-lg font-semibold mb-1">Game Title {{ roomName }}</h2>
         <div>
           <p class="text-gray-700 mb-2">
-            This is a description of game {{ i }}. It has some interesting details.
+            This is a description of game {{ roomName }}. It has some interesting details.
           </p>
           <p class="text-gray-500 text-sm">Players: 4</p>
           <p class="text-gray-500 text-sm">Status: Waiting for players</p>
-          <p class="text-gray-500 text-sm">Created by: User {{ i }}</p>
+          <p class="text-gray-500 text-sm">Created by: User {{ roomName }}</p>
           <p class="text-gray-500 text-sm">TimeStamp: {{ new Date().toLocaleString() }}</p>
         </div>
-        <RouterLink :to="{ name: 'waiting-room', params: { gameId: props.gameId, roomId: i } }">
+        <RouterLink
+          :to="{ name: 'waiting-room', params: { gameId: props.gameId, roomId: roomName } }"
+        >
           <button
             class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition mt-2"
           >
@@ -88,8 +94,8 @@ const props = defineProps({
 onMounted(async () => {
   console.log("Game ID:", props.gameId);
 
-  const fetchRooms = await fetch(`${userStore.apiPrefix}/api/rooms/${props.gameId}`);
-  rooms.value = await fetchRooms.json();
+  const fetchRooms = await fetch(`${userStore.apiPrefix}/api/rooms/list/${props.gameId}`);
+  rooms.value = (await fetchRooms.json()).rooms;
 
   console.log("Rooms fetched:", rooms.value);
 });

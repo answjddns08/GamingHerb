@@ -196,7 +196,7 @@ export const useUserStore = defineStore("user", {
           response_type: "code",
           state: "",
           prompt: "none",
-          scope: ["identify", "guilds", "applications.commands", "activities.read"],
+          scope: ["identify", "guilds", "applications.commands"],
         });
 
         // Retrieve an access_token from your activity's server
