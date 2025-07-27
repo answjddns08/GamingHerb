@@ -41,20 +41,28 @@
           alt="Placeholder Image"
           class="w-full object-cover rounded-lg mb-2"
         />
-        <h2 class="text-lg font-semibold mb-1">{{ roomName }}</h2>
+        <h2 class="text-2xl font-semibold mb-1">{{ roomName }}</h2>
         <div>
-          <p class="text-gray-500 text-sm">Players: {{ rooms[roomName].playerCount }}</p>
-          <p class="text-gray-500 text-sm">Status: Waiting for players</p>
-          <p class="text-gray-500 text-sm">Created by: User {{ roomName }}</p>
-          <p class="text-gray-500 text-sm">TimeStamp: {{ new Date().toLocaleString() }}</p>
+          <p class="text-gray-500 text-sm">
+            Players: {{ rooms[roomName].playerCount }} / {{ rooms[roomName].maxPlayerCount }}
+          </p>
+          <p class="text-gray-500 text-sm">Status: {{ rooms[roomName].status }}</p>
+          <p class="text-gray-500 text-sm">Created by: {{ rooms[roomName].host }}</p>
         </div>
         <RouterLink
           :to="{ name: 'waiting-room', params: { gameId: props.gameId, roomId: roomName } }"
         >
           <button
+            v-if="rooms[roomName].playerCount < rooms[roomName].maxPlayerCount"
             class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition mt-2"
           >
-            Join Game
+            참가 하기
+          </button>
+          <button
+            v-else
+            class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition mt-2"
+          >
+            관전 하기
           </button>
         </RouterLink>
       </div>
