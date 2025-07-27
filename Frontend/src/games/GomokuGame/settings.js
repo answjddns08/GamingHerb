@@ -19,15 +19,15 @@ export const gameSettings = {
 };
 
 /**
- * 현재 플레이어 수를 계산하는 함수
- * @returns {number} 현재 설정에 따른 플레이어 수
+ * 플레이 가능 사용자 수를 계산하는 함수
+ * @returns {number} 현재 설정에 따른 플레이 가능 사용자 수
  */
-export function getCurrentPlayerCount() {
+export function getMaxPlayerCount() {
   return gameSettings.soloEnabled ? 1 : 2;
 }
 
 // 호환성을 위한 기본 export
 export default {
   settings: gameSettings,
-  getCurrentPlayerCount,
+  getMaxPlayerCount,
 };

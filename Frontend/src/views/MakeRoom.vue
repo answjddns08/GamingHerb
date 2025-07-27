@@ -104,12 +104,9 @@ async function StartGame() {
   console.log("roomName:", roomName.value);
 
   // 현재 설정에 따른 플레이어 수 계산
-  const playerCount = gameSetting.value.getCurrentPlayerCount();
+  const playerCount = gameSetting.value.getMaxPlayerCount();
 
   console.log("게임 설정:", gameSetting.value);
-  console.log(
-    `플레이어 수: ${playerCount}명 (솔로모드: ${gameSetting.value.settings.soloEnabled ? "ON" : "OFF"})`,
-  );
 
   const apiPrefix = userStore.apiPrefix;
   const response = await fetch(`${apiPrefix}/api/rooms/create?gameId=${gameId.value}`, {
@@ -120,8 +117,9 @@ async function StartGame() {
     body: JSON.stringify({
       host: userStore.displayName,
       hostId: userStore.userId, // for checking host in waiting room
-      status: "waiting",
+      status: "Waiting for players",
       playerCount: 1, // host joined, if 0 then delete the room
+      maxPlayerCount: playerCount,
       settings: gameSetting.value.settings,
       roomName: roomName.value,
     }),

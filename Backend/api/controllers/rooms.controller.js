@@ -48,6 +48,7 @@ function createRoom(req, res) {
 		hostId: newRoom.hostId,
 		status: newRoom.status,
 		playerCount: newRoom.playerCount,
+		maxPlayerCount: newRoom.maxPlayerCount,
 	};
 
 	res.status(201).json({
