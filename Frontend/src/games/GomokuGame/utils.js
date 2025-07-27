@@ -1,9 +1,17 @@
+// 게임 관련 상수들
+export const GAME_CONSTANTS = {
+  BOARD_SIZE: 15,
+  WIN_CONDITION: 5,
+};
+
 /**
  * 게임 상태 관리 유틸리티
  */
 export class GomokuGameState {
   constructor() {
-    this.board = new Array(15).fill().map(() => new Array(15).fill(null));
+    this.board = new Array(GAME_CONSTANTS.BOARD_SIZE)
+      .fill()
+      .map(() => new Array(GAME_CONSTANTS.BOARD_SIZE).fill(null));
     this.currentPlayer = "black";
     this.gameOver = false;
     this.winner = null;
@@ -44,14 +52,20 @@ export class GomokuGameState {
         let r = row + dx * direction;
         let c = col + dy * direction;
 
-        while (r >= 0 && r < 15 && c >= 0 && c < 15 && this.board[r][c] === player) {
+        while (
+          r >= 0 &&
+          r < GAME_CONSTANTS.BOARD_SIZE &&
+          c >= 0 &&
+          c < GAME_CONSTANTS.BOARD_SIZE &&
+          this.board[r][c] === player
+        ) {
           count++;
           r += dx * direction;
           c += dy * direction;
         }
       }
 
-      if (count >= 5) {
+      if (count >= GAME_CONSTANTS.WIN_CONDITION) {
         return true;
       }
     }
@@ -60,7 +74,9 @@ export class GomokuGameState {
   }
 
   reset() {
-    this.board = new Array(15).fill().map(() => new Array(15).fill(null));
+    this.board = new Array(GAME_CONSTANTS.BOARD_SIZE)
+      .fill()
+      .map(() => new Array(GAME_CONSTANTS.BOARD_SIZE).fill(null));
     this.currentPlayer = "black";
     this.gameOver = false;
     this.winner = null;

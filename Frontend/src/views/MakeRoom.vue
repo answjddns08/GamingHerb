@@ -82,7 +82,13 @@ const roomName = ref("");
 onMounted(async () => {
   gameId.value = route.params.gameId;
 
-  gameSetting.value = await getGameConfig(route.params.gameId);
+  // gameLoader의 getGameConfig 함수 사용
+  try {
+    gameSetting.value = await getGameConfig(route.params.gameId);
+  } catch (error) {
+    console.error("게임 설정 로드 실패:", error);
+    alarm.value = "게임 설정을 로드할 수 없습니다.";
+  }
 
   gameDes.value = await getGameDescription(route.params.gameId);
 });

@@ -13,7 +13,7 @@
         <div class="board-placeholder">
           <!-- 실제 게임 보드가 여기에 들어갑니다 -->
           <div class="board-grid">
-            <div v-for="i in 225" :key="i" class="cell" @click="placeStone(i)">
+            <div v-for="i in totalCells" :key="i" class="cell" @click="placeStone(i)">
               <div v-if="board[i]" :class="['stone', board[i]]"></div>
             </div>
           </div>
@@ -29,8 +29,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
-import gameConfig from "./config.js";
+import { ref, onMounted, computed } from "vue";
+import { GAME_CONSTANTS } from "./utils.js";
+import gameConfig from "./settings.js";
 
 // Props
 const props = defineProps({
@@ -45,6 +46,10 @@ const showDescription = ref(true);
 const gameInfo = ref(gameConfig);
 const board = ref({});
 const currentPlayer = ref("black");
+
+// Computed
+const boardSize = computed(() => GAME_CONSTANTS.BOARD_SIZE);
+const totalCells = computed(() => GAME_CONSTANTS.BOARD_SIZE * GAME_CONSTANTS.BOARD_SIZE);
 
 const initializeBoard = () => {
   board.value = {};
@@ -134,7 +139,7 @@ onMounted(async () => {
 
 .board-grid {
   display: grid;
-  grid-template-columns: repeat(15, 1fr);
+  grid-template-columns: repeat(v-bind(boardSize), 1fr);
   gap: 1px;
   background: #8b4513;
   padding: 10px;

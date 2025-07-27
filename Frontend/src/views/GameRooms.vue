@@ -41,12 +41,9 @@
           alt="Placeholder Image"
           class="w-full object-cover rounded-lg mb-2"
         />
-        <h2 class="text-lg font-semibold mb-1">Game Title {{ roomName }}</h2>
+        <h2 class="text-lg font-semibold mb-1">{{ roomName }}</h2>
         <div>
-          <p class="text-gray-700 mb-2">
-            This is a description of game {{ roomName }}. It has some interesting details.
-          </p>
-          <p class="text-gray-500 text-sm">Players: 4</p>
+          <p class="text-gray-500 text-sm">Players: {{ rooms[roomName].playerCount }}</p>
           <p class="text-gray-500 text-sm">Status: Waiting for players</p>
           <p class="text-gray-500 text-sm">Created by: User {{ roomName }}</p>
           <p class="text-gray-500 text-sm">TimeStamp: {{ new Date().toLocaleString() }}</p>
@@ -60,6 +57,12 @@
             Join Game
           </button>
         </RouterLink>
+      </div>
+      <div
+        v-show="Object.keys(rooms).length === 0"
+        class="col-span-4 text-center text-2xl font-bold text-gray-500"
+      >
+        흠.... 방이 없네요. 새로운 방을 만들어보세요!
       </div>
     </div>
   </main>

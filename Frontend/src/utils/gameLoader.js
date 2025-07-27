@@ -1,7 +1,7 @@
 import gamesConfig from "../config/games.json";
 import { markdownToHtml } from "./markdownConvert";
 
-const configModules = import.meta.glob("../games/**/config.js");
+const settingsModules = import.meta.glob("../games/**/settings.js");
 const descriptionModules = import.meta.glob("../games/**/*.md", {
   query: "?raw",
   import: "default",
@@ -44,8 +44,8 @@ export async function getGameConfig(gameId) {
   }
 
   const path = gameInfo.configPath;
-  if (configModules[path]) {
-    const module = await configModules[path]();
+  if (settingsModules[path]) {
+    const module = await settingsModules[path]();
     return module.default;
   } else {
     throw new Error(`설정 파일을 찾을 수 없습니다: ${path}`);

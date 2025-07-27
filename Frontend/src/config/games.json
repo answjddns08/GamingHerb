@@ -4,7 +4,7 @@
       "name": "오목 게임",
       "summary": "5개의 돌을 연속으로 놓아 승리하는 게임",
       "path": "../games/GomokuGame/GomokuGame.vue",
-      "configPath": "../games/GomokuGame/config.js",
+      "configPath": "../games/GomokuGame/settings.js",
       "desPath": "../games/GomokuGame/Description.md",
       "minPlayers": 1,
       "maxPlayers": 2,

@@ -37,13 +37,17 @@ function createRoom(req, res) {
 	const roomExists = newRoom.roomName in rooms[gameId];
 
 	if (roomExists) {
-		console.log(`Room name ${newRoom.settings.roomName} already exists.`);
+		console.log(`Room name ${newRoom.roomName} already exists.`);
 		return res.status(409).json({ message: "Room name already exists" });
 	}
 
 	rooms[gameId][newRoom.roomName] = {
 		gameId: gameId,
 		settings: newRoom.settings,
+		host: newRoom.host,
+		hostId: newRoom.hostId,
+		status: newRoom.status,
+		playerCount: newRoom.playerCount,
 	};
 
 	res.status(201).json({
