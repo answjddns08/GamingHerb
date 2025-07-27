@@ -118,7 +118,7 @@ async function StartGame() {
       host: userStore.displayName,
       hostId: userStore.userId, // for checking host in waiting room
       status: "Waiting for players",
-      playerCount: 1, // host joined, if 0 then delete the room
+      playerCount: 0,
       maxPlayerCount: playerCount,
       settings: gameSetting.value.settings,
       roomName: roomName.value,

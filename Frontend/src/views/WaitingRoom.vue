@@ -43,7 +43,10 @@
   </div>
   <div class="goBack-card">
     <RouterLink :to="{ name: 'game-rooms' }">
-      <button class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition">
+      <button
+        class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition"
+        @click="goBack"
+      >
         Go Back
       </button>
     </RouterLink>
@@ -53,6 +56,9 @@
 <script setup>
 import { ref, onMounted, shallowRef } from "vue";
 import { loadGameComponent, getGameInfo } from "../utils/gameLoader.js";
+import { useUserStore } from "@/stores/user.js";
+
+const userStore = useUserStore();
 
 const props = defineProps({
   gameId: {
@@ -100,13 +106,38 @@ const startGame = async () => {
 };
 
 // 돌아가기 함수
-const goBack = () => {
+const goBack = async () => {
   gameStarted.value = false;
   GameComponent.value = null;
+
+  const response = await fetch(
+    `${userStore.apiPrefix}/api/rooms/quit/${props.gameId}/${props.roomId}`,
+    {
+      method: "PATCH",
+    },
+  );
+
+  if (!response.ok) {
+    console.error("방 나가기 실패:", response.statusText);
+  } else {
+    console.log("방에서 성공적으로 나갔습니다.");
+  }
 };
 
-onMounted(() => {
+onMounted(async () => {
   console.log("대기방 마운트됨:", { roomId: props.roomId, gameId: props.gameId });
+
+  const joinResponse = await fetch(
+    `${userStore.apiPrefix}/api/rooms/join/${props.gameId}/${props.roomId}`,
+    {
+      method: "PATCH",
+    },
+  );
+
+  if (!joinResponse.ok) {
+    console.error("방 참가 실패:", joinResponse.statusText);
+    return;
+  }
 
   // 게임 정보 미리 로드
   gameInfo.value = getGameInfo(props.gameId);

@@ -73,4 +73,47 @@ function listRooms(req, res) {
 	});
 }
 
-export { createRoom, listRooms };
+/**
+ * Join a room
+ * @param {import("express").Request} req - Express request object
+ * @param {string} req.params.gameId - The ID of the game
+ * @param {string} req.params.roomName - The name of the room to join
+ * @param {import("express").Response} res - Express response object
+ */
+function joinRoom(req, res) {
+	const { gameId, roomName } = req.params;
+	const room = rooms[gameId]?.[roomName];
+
+	if (!room) {
+		return res.status(404).json({ message: "Room not found" });
+	}
+
+	room.playerCount += 1;
+	res.status(200).json({ message: "Successfully joined the room" });
+}
+
+/**
+ * Leave a room
+ * @param {import("express").Request} req - Express request object
+ * @param {string} req.params.gameId - The ID of the game
+ * @param {string} req.params.roomName - The name of the room to leave
+ * @param {import("express").Response} res - Express response object
+ */
+function quitRoom(req, res) {
+	const { gameId, roomName } = req.params;
+	const room = rooms[gameId]?.[roomName]; // Assuming rooms is a global object storing all rooms
+
+	if (!room) {
+		return res.status(404).json({ message: "Room not found" });
+	}
+
+	rooms[gameId][roomName].playerCount -= 1;
+
+	if (rooms[gameId][roomName].playerCount <= 0) {
+		delete rooms[gameId][roomName]; // Remove the room if no players left
+	}
+
+	res.status(200).json({ message: "Successfully left the room" });
+}
+
+export { createRoom, listRooms, quitRoom, joinRoom };
