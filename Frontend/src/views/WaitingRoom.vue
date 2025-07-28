@@ -43,10 +43,7 @@
   </div>
   <div class="goBack-card">
     <RouterLink :to="{ name: 'game-rooms' }">
-      <button
-        class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition"
-        @click="goBack"
-      >
+      <button class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition">
         Go Back
       </button>
     </RouterLink>
@@ -54,7 +51,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, shallowRef } from "vue";
+import { ref, onMounted, shallowRef, onUnmounted } from "vue";
 import { loadGameComponent, getGameInfo } from "../utils/gameLoader.js";
 import { useUserStore } from "@/stores/user.js";
 
@@ -105,25 +102,6 @@ const startGame = async () => {
   }
 };
 
-// 돌아가기 함수
-const goBack = async () => {
-  gameStarted.value = false;
-  GameComponent.value = null;
-
-  const response = await fetch(
-    `${userStore.apiPrefix}/api/rooms/quit/${props.gameId}/${props.roomId}`,
-    {
-      method: "PATCH",
-    },
-  );
-
-  if (!response.ok) {
-    console.error("방 나가기 실패:", response.statusText);
-  } else {
-    console.log("방에서 성공적으로 나갔습니다.");
-  }
-};
-
 onMounted(async () => {
   console.log("대기방 마운트됨:", { roomId: props.roomId, gameId: props.gameId });
 
@@ -145,6 +123,26 @@ onMounted(async () => {
     console.log("게임 정보 로드됨:", gameInfo.value.name);
   } else {
     console.warn(`게임 ID "${props.gameId}"에 대한 정보를 찾을 수 없습니다.`);
+  }
+});
+
+onUnmounted(async () => {
+  console.log("대기방 언마운트됨:", { roomId: props.roomId, gameId: props.gameId });
+
+  gameStarted.value = false;
+  GameComponent.value = null;
+
+  const response = await fetch(
+    `${userStore.apiPrefix}/api/rooms/quit/${props.gameId}/${props.roomId}`,
+    {
+      method: "PATCH",
+    },
+  );
+
+  if (!response.ok) {
+    console.error("방 나가기 실패:", response.statusText);
+  } else {
+    console.log("방에서 성공적으로 나갔습니다.");
   }
 });
 </script>
