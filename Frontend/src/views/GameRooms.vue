@@ -44,7 +44,7 @@
         <h2 class="text-2xl font-semibold mb-1">{{ roomName }}</h2>
         <div>
           <p class="text-gray-500 text-sm">
-            Players: {{ rooms[roomName].playerCount }} /
+            Players: {{ Object.keys(rooms[roomName].players || {}).length }} /
             {{ rooms[roomName].settings.maxPlayerCount }}
           </p>
           <p class="text-gray-500 text-sm">Status: {{ rooms[roomName].status }}</p>
@@ -54,7 +54,10 @@
           :to="{ name: 'waiting-room', params: { gameId: props.gameId, roomId: roomName } }"
         >
           <button
-            v-if="rooms[roomName].playerCount < rooms[roomName].settings.maxPlayerCount"
+            v-if="
+              Object.keys(rooms[roomName].players || {}).length <
+              rooms[roomName].settings.maxPlayerCount
+            "
             class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition mt-2"
           >
             참가 하기
