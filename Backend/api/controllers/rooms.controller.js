@@ -8,11 +8,11 @@ const rooms = {};
 /* Example structure of rooms object:
 {
 	"Gomoku": {
-		"roomName": { "settings": { "maxPlayers": 4, "private": false } },
-		"roomName2": { "settings": { "maxPlayers": 2, "private": true } }
+		"roomName1": { "settings": { "maxPlayers": 2, "soloMode": false }, Players : ["user1", "user2"], host: "user1", hostId: "12345", status: "waiting", playerCount: 2, maxPlayerCount: 2 },
+		"roomName2": { "settings": { "maxPlayers": 4, "soloMode": true }, Players : ["user3", "user4"], host: "user3, hostId: "67890", status: "waiting", playerCount: 2, maxPlayerCount: 4 }
 	},
 	"Chess": {
-		"roomName3": { "settings": { "maxPlayers": 2, "private": false } }
+		"roomName3": { "settings": { "maxPlayers": 2, "soloMode": false } }
 	}
 } */
 
@@ -41,6 +41,8 @@ function createRoom(req, res) {
 		return res.status(409).json({ message: "Room name already exists" });
 	}
 
+	newRoom.settings.maxPlayerCount = newRoom.maxPlayerCount;
+
 	rooms[gameId][newRoom.roomName] = {
 		gameId: gameId,
 		settings: newRoom.settings,
@@ -48,7 +50,6 @@ function createRoom(req, res) {
 		hostId: newRoom.hostId,
 		status: newRoom.status,
 		playerCount: newRoom.playerCount,
-		maxPlayerCount: newRoom.maxPlayerCount,
 	};
 
 	res.status(201).json({
@@ -64,10 +65,6 @@ function createRoom(req, res) {
 function listRooms(req, res) {
 	const { gameId } = req.params;
 
-	if (rooms[gameId]) {
-		console.log(`Rooms found for gameId ${gameId}:`, rooms[gameId]);
-	}
-
 	res.status(200).json({
 		rooms: rooms[gameId] ? rooms[gameId] : {},
 	});
@@ -82,6 +79,9 @@ function listRooms(req, res) {
  */
 function joinRoom(req, res) {
 	const { gameId, roomName } = req.params;
+
+	const { userId, userName } = req.body; // Assuming userId and userName are sent in the request body
+
 	const room = rooms[gameId]?.[roomName];
 
 	if (!room) {
@@ -89,7 +89,11 @@ function joinRoom(req, res) {
 	}
 
 	room.playerCount += 1;
-	res.status(200).json({ message: "Successfully joined the room" });
+	res.status(200).json({
+		message: "Successfully joined the room",
+		playerCount: room.playerCount,
+		maxPlayerCount: room.maxPlayerCount,
+	});
 }
 
 /**
@@ -110,6 +114,7 @@ function quitRoom(req, res) {
 	rooms[gameId][roomName].playerCount -= 1;
 
 	if (rooms[gameId][roomName].playerCount <= 0) {
+		console.log(`No players left in room ${roomName}, removing it.`);
 		delete rooms[gameId][roomName]; // Remove the room if no players left
 	}
 

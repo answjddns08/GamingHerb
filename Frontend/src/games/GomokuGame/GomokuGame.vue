@@ -123,7 +123,7 @@ onMounted(async () => {
   font-size: 16px;
   cursor: pointer;
   margin-top: 20px;
-  transition: background 0.3s;
+  transition: all 0.3s;
 }
 
 .start-btn:hover {
