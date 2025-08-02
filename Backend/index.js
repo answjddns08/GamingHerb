@@ -51,6 +51,9 @@ const server = app.listen(PORT, () => {
 
 server.on("upgrade", (request, socket, head) => {
 	// TODO: 인증 로직 추가
+
+	console.log("WebSocket upgrade request received");
+
 	wss.handleUpgrade(request, socket, head, (ws) => {
 		wss.emit("connection", ws, request);
 	});

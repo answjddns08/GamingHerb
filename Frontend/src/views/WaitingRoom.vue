@@ -3,16 +3,6 @@
     <div v-if="!gameStarted" class="waiting-content">
       <h1>Waiting Room</h1>
       <p>Please wait while we set up the game...</p>
-      <p>Room ID: {{ roomId }}</p>
-      <div v-if="gameInfo" class="game-info">
-        <h3>{{ gameInfo.name }}</h3>
-        <p>{{ gameInfo.description }}</p>
-        <p>플레이어: {{ gameInfo.minPlayers }}-{{ gameInfo.maxPlayers }}명</p>
-        <p>카테고리: {{ gameInfo.category }}</p>
-      </div>
-      <div v-else class="game-info">
-        <p>Game ID: {{ gameId }}</p>
-      </div>
     </div>
 
     <!-- 동적으로 게임 컴포넌트 로드 -->
@@ -34,9 +24,11 @@
   </main>
   <div class="player-card">
     <p class="font-bold text-3xl">Player Card</p>
-    <p>Player Name: Test Player</p>
-    <p>Room ID: {{ roomId }}</p>
-    <p>Game: {{ gameId }}</p>
+    <p>
+      players: {{ roomData ? Object.keys(roomData.players || {}).length : 0 }}
+      /
+      {{ roomData ? roomData.maxPlayerCount : "?" }}
+    </p>
   </div>
   <div class="start-card">
     <button @click="startGame">Start Game</button>
@@ -73,6 +65,10 @@ const props = defineProps({
 const gameStarted = ref(false);
 const GameComponent = shallowRef(null); // shallowRef 사용으로 변경
 const gameInfo = ref(null);
+const roomData = ref(null);
+
+//websocket
+const ws = ref(null);
 
 /**
  * @todo
@@ -105,17 +101,20 @@ const startGame = async () => {
 onMounted(async () => {
   console.log("대기방 마운트됨:", { roomId: props.roomId, gameId: props.gameId });
 
-  const joinResponse = await fetch(
-    `${userStore.apiPrefix}/api/rooms/join/${props.gameId}/${props.roomId}`,
-    {
-      method: "PATCH",
-    },
-  );
+  ws.value = new WebSocket(`wss://gamingherb.redeyes.dev/api`);
 
-  if (!joinResponse.ok) {
-    console.error("방 참가 실패:", joinResponse.statusText);
-    return;
-  }
+  ws.value.onopen = () => {
+    console.log("WebSocket 연결됨");
+    ws.value.send(
+      JSON.stringify({
+        type: "join",
+        gameId: props.gameId,
+        roomId: props.roomId,
+        userId: userStore.id,
+        userName: userStore.name,
+      }),
+    );
+  };
 
   // 게임 정보 미리 로드
   gameInfo.value = getGameInfo(props.gameId);
@@ -132,17 +131,17 @@ onUnmounted(async () => {
   gameStarted.value = false;
   GameComponent.value = null;
 
-  const response = await fetch(
-    `${userStore.apiPrefix}/api/rooms/quit/${props.gameId}/${props.roomId}`,
-    {
-      method: "PATCH",
-    },
-  );
+  if (ws.value) {
+    ws.value.send(
+      JSON.stringify({
+        type: "leave",
+        userId: userStore.id,
+      }),
+    );
+    ws.value.close();
+    ws.value = null;
 
-  if (!response.ok) {
-    console.error("방 나가기 실패:", response.statusText);
-  } else {
-    console.log("방에서 성공적으로 나갔습니다.");
+    console.log("WebSocket 연결 종료됨");
   }
 });
 </script>
