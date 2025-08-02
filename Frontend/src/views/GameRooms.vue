@@ -44,7 +44,7 @@
         <h2 class="text-2xl font-semibold mb-1">{{ roomName }}</h2>
         <div>
           <p class="text-gray-500 text-sm">
-            Players: {{ rooms[roomName].players.length }} /
+            Players: {{ Object.keys(rooms[roomName].players).length }} /
             {{ rooms[roomName].settings.maxPlayerCount }}
           </p>
           <p class="text-gray-500 text-sm">Status: {{ rooms[roomName].status }}</p>
