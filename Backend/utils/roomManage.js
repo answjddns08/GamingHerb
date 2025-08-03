@@ -58,8 +58,7 @@ function getRoomsForGame(gameId) {
  * @returns {Room|null} - The details of the room if it exists, otherwise null
  */
 function getRoomDetails(gameId, roomName) {
-	const gameRooms = getRoomsForGame(gameId);
-	return gameRooms[roomName] || null;
+	return rooms[gameId] ? rooms[gameId][roomName] || null : null;
 }
 
 /**
