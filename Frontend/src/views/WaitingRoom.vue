@@ -44,10 +44,13 @@
 
 <script setup>
 import { ref, onMounted, shallowRef, onUnmounted } from "vue";
+import { useRouter } from "vue-router";
 import { loadGameComponent, getGameInfo } from "../utils/gameLoader.js";
 import { useUserStore } from "@/stores/user.js";
 
 const userStore = useUserStore();
+
+const router = useRouter();
 
 const props = defineProps({
   gameId: {
@@ -67,7 +70,10 @@ const GameComponent = shallowRef(null); // shallowRef 사용으로 변경
 const gameInfo = ref(null);
 const roomData = ref(null);
 
-//websocket
+/**
+ * WebSocket 연결을 위한 변수
+ * @type {WebSocket|null}
+ */
 const ws = ref(null);
 
 /**
@@ -109,11 +115,29 @@ onMounted(async () => {
       JSON.stringify({
         type: "join",
         gameId: props.gameId,
-        roomId: props.roomId,
+        roomName: props.roomId,
         userId: userStore.id,
         userName: userStore.name,
       }),
     );
+  };
+
+  ws.value.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    console.log("WebSocket 메시지 수신:", data);
+
+    if (data?.roomDeleted) {
+      console.log("방이 삭제되었습니다.");
+      gameStarted.value = false;
+      GameComponent.value = null;
+
+      router.push({
+        name: "game-rooms",
+        params: { gameId: props.gameId },
+      });
+    } else {
+      console.warn("알 수 없는 메시지 타입:", data.type);
+    }
   };
 
   // 게임 정보 미리 로드
@@ -135,6 +159,8 @@ onUnmounted(async () => {
     ws.value.send(
       JSON.stringify({
         type: "leave",
+        gameId: props.gameId,
+        roomName: props.roomId,
         userId: userStore.id,
       }),
     );

@@ -1,8 +1,8 @@
-import { joinRoom, getRoomDetails } from "../utils/roomManage.js";
+import { joinRoom, getRoomDetails, deleteRoom } from "../utils/roomManage.js";
 
 /**
  * WebSocket server setup for handling game rooms and in-game actions.
- * @param {WebSocket.Server} wss
+ * @param {import("ws").Server} wss
  */
 function setupWebsocket(wss) {
 	wss.on("connection", (ws, request) => {
@@ -25,7 +25,24 @@ function setupWebsocket(wss) {
 
 				const { gameId, roomName, userId, userName } = data;
 
-				if (joinRoom(gameId, roomName, userId, userName)) {
+				const response = joinRoom(gameId, roomName, userId, userName, ws);
+
+				const room = getRoomDetails(gameId, roomName);
+
+				Object.keys(room.players).forEach((playerId) => {
+					// Notify all players in the room about the new player
+
+					if (playerId === userId) return;
+
+					room.players[playerId].ws.send(
+						JSON.stringify({
+							message: "A new player has joined the room",
+							player: { userId, userName },
+						})
+					);
+				});
+
+				if (response) {
 					ws.send(JSON.stringify({ success: true }));
 				} else {
 					ws.send(JSON.stringify({ error: "Failed to join room" }));
@@ -34,19 +51,42 @@ function setupWebsocket(wss) {
 				// Handle waiting state
 			} else if (data.type === "inGame") {
 				// in-game actions
-			} else if (data.type === "quit") {
+			} else if (data.type === "leave") {
 				// quit a room
 
 				const { gameId, roomName, userId } = data;
 				const room = getRoomDetails(gameId, roomName);
 
-				if (room) {
-					room.Players = room.Players.filter(
-						(player) => player.userId !== userId
-					);
-					ws.send(JSON.stringify({ success: true }));
-				} else {
+				if (!room) {
 					ws.send(JSON.stringify({ error: "Room not found" }));
+					return;
+				}
+
+				delete room.players[userId];
+
+				Object.keys(room.players).forEach((playerId) => {
+					if (playerId === userId) return;
+
+					room.players[playerId].ws.send(
+						JSON.stringify({
+							message: "A player has left the room",
+						})
+					);
+				});
+
+				if (room.hostId === userId || Object.keys(room.players).length === 0) {
+					// Notify the client that the room has been deleted
+					Object.keys(room.players).forEach((playerId) => {
+						room.players[playerId].ws.send(
+							JSON.stringify({
+								roomDeleted: true,
+							})
+						);
+					});
+
+					deleteRoom(gameId, roomName);
+
+					ws.close();
 				}
 			}
 		});
