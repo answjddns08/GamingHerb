@@ -101,15 +101,6 @@ async function StartGame() {
     return;
   }
 
-  console.log("roomName:", roomName.value);
-
-  // 현재 설정에 따른 플레이어 수 계산
-  const playerCount = gameSetting.value.getMaxPlayerCount();
-
-  gameSetting.value.settings.maxPlayerCount = playerCount;
-
-  console.log("게임 설정:", gameSetting.value);
-
   const apiPrefix = userStore.apiPrefix;
   const response = await fetch(`${apiPrefix}/api/rooms/create?gameId=${gameId.value}`, {
     method: "POST",
@@ -122,6 +113,7 @@ async function StartGame() {
       status: "Waiting for players",
       settings: gameSetting.value.settings,
       roomName: roomName.value,
+      maxPlayerCount: gameSetting.value.getMaxPlayerCount(),
     }),
   });
 

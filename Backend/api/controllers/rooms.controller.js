@@ -25,6 +25,8 @@ function createRoom(req, res) {
 		return res.status(400).json({ message: "Missing required room details" });
 	}
 
+	newRoom.settings.maxPlayerCount = newRoom.maxPlayerCount;
+
 	makeRoom(
 		gameId,
 		newRoom.roomName,
