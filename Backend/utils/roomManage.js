@@ -1,7 +1,7 @@
 /**
  * @typedef {Object} Room
  * @property {Object} settings - The settings for the room
- * @property {Object.<string, { userId: string, username: string }>} players - An object containing player details, keyed by userId
+ * @property {Object.<string, { userId: string, username: string, ws: WebSocket }> } players - An object containing player details, keyed by userId
  * @property {string} host - The username of the room host
  * @property {string} hostId - The ID of the user who is the host
  * @property {string} status - The current status of the room (e.g., "waiting", "active")
@@ -19,7 +19,7 @@ const rooms = {}; // Assuming rooms is a global object to store room data
 	"Gomoku": {
 		"roomName1": {
             "settings": { "maxPlayers": 2, "soloMode": false },
-            "Players": {
+            "players": {
                 "user1": { userId: "user1", username: "User One" },
                 "user2": { userId: "user2", username: "User Two" }
             },
@@ -31,9 +31,9 @@ const rooms = {}; // Assuming rooms is a global object to store room data
 	"Chess": {
 		"roomName2": {
 			"settings": { "maxPlayers": 2, "soloMode": false },
-			"Players": {
-                "user3": { userId: "user3", username: "User Three" },
-                "user4": { userId: "user4", username: "User Four" }
+			"players": {
+        "user3": { userId: "user3", username: "User Three" },
+        "user4": { userId: "user4", username: "User Four" }
 			},
 			"host": "user5",
 			"hostId": "13579",
@@ -55,7 +55,7 @@ function getRoomsForGame(gameId) {
  * get specific room details
  * @param {string} gameId - The ID of the game
  * @param {string} roomName - The name of the room to retrieve
- * @returns {Object|null} - The details of the room if it exists, otherwise null
+ * @returns {Room|null} - The details of the room if it exists, otherwise null
  */
 function getRoomDetails(gameId, roomName) {
 	const gameRooms = getRoomsForGame(gameId);
@@ -76,7 +76,7 @@ function makeRoom(gameId, roomName, settings, host, hostId) {
 	}
 	rooms[gameId][roomName] = {
 		settings: settings,
-		Players: [],
+		players: {},
 		host: host,
 		hostId: hostId,
 		status: "waiting",
@@ -100,14 +100,18 @@ function deleteRoom(gameId, roomName) {
  * @param {string} roomName - The name of the room to join
  * @param {string} userId - The ID of the user joining the room
  * @param {string} username - The username of the user joining the room
+ * @param {WebSocket} ws - The WebSocket connection of the user
  * @returns {boolean} - Returns true if the user successfully joined the room, false otherwise
  */
-function joinRoom(gameId, roomName, userId, username) {
+function joinRoom(gameId, roomName, userId, username, ws) {
 	const room = getRoomDetails(gameId, roomName);
+
 	if (!room) {
 		return false;
 	}
-	room.Players.push({ userId, username });
+
+	room.players[userId] = { userId, username, ws };
+
 	return true;
 }
 
@@ -125,9 +129,9 @@ function leaveRoom(gameId, roomName, userId) {
 		return false;
 	}
 
-	room.Players = room.Players.filter((player) => player.userId !== userId);
+	delete room.players[userId];
 
-	if (room.Players.length === 0 || room.hostId === userId) {
+	if (Object.keys(room.players).length === 0 || room.hostId === userId) {
 		deleteRoom(gameId, roomName);
 		return true;
 	}
