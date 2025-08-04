@@ -29,8 +29,8 @@
       /
       {{ gameSetting ? gameSetting.maxPlayerCount : "?" }}
     </p>
-    <div v-for="(player, userId) in players" :key="userId">
-      <p class="text-lg">{{ player.userName }} ({{ userId }})</p>
+    <div v-for="player in playerList" :key="player.userId">
+      <p class="text-lg">{{ player.username }}</p>
     </div>
   </div>
   <div class="start-card">
@@ -46,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, shallowRef, onUnmounted } from "vue";
+import { ref, onMounted, shallowRef, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { loadGameComponent, getGameInfo } from "../utils/gameLoader.js";
 import { useUserStore } from "@/stores/user.js";
@@ -73,7 +73,13 @@ const GameComponent = shallowRef(null); // shallowRef 사용으로 변경
 const gameInfo = ref(null);
 const gameSetting = ref(null);
 
+/**
+ * 플레이어 목록
+ * @type {Map<userId: string, { userId: string, userName: string}>}
+ */
 const players = ref(new Map());
+
+const playerList = computed(() => Array.from(players.value.values())); // 파생 데이터
 
 /**
  * WebSocket 연결을 위한 변수
@@ -144,7 +150,7 @@ onMounted(async () => {
 
       players.value.set(data.player.userId, {
         userId: data.player.userId,
-        userName: data.player.userName,
+        username: data.player.userName,
       });
 
       console.log("현재 플레이어 목록:", players.value);
@@ -171,7 +177,12 @@ onMounted(async () => {
     } else if (data.type === "initialize") {
       console.log("방 초기화 데이터 수신:", data);
       gameSetting.value = data.settings; // 방 설정 업데이트
-      players.value = new Map(data.players.map((player) => [player.userId, player])); // 플레이어 정보 업데이트
+      players.value = new Map(
+        data.players.map((player) => [
+          player.userId,
+          { username: player.username, userId: player.userId },
+        ]),
+      ); // 플레이어 정보 업데이트
     } else {
       console.warn("알 수 없는 메시지 타입:", data.type);
     }

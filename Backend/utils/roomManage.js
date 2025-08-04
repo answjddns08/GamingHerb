@@ -5,10 +5,11 @@
  * @property {string} host - The username of the room host
  * @property {string} hostId - The ID of the user who is the host
  * @property {string} status - The current status of the room (e.g., "waiting", "active")
+ *
  */
 
 /**
- * a array to store roomNames and their details
+ * a object to store roomNames and their details
  * @type {Object.<gameId : string, Object.<roomName : string, Room>>}
  * @description This object will hold room names in specific game as keys and their details as values.
  */
@@ -139,19 +140,45 @@ function leaveRoom(gameId, roomName, userId) {
 
 /**
  * Broadcast a message to all players in a room
- * @param {string} roomName
+ * @param {string} gameId - The ID of the game
+ * @param {string} roomName - The name of the room to which the message will be sent
  * @param {object} message - don't need to stringify, it will be done in the function
  * @param {WebSocket} ws - The WebSocket connection of the user sending the message
  */
-function broadCastToRoom(roomName, message, ws = null) {
-	const room = getRoomDetails(roomName);
+function broadCastToRoom(gameId, roomName, message, ws = null) {
+	const room = getRoomDetails(gameId, roomName);
+
 	if (!room) return;
 
 	room.players.forEach((player) => {
 		if (ws && player.ws === ws) return; // Skip sending to the sender
 
+		console.log(
+			`Broadcasting to ${player.userId} in room ${roomName}:`,
+			message
+		);
+
 		player.ws.send(JSON.stringify(message));
 	});
+}
+
+/**
+ * Find a player by their WebSocket connection
+ * @param {WebSocket} ws - The WebSocket connection of the user
+ * @returns {{ room: Room|null, gameId: string|null, userId: string|null }} - Returns the room and gameId if the player is found, otherwise null
+ */
+function findPlayerByWs(ws) {
+	for (const gameId in rooms) {
+		for (const roomName in rooms[gameId]) {
+			const room = rooms[gameId][roomName];
+			for (const [userId, player] of room.players) {
+				if (player.ws === ws) {
+					return userId, room, gameId; // Return the room if the WebSocket matches
+				}
+			}
+		}
+	}
+	return null;
 }
 
 export {
@@ -162,4 +189,5 @@ export {
 	joinRoom,
 	leaveRoom,
 	broadCastToRoom,
+	findPlayerByWs,
 };

@@ -3,7 +3,10 @@ import {
 	getRoomDetails,
 	deleteRoom,
 	broadCastToRoom,
+	findPlayerByWs,
 } from "../utils/roomManage.js";
+
+/** @typedef {import('../utils/roomManage').Room} Room */
 
 /**
  * WebSocket server setup for handling game rooms and in-game actions.
@@ -36,6 +39,11 @@ function setupWebsocket(wss) {
 
 				const room = getRoomDetails(gameId, roomName);
 
+				if (!room) {
+					ws.send(JSON.stringify({ error: "Room not found" }));
+					return;
+				}
+
 				ws.send(
 					// 방장이 설정한 방 설정 정보 전송
 					JSON.stringify({
@@ -46,6 +54,7 @@ function setupWebsocket(wss) {
 				);
 
 				broadCastToRoom(
+					gameId,
 					roomName,
 					{
 						type: "playerJoined",
@@ -55,10 +64,9 @@ function setupWebsocket(wss) {
 					ws
 				);
 
-				if (response) {
-					ws.send(JSON.stringify({ success: true }));
-				} else {
+				if (!response) {
 					ws.send(JSON.stringify({ error: "Failed to join room" }));
+					return;
 				}
 			} else if (data.type === "waiting") {
 				// Handle waiting state
@@ -80,6 +88,7 @@ function setupWebsocket(wss) {
 				room.players.delete(userId);
 
 				broadCastToRoom(
+					gameId,
 					roomName,
 					{
 						type: "playerLeft",
@@ -93,6 +102,7 @@ function setupWebsocket(wss) {
 					// Notify the client that the room has been deleted
 
 					broadCastToRoom(
+						gameId,
 						roomName,
 						{
 							type: "roomDeleted",
@@ -115,31 +125,33 @@ function setupWebsocket(wss) {
 				// Handle abnormal disconnection
 				console.log("Client disconnected unexpectedly");
 
-				// find the room which the user unexpectedly left and notify other players
-				const room = Array.from(getRoomDetails()).find((room) => {
-					return room.players.has(ws);
-				});
+				const response = findPlayerByWs(ws);
 
-				if (room) {
-					room.players.forEach((player, playerId) => {
-						if (player.ws !== ws) {
-							player.ws.send(
-								JSON.stringify({
-									type: "playerLeft",
-									playerId: ws.userId,
-									message: "A player has left the room unexpectedly",
-								})
-							);
-						}
-					});
+				if (!response) {
+					console.log("No room found for the disconnected client");
+					return;
+				}
 
-					// Remove the user from the room
-					room.players.delete(ws.userId);
+				broadCastToRoom(
+					response.gameId,
+					Object.keys(response.room),
+					{
+						type: "playerLeft",
+						playerId: response.userId,
+						message: "A player has left the room unexpectedly",
+					},
+					ws
+				);
 
-					// If the room is empty or the host left, delete the room
-					if (room.players.size === 0 || room.hostId === ws.userId) {
-						deleteRoom(room.gameId, room.roomName);
-					}
+				// Remove the user from the room
+				response.room.players.delete(response.userId);
+
+				// If the room is empty or the host left, delete the room
+				if (
+					response.room.players.size === 0 ||
+					response.room.hostId === response.userId
+				) {
+					deleteRoom(response.gameId, response.room.roomName);
 				}
 			}
 		});
