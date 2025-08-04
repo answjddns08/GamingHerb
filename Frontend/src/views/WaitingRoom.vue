@@ -25,10 +25,13 @@
   <div class="player-card">
     <p class="font-bold text-3xl">Player Card</p>
     <p>
-      players: {{ roomData ? Object.keys(roomData.players || {}).length : 0 }}
+      players: {{ players.size }}
       /
-      {{ roomData ? roomData.maxPlayerCount : "?" }}
+      {{ gameSetting ? gameSetting.maxPlayerCount : "?" }}
     </p>
+    <div v-for="(player, userId) in players" :key="userId">
+      <p class="text-lg">{{ player.userName }} ({{ userId }})</p>
+    </div>
   </div>
   <div class="start-card">
     <button @click="startGame">Start Game</button>
@@ -68,19 +71,15 @@ const props = defineProps({
 const gameStarted = ref(false);
 const GameComponent = shallowRef(null); // shallowRef 사용으로 변경
 const gameInfo = ref(null);
-const roomData = ref(null);
+const gameSetting = ref(null);
+
+const players = ref(new Map());
 
 /**
  * WebSocket 연결을 위한 변수
  * @type {WebSocket|null}
  */
 const ws = ref(null);
-
-/**
- * @todo
- * - 게임 기다리기 지루할까봐 간단한 2D 멀티플레이 게임 구현(그냥 플레이어가 이동하는 정도)
- * - 게임 위에 플레이어가 적힌 카드 생성(z index가 높아야 함)
- */
 
 // 게임 시작 함수
 const startGame = async () => {
@@ -104,6 +103,11 @@ const startGame = async () => {
   }
 };
 
+function beforeUnloading(event) {
+  event.preventDefault();
+  event.returnValue = "";
+}
+
 onMounted(async () => {
   console.log("대기방 마운트됨:", { roomId: props.roomId, gameId: props.gameId });
 
@@ -126,7 +130,7 @@ onMounted(async () => {
     const data = JSON.parse(event.data);
     console.log("WebSocket 메시지 수신:", data);
 
-    if (data?.roomDeleted) {
+    if (data.type === "roomDeleted") {
       console.log("방이 삭제되었습니다.");
       gameStarted.value = false;
       GameComponent.value = null;
@@ -135,10 +139,45 @@ onMounted(async () => {
         name: "game-rooms",
         params: { gameId: props.gameId },
       });
+    } else if (data.type === "playerJoined") {
+      console.log("새 플레이어가 참여했습니다:", data.player);
+
+      players.value.set(data.player.userId, {
+        userId: data.player.userId,
+        userName: data.player.userName,
+      });
+
+      console.log("현재 플레이어 목록:", players.value);
+    } else if (data.type === "playerLeft") {
+      console.log("플레이어가 퇴장했습니다:", data.playerId);
+      players.value.delete(data.playerId);
+    } else if (data.type === "gameStarted") {
+      console.log("게임이 시작되었습니다.");
+      gameStarted.value = true;
+
+      // 게임 컴포넌트 동적 로드
+      loadGameComponent(props.gameId)
+        .then((component) => {
+          GameComponent.value = component;
+          console.log(`${data.gameName} 게임이 로드되었습니다.`);
+        })
+        .catch((error) => {
+          console.error("게임 컴포넌트 로드 중 오류 발생:", error);
+          GameComponent.value = null;
+        });
+    } else if (data.type === "roomSettings") {
+      console.log("방 설정 업데이트:", data.settings);
+      gameSetting.value = data.settings; // 방 데이터 업데이트
+    } else if (data.type === "initialize") {
+      console.log("방 초기화 데이터 수신:", data);
+      gameSetting.value = data.settings; // 방 설정 업데이트
+      players.value = new Map(data.players.map((player) => [player.userId, player])); // 플레이어 정보 업데이트
     } else {
       console.warn("알 수 없는 메시지 타입:", data.type);
     }
   };
+
+  window.addEventListener("beforeunload", beforeUnloading);
 
   // 게임 정보 미리 로드
   gameInfo.value = getGameInfo(props.gameId);
@@ -150,6 +189,8 @@ onMounted(async () => {
 });
 
 onUnmounted(async () => {
+  window.removeEventListener("beforeunload", beforeUnloading);
+
   console.log("대기방 언마운트됨:", { roomId: props.roomId, gameId: props.gameId });
 
   gameStarted.value = false;
