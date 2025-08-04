@@ -1,4 +1,9 @@
-import { joinRoom, getRoomDetails, deleteRoom } from "../utils/roomManage.js";
+import {
+	joinRoom,
+	getRoomDetails,
+	deleteRoom,
+	broadCastToRoom,
+} from "../utils/roomManage.js";
 
 /**
  * WebSocket server setup for handling game rooms and in-game actions.
@@ -7,6 +12,8 @@ import { joinRoom, getRoomDetails, deleteRoom } from "../utils/roomManage.js";
 function setupWebsocket(wss) {
 	wss.on("connection", (ws, request) => {
 		console.log("WebSocket client connected");
+
+		let isNormalLeave = false;
 
 		ws.on("message", (message) => {
 			console.log("received: %s", message);
@@ -38,17 +45,15 @@ function setupWebsocket(wss) {
 					})
 				);
 
-				room.players.forEach((player, playerId) => {
-					// Notify all players in the room about the new player
-					if (playerId === userId) return;
-					player.ws.send(
-						JSON.stringify({
-							type: "playerJoined",
-							message: "A new player has joined the room",
-							player: { userId, userName },
-						})
-					);
-				});
+				broadCastToRoom(
+					roomName,
+					{
+						type: "playerJoined",
+						message: "A new player has joined the room",
+						player: { userId, userName },
+					},
+					ws
+				);
 
 				if (response) {
 					ws.send(JSON.stringify({ success: true }));
@@ -70,29 +75,31 @@ function setupWebsocket(wss) {
 					return;
 				}
 
+				isNormalLeave = true;
+
 				room.players.delete(userId);
 
-				room.players.forEach((player, playerId) => {
-					if (playerId === userId) return;
-					player.ws.send(
-						JSON.stringify({
-							type: "playerLeft",
-							playerId: userId,
-							message: "A player has left the room",
-						})
-					);
-				});
+				broadCastToRoom(
+					roomName,
+					{
+						type: "playerLeft",
+						playerId: userId,
+						message: "A player has left the room",
+					},
+					ws
+				);
 
 				if (room.hostId === userId || room.players.size === 0) {
 					// Notify the client that the room has been deleted
-					room.players.forEach((player) => {
-						player.ws.send(
-							JSON.stringify({
-								type: "roomDeleted",
-								message: "The room has been deleted",
-							})
-						);
-					});
+
+					broadCastToRoom(
+						roomName,
+						{
+							type: "roomDeleted",
+							message: "The room has been deleted",
+						},
+						ws
+					);
 
 					deleteRoom(gameId, roomName);
 
@@ -103,6 +110,38 @@ function setupWebsocket(wss) {
 
 		ws.on("close", () => {
 			console.log("WebSocket client disconnected");
+
+			if (!isNormalLeave) {
+				// Handle abnormal disconnection
+				console.log("Client disconnected unexpectedly");
+
+				// find the room which the user unexpectedly left and notify other players
+				const room = Array.from(getRoomDetails()).find((room) => {
+					return room.players.has(ws);
+				});
+
+				if (room) {
+					room.players.forEach((player, playerId) => {
+						if (player.ws !== ws) {
+							player.ws.send(
+								JSON.stringify({
+									type: "playerLeft",
+									playerId: ws.userId,
+									message: "A player has left the room unexpectedly",
+								})
+							);
+						}
+					});
+
+					// Remove the user from the room
+					room.players.delete(ws.userId);
+
+					// If the room is empty or the host left, delete the room
+					if (room.players.size === 0 || room.hostId === ws.userId) {
+						deleteRoom(room.gameId, room.roomName);
+					}
+				}
+			}
 		});
 
 		ws.on("error", (error) => {
