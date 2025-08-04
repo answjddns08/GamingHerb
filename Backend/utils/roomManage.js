@@ -1,7 +1,7 @@
 /**
  * @typedef {Object} Room
  * @property {Object} settings - The settings for the room
- * @property {Object.<string, { userId: string, username: string, ws: WebSocket }> } players - An object containing player details, keyed by userId
+ * @property {Map<string, { userId: string, username: string, ws: WebSocket }> } players - A Map containing player details, keyed by userId
  * @property {string} host - The username of the room host
  * @property {string} hostId - The ID of the user who is the host
  * @property {string} status - The current status of the room (e.g., "waiting", "active")
@@ -16,30 +16,30 @@ const rooms = {}; // Assuming rooms is a global object to store room data
 
 /* Example structure of rooms object:
 {
-	"Gomoku": {
-		"roomName1": {
-            "settings": { "maxPlayers": 2, "soloMode": false },
-            "players": {
-                "user1": { userId: "user1", username: "User One" },
-                "user2": { userId: "user2", username: "User Two" }
-            },
-            "host": "user1",
-            "hostId": "12345",
-            "status": "waiting",
-        },
+  "Gomoku": {
+	"roomName1": {
+	  "settings": { "maxPlayers": 2, "soloMode": false },
+	  "players": Map( [
+		["user1", { userId: "user1", username: "User One" }],
+		["user2", { userId: "user2", username: "User Two" }]
+	  ] ),
+	  "host": "user1",
+	  "hostId": "12345",
+	  "status": "waiting",
 	},
-	"Chess": {
-		"roomName2": {
-			"settings": { "maxPlayers": 2, "soloMode": false },
-			"players": {
-        "user3": { userId: "user3", username: "User Three" },
-        "user4": { userId: "user4", username: "User Four" }
-			},
-			"host": "user5",
-			"hostId": "13579",
-			"status": "waiting",
-		}
+  },
+  "Chess": {
+	"roomName2": {
+	  "settings": { "maxPlayers": 2, "soloMode": false },
+	  "players": Map([
+		["user3", { userId: "user3", username: "User Three" }],
+		["user4", { userId: "user4", username: "User Four" }]
+	  ]),
+	  "host": "user5",
+	  "hostId": "13579",
+	  "status": "waiting",
 	}
+  }
 } */
 
 /**
@@ -75,7 +75,7 @@ function makeRoom(gameId, roomName, settings, host, hostId) {
 	}
 	rooms[gameId][roomName] = {
 		settings: settings,
-		players: {},
+		players: new Map(),
 		host: host,
 		hostId: hostId,
 		status: "waiting",
@@ -109,7 +109,7 @@ function joinRoom(gameId, roomName, userId, username, ws) {
 		return false;
 	}
 
-	room.players[userId] = { userId, username, ws };
+	room.players.set(userId, { userId, username, ws });
 
 	return true;
 }
@@ -128,9 +128,9 @@ function leaveRoom(gameId, roomName, userId) {
 		return false;
 	}
 
-	delete room.players[userId];
+	room.players.delete(userId);
 
-	if (Object.keys(room.players).length === 0 || room.hostId === userId) {
+	if (room.players.size === 0 || room.hostId === userId) {
 		deleteRoom(gameId, roomName);
 		return true;
 	}

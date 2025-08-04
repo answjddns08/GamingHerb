@@ -29,13 +29,21 @@ function setupWebsocket(wss) {
 
 				const room = getRoomDetails(gameId, roomName);
 
-				Object.keys(room.players).forEach((playerId) => {
+				ws.send(
+					// 방장이 설정한 방 설정 정보 전송
+					JSON.stringify({
+						type: "initialize",
+						settings: room.settings,
+						players: Array.from(room.players.values()),
+					})
+				);
+
+				room.players.forEach((player, playerId) => {
 					// Notify all players in the room about the new player
-
 					if (playerId === userId) return;
-
-					room.players[playerId].ws.send(
+					player.ws.send(
 						JSON.stringify({
+							type: "playerJoined",
 							message: "A new player has joined the room",
 							player: { userId, userName },
 						})
@@ -62,24 +70,26 @@ function setupWebsocket(wss) {
 					return;
 				}
 
-				delete room.players[userId];
+				room.players.delete(userId);
 
-				Object.keys(room.players).forEach((playerId) => {
+				room.players.forEach((player, playerId) => {
 					if (playerId === userId) return;
-
-					room.players[playerId].ws.send(
+					player.ws.send(
 						JSON.stringify({
+							type: "playerLeft",
+							playerId: userId,
 							message: "A player has left the room",
 						})
 					);
 				});
 
-				if (room.hostId === userId || Object.keys(room.players).length === 0) {
+				if (room.hostId === userId || room.players.size === 0) {
 					// Notify the client that the room has been deleted
-					Object.keys(room.players).forEach((playerId) => {
-						room.players[playerId].ws.send(
+					room.players.forEach((player) => {
+						player.ws.send(
 							JSON.stringify({
-								roomDeleted: true,
+								type: "roomDeleted",
+								message: "The room has been deleted",
 							})
 						);
 					});
