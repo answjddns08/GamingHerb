@@ -137,6 +137,23 @@ function leaveRoom(gameId, roomName, userId) {
 	return true;
 }
 
+/**
+ * Broadcast a message to all players in a room
+ * @param {string} roomName
+ * @param {object} message - don't need to stringify, it will be done in the function
+ * @param {WebSocket} ws - The WebSocket connection of the user sending the message
+ */
+function broadCastToRoom(roomName, message, ws = null) {
+	const room = getRoomDetails(roomName);
+	if (!room) return;
+
+	room.players.forEach((player) => {
+		if (ws && player.ws === ws) return; // Skip sending to the sender
+
+		player.ws.send(JSON.stringify(message));
+	});
+}
+
 export {
 	getRoomsForGame,
 	getRoomDetails,
@@ -144,4 +161,5 @@ export {
 	deleteRoom,
 	joinRoom,
 	leaveRoom,
+	broadCastToRoom,
 };
