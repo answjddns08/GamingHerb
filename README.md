@@ -7,7 +7,7 @@ A gaming platform that works both as a Discord Activity and as a standalone web 
 - **Dual Platform Support**: Works in Discord Activities and standalone web browsers
 - **Automatic Environment Detection**: Automatically detects Discord environment
 - **Game Integration**: Supports multiple games (currently includes Gomoku/Othello)
-- **Real-time Communication**: WebSocket-based game rooms and chat
+- **Real-time Communication**: WebSocket-based game rooms
 
 ## Discord Activity Setup
 
