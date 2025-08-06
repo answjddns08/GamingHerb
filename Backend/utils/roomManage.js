@@ -1,7 +1,7 @@
 /**
  * @typedef {Object} Room
  * @property {Object} settings - The settings for the room
- * @property {Map<string, { userId: string, username: string, ws: WebSocket }> } players - A Map containing player details, keyed by userId
+ * @property {Map<string, { userId: string, username: string, ws: WebSocket, isReady: boolean }> } players - A Map containing player details, keyed by userId
  * @property {string} host - The username of the room host
  * @property {string} hostId - The ID of the user who is the host
  * @property {string} status - The current status of the room (e.g., "waiting", "active")

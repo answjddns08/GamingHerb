@@ -50,6 +50,7 @@ function setupWebsocket(wss) {
 						type: "initialize",
 						settings: room.settings,
 						players: Array.from(room.players.values()),
+						hostId: room.hostId,
 					})
 				);
 
@@ -59,7 +60,7 @@ function setupWebsocket(wss) {
 					{
 						type: "playerJoined",
 						message: "A new player has joined the room",
-						player: { userId, userName },
+						player: { userId, userName, isReady: false },
 					},
 					ws
 				);
@@ -69,7 +70,87 @@ function setupWebsocket(wss) {
 					return;
 				}
 			} else if (data.type === "waiting") {
-				// Handle waiting state
+				// Handle waiting state(WaitingRoom.vue)
+
+				const { gameId, roomName, userId } = data;
+
+				const room = getRoomDetails(gameId, roomName);
+
+				if (!room) {
+					ws.send(JSON.stringify({ error: "Room not found" }));
+					return;
+				}
+
+				if (data.action === "Ready") {
+					// Player is ready
+					room.players.get(userId).isReady = true;
+
+					console.log(`Player ${userId} is ready in room ${roomName}`);
+
+					broadCastToRoom(
+						gameId,
+						roomName,
+						{
+							type: "playerReady",
+							playerId: userId,
+							message: "A player is ready",
+						},
+						ws
+					);
+
+					return;
+				}
+
+				if (data.action === "ReadyCancel") {
+					// Player is not ready
+					room.players.get(userId).isReady = false;
+
+					console.log(`Player ${userId} is not ready in room ${roomName}`);
+
+					broadCastToRoom(
+						gameId,
+						roomName,
+						{
+							type: "playerNotReady",
+							playerId: userId,
+							message: "A player is not ready",
+						},
+						ws
+					);
+
+					return;
+				}
+
+				if (data.action === "KickUser") {
+					const { gameId, roomName, userId } = data;
+
+					const room = getRoomDetails(gameId, roomName);
+
+					if (!room) {
+						ws.send(JSON.stringify({ error: "Room not found" }));
+						return;
+					}
+
+					if (!room.players.has(userId)) {
+						ws.send(JSON.stringify({ error: "User not found in room" }));
+						return;
+					}
+
+					broadCastToRoom(
+						gameId,
+						roomName,
+						{
+							type: "playerKicked",
+							playerId: userId,
+							message: "A player has been kicked from the room",
+						},
+						ws
+					);
+
+					room.players.delete(userId);
+
+					return;
+				}
 			} else if (data.type === "inGame") {
 				// in-game actions
 			} else if (data.type === "leave") {
@@ -112,6 +193,7 @@ function setupWebsocket(wss) {
 					);
 
 					deleteRoom(gameId, roomName);
+					console.log(`Room ${roomName} deleted`);
 
 					ws.close();
 				}
@@ -121,13 +203,13 @@ function setupWebsocket(wss) {
 		ws.on("close", () => {
 			console.log("WebSocket client disconnected");
 
-			if (!isNormalLeave) {
+			/* if (!isNormalLeave) {
 				// Handle abnormal disconnection
 				console.log("Client disconnected unexpectedly");
 
 				const response = findPlayerByWs(ws);
 
-				if (!response) {
+				if (!response || !response.room) {
 					console.log("No room found for the disconnected client");
 					return;
 				}
@@ -153,7 +235,7 @@ function setupWebsocket(wss) {
 				) {
 					deleteRoom(response.gameId, response.room.roomName);
 				}
-			}
+			} */
 		});
 
 		ws.on("error", (error) => {
