@@ -27,6 +27,13 @@ const router = createRouter({
       component: () => import("../views/MakeRoom.vue"),
       props: true,
     },
+    {
+      // 게임 프론트 개발 & 테스트용 라우트(임시)
+      path: "/gameTest",
+      name: "game-test",
+      component: () => import("../games/GomokuGame/GomokuGame.vue"),
+      props: true,
+    },
   ],
 });
 
