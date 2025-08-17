@@ -54,7 +54,7 @@
 
         <div class="flex justify-between">
           <span>Player 1</span>
-          <span>뭐 대충 졸라 잘하는 유저 {{ testMessage }}</span>
+          <span>뭐 대충 졸라 잘하는 유저</span>
         </div>
       </div>
     </div>
@@ -71,7 +71,7 @@
         <div
           v-for="msg in messages"
           :key="msg.timestamp"
-          :class="msg.isMine ? 'my-message' : 'other-message'"
+          :class="msg.userId === userStore.id ? 'my-message' : 'other-message'"
         >
           {{ msg.text }}
         </div>
@@ -100,10 +100,13 @@
 
 <script setup>
 import { nextTick, ref } from "vue";
+import { useUserStore } from "@/stores/user.js";
+
+const userStore = useUserStore();
 
 /**
  * Chat messages
- * @typedef {Array<{text: string, isMine: boolean, timestamp: number}>} message
+ * @typedef {Array<{text: string, userId: string, timestamp: number}>} message
  * @type {import("vue").Ref<message>}
  */
 const messages = ref([]);
@@ -114,14 +117,12 @@ const isMyTurn = ref(false);
 
 const chatContainer = ref(null);
 
-const testMessage = ref("");
-
 function SendMessage() {
   console.log("message send: ", tempMsg.value);
 
   messages.value.push({
     text: tempMsg.value,
-    isMine: isMyTurn.value,
+    userId: userStore.id,
     timestamp: Date.now(),
   });
 
@@ -129,14 +130,9 @@ function SendMessage() {
 
   isMyTurn.value = !isMyTurn.value; // Toggle turn for test
 
-  testMessage.value = "send";
-
   nextTick(() => {
     if (chatContainer.value) {
       chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
-      testMessage.value = "스크롤 완료";
-    } else {
-      testMessage.value = "chatContainer가 없음";
     }
   });
 }
