@@ -14,9 +14,15 @@ export default defineConfig({
       "@": fileURLToPath(new URL("./src", import.meta.url)),
     },
   },
-  base: "/",
+  base: "/absproxy/3454/",
   envDir: "../",
   server: {
+    host: "0.0.0.0",
+    port: 3454,
+    allowedHosts: ["code.redeyes.dev"],
+    hmr: {
+        path: 'sockjs-node'
+    },
     proxy: {
       "/api": {
         target: "https://gamingherb.redeyes.dev",
