@@ -1,7 +1,6 @@
 <template>
   <main class="layout">
     <div class="status-container">
-      <h1 class="text-5xl font-bold">Status</h1>
       <h1 class="text-2xl font-bold">방 이름</h1>
       <h3>관전자 수: 여러 명</h3>
       <button
@@ -23,6 +22,13 @@
           <span>뭐 대충 졸라 잘하는 상대</span>
         </div>
       </div>
+    </div>
+    <div class="enemy-comment">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+        <path
+          d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM192 272C209.7 272 224 286.3 224 304C224 321.7 209.7 336 192 336C174.3 336 160 321.7 160 304C160 286.3 174.3 272 192 272zM320 272C337.7 272 352 286.3 352 304C352 321.7 337.7 336 320 336C302.3 336 288 321.7 288 304C288 286.3 302.3 272 320 272zM416 304C416 286.3 430.3 272 448 272C465.7 272 480 286.3 480 304C480 321.7 465.7 336 448 336C430.3 336 416 321.7 416 304z"
+        />
+      </svg>
     </div>
     <div class="board">
       <div class="board-container">
@@ -48,32 +54,39 @@
 
         <div class="flex justify-between">
           <span>Player 1</span>
-          <span>뭐 대충 졸라 잘하는 유저</span>
+          <span>뭐 대충 졸라 잘하는 유저 {{ testMessage }}</span>
         </div>
       </div>
-
-      <div class="player-comment">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
-          <path
-            d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM192 272C209.7 272 224 286.3 224 304C224 321.7 209.7 336 192 336C174.3 336 160 321.7 160 304C160 286.3 174.3 272 192 272zM320 272C337.7 272 352 286.3 352 304C352 321.7 337.7 336 320 336C302.3 336 288 321.7 288 304C288 286.3 302.3 272 320 272zM416 304C416 286.3 430.3 272 448 272C465.7 272 480 286.3 480 304C480 321.7 465.7 336 448 336C430.3 336 416 321.7 416 304z"
-          />
-        </svg>
-      </div>
+    </div>
+    <div class="player-comment">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+        <path
+          d="M320 544C461.4 544 576 436.5 576 304C576 171.5 461.4 64 320 64C178.6 64 64 171.5 64 304C64 358.3 83.2 408.3 115.6 448.5L66.8 540.8C62 549.8 63.5 560.8 70.4 568.3C77.3 575.8 88.2 578.1 97.5 574.1L215.9 523.4C247.7 536.6 282.9 544 320 544zM192 272C209.7 272 224 286.3 224 304C224 321.7 209.7 336 192 336C174.3 336 160 321.7 160 304C160 286.3 174.3 272 192 272zM320 272C337.7 272 352 286.3 352 304C352 321.7 337.7 336 320 336C302.3 336 288 321.7 288 304C288 286.3 302.3 272 320 272zM416 304C416 286.3 430.3 272 448 272C465.7 272 480 286.3 480 304C480 321.7 465.7 336 448 336C430.3 336 416 321.7 416 304z"
+        />
+      </svg>
     </div>
     <div class="chat-container">
       <h1 class="text-5xl font-bold">Chat</h1>
-      <div>chat area</div>
+      <div class="chat-area" ref="chatContainer">
+        <div
+          v-for="msg in messages"
+          :key="msg.timestamp"
+          :class="msg.isMine ? 'my-message' : 'other-message'"
+        >
+          {{ msg.text }}
+        </div>
+      </div>
       <div class="mt-auto">
         <form class="flex gap-3" @submit.prevent="SendMessage">
           <input
             type="text"
             placeholder="Type your message here..."
             class="w-full p-2 border rounded"
-            v-model="message"
+            v-model="tempMsg"
           />
           <button
             type="submit"
-            :disabled="!message"
+            :disabled="!tempMsg"
             class="bg-blue-500 text-white p-2 rounded disabled:bg-gray-400"
             @click="SendMessage"
           >
@@ -86,17 +99,46 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { nextTick, ref } from "vue";
 
-const message = ref("");
+/**
+ * Chat messages
+ * @typedef {Array<{text: string, isMine: boolean, timestamp: number}>} message
+ * @type {import("vue").Ref<message>}
+ */
+const messages = ref([]);
+
+const tempMsg = ref("");
 
 const isMyTurn = ref(false);
 
-function SendMessage() {
-  console.log("message send: ", message.value);
-  message.value = "";
+const chatContainer = ref(null);
 
-  isMyTurn.value = !isMyTurn.value; // Toggle turn for demonstration
+const testMessage = ref("");
+
+function SendMessage() {
+  console.log("message send: ", tempMsg.value);
+
+  messages.value.push({
+    text: tempMsg.value,
+    isMine: isMyTurn.value,
+    timestamp: Date.now(),
+  });
+
+  tempMsg.value = "";
+
+  isMyTurn.value = !isMyTurn.value; // Toggle turn for test
+
+  testMessage.value = "send";
+
+  nextTick(() => {
+    if (chatContainer.value) {
+      chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+      testMessage.value = "스크롤 완료";
+    } else {
+      testMessage.value = "chatContainer가 없음";
+    }
+  });
 }
 </script>
 
@@ -107,15 +149,15 @@ function SendMessage() {
   width: 100%;
   height: 100vh;
 
-  gap: 10px;
+  gap: 0.625rem;
 
   grid-template-columns: 1fr 3fr 2fr;
   grid-template-rows: auto 1fr auto;
 
   grid-template-areas:
-    ". enemy-info chat"
+    "enemy-comment enemy-info chat"
     "status gomoku chat"
-    ". player-info chat";
+    "player-comment player-info chat";
 }
 
 .status-container {
@@ -135,7 +177,7 @@ function SendMessage() {
 
   margin-left: 1.5rem;
 
-  border: 2px solid #333;
+  border: 0.125rem solid #333;
   border-radius: 1.125rem;
 }
 
@@ -147,12 +189,12 @@ function SendMessage() {
   align-items: center;
   justify-content: space-between;
 
-  margin-left: 10rem;
-  margin-right: 10rem;
+  margin-left: 5%;
+  margin-right: 5%;
 
-  border-bottom: 2px solid #333;
-  border-left: 2px solid #333;
-  border-right: 2px solid #333;
+  border-bottom: 0.125rem solid #333;
+  border-left: 0.125rem solid #333;
+  border-right: 0.125rem solid #333;
 
   border-radius: 0 0 1.5rem 1.5rem;
 
@@ -176,22 +218,38 @@ function SendMessage() {
   box-shadow: 0 0 0 0.5rem greenyellow;
 }
 
+.enemy-comment {
+  grid-area: enemy-comment;
+
+  margin-bottom: auto;
+  margin-left: auto;
+
+  margin-top: 1.5rem;
+
+  transform: scaleX(-1);
+
+  width: 3.5rem;
+
+  transition: all 0.3s ease;
+}
+
+.enemy-comment:hover {
+  transform: scale(1.2);
+}
+
 .player-info {
   grid-area: player-info;
-
-  position: relative;
-
   display: flex;
 
   align-items: center;
   justify-content: space-between;
 
-  margin-left: 10rem;
-  margin-right: 10rem;
+  margin-left: 2.5%;
+  margin-right: 2.5%;
 
-  border-top: 2px solid #333;
-  border-left: 2px solid #333;
-  border-right: 2px solid #333;
+  border-top: 0.125rem solid #333;
+  border-left: 0.125rem solid #333;
+  border-right: 0.125rem solid #333;
 
   border-radius: 1.5rem 1.5rem 0 0;
 
@@ -216,11 +274,14 @@ function SendMessage() {
 }
 
 .player-comment {
-  position: absolute;
+  grid-area: player-comment;
+
+  margin-top: auto;
+  margin-left: auto;
+
+  margin-bottom: 1.5rem;
 
   transform: scaleX(-1);
-
-  right: 43.5rem;
 
   width: 3.5rem;
 
@@ -245,6 +306,37 @@ function SendMessage() {
   margin: 1.75rem;
 }
 
+.chat-area {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 0.625rem;
+
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.my-message {
+  align-self: flex-end;
+  background: #2563eb; /* blue-600 */
+  color: #fff;
+  border-radius: 1rem 1rem 0.25rem 1rem;
+  padding: 0.5rem 1rem;
+  margin: 0.25rem 0;
+  max-width: 70%;
+}
+
+.other-message {
+  align-self: flex-start;
+  background: #e5e7eb; /* gray-200 */
+  color: #222;
+  border-radius: 1rem 1rem 1rem 0.25rem;
+  padding: 0.5rem 1rem;
+  margin: 0.25rem 0;
+  max-width: 70%;
+}
+
 .board {
   grid-area: gomoku;
 
@@ -256,17 +348,17 @@ function SendMessage() {
 .board-container {
   position: relative;
   background: #d4a574;
-  padding: 30px;
+  padding: 1.875rem;
 
-  border-radius: 8px;
+  border-radius: 0.5rem;
 
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.2);
 
   border-collapse: collapse;
 }
 
 .display {
-  border: 2px solid #333;
+  border: 0.125rem solid #333;
   display: flex;
   flex-direction: column;
 }
@@ -276,9 +368,9 @@ function SendMessage() {
 }
 
 .grid-cell {
-  width: 40px;
-  height: 40px;
-  border: 1px solid #333;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 0.0625rem solid #333;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -290,7 +382,7 @@ function SendMessage() {
   left: 0%;
   width: 100%;
   height: 100%;
-  padding: 10px;
+  padding: 0.625rem;
   display: flex;
   flex-direction: column;
 }
@@ -302,8 +394,8 @@ function SendMessage() {
 }
 
 .cell {
-  width: 40px;
-  height: 40px;
+  width: 2.5rem;
+  height: 2.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
