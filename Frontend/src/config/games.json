@@ -1,19 +1,32 @@
 {
-  "games": {
-    "GomokuGame": {
-      "name": "오목 게임",
-      "summary": "5개의 돌을 연속으로 놓아 승리하는 게임",
-      "path": "../games/GomokuGame/GomokuGame.vue",
-      "configPath": "../games/GomokuGame/settings.js",
-      "desPath": "../games/GomokuGame/Description.md",
-      "minPlayers": 1,
-      "maxPlayers": 2,
-      "category": ["보드게임"],
-      "platform": ["web(PC)", "mobile"],
-      "difficulty": "Easy",
-      "estimatedTime": "10-30분",
-      "version": "1.0.0",
-      "author": "Redeyes"
-    }
-  }
+	"games": {
+		"gomoku": {
+			"id": "gomoku",
+			"name": "오목 게임",
+			"summary": "5개의 돌을 연속으로 놓아 승리하는 게임",
+			"icon": "⚫",
+			"componentPath": "@/games/GomokuGame/GomokuGame.vue",
+			"configPath": "@/games/GomokuGame/settings.js",
+			"descriptionPath": "@/games/GomokuGame/Description.md",
+			"minPlayers": 1,
+			"maxPlayers": 2,
+			"category": ["보드게임", "전략"],
+			"platform": ["web(PC)", "mobile"],
+			"difficulty": "Easy",
+			"estimatedTime": "10-30분",
+			"version": "1.0.0",
+			"author": "Redeyes",
+			"features": {
+				"chat": true,
+				"timer": true,
+				"spectator": true,
+				"ai": true
+			},
+			"controls": {
+				"mouse": true,
+				"keyboard": false,
+				"touch": true
+			}
+		}
+	}
 }

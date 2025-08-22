@@ -1,3 +1,14 @@
+/**
+ * @deprecated 이 파일은 더 이상 사용되지 않습니다.
+ * 대신 @/games/index.js의 함수들을 사용하세요.
+ *
+ * - getGameInfo() -> getGameConfig()
+ * - getAvailableGames() -> getAvailableGames()
+ * - loadGameComponent() -> loadGameComponent()
+ * - getGameConfig() -> getGameSettings()
+ * - getGameDescription() -> getGameDescription()
+ */
+
 import gamesConfig from "../config/games.json";
 import { markdownToHtml } from "./markdownConvert";
 

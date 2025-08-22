@@ -60,7 +60,7 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { useRoute, RouterLink, useRouter } from "vue-router";
-import { getGameDescription, getGameConfig } from "../utils/gameLoader.js";
+import { getGameDescription, getGameSettings } from "@/games/index.js";
 import { useUserStore } from "../stores/user.js";
 
 const route = useRoute();
@@ -82,12 +82,12 @@ const roomName = ref("");
 onMounted(async () => {
   gameId.value = route.params.gameId;
 
-  // gameLoader의 getGameConfig 함수 사용
+  // games/index.js의 getGameSettings 함수 사용
   try {
-    gameSetting.value = await getGameConfig(route.params.gameId);
+    gameSetting.value = await getGameSettings(route.params.gameId);
   } catch (error) {
     console.error("게임 설정 로드 실패:", error);
-    alarm.value = "게임 설정을 로드할 수 없습니다.";
+    alarm.value = "게임 설정을 로드할 수 없습니다." + error;
   }
 
   gameDes.value = await getGameDescription(route.params.gameId);

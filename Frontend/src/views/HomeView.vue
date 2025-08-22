@@ -51,7 +51,7 @@
 <script setup>
 import { RouterLink } from "vue-router";
 import { onMounted, ref } from "vue";
-import { getAvailableGames } from "../utils/gameLoader.js";
+import { getAvailableGames } from "@/games/index.js";
 import userBoard from "../components/userBoard.vue";
 import SettingIcon from "../components/settingIcon.vue";
 
