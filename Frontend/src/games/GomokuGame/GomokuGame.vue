@@ -1,25 +1,30 @@
 <template>
   <main class="layout">
     <div class="status-container">
-      <h1 class="text-2xl font-bold">방 이름</h1>
-      <h3>관전자 수: 여러 명</h3>
+      <h1 class="text-2xl font-bold">오목 게임</h1>
+      <h3>현재 차례: {{ gameState.currentPlayer === "black" ? "흑돌" : "백돌" }}</h3>
       <button
         class="mt-auto p-3 w-1/2 rounded-lg bg-red-300 text-2xl font-bold transition-all hover:bg-red-400"
+        @click="surrender"
+        :disabled="gameState.gameOver"
       >
         기권
       </button>
     </div>
     <div class="enemy-info">
       <!-- userIcon -->
-      <div class="enemyIcon" :class="{ active: !isMyTurn }"></div>
+      <div
+        class="enemyIcon"
+        :class="{ active: gameState.currentPlayer === 'white' && !gameState.gameOver }"
+      ></div>
 
       <div class="flex flex-col gap-3 flex-1">
         <!--time bar -->
         <div class="bg-gray-300 rounded-lg w-auto h-2"></div>
 
         <div class="flex justify-between">
-          <span>Player 2</span>
-          <span>뭐 대충 졸라 잘하는 상대</span>
+          <span>백돌 플레이어</span>
+          <span>{{ playerColor === false ? "나" : "AI" }}</span>
         </div>
       </div>
     </div>
@@ -39,22 +44,37 @@
         </div>
         <div class="interaction">
           <div v-for="row in 16" :key="`interaction-row-${row}`" class="interaction-row">
-            <div v-for="col in 16" :key="`interaction-col-${col}`" class="cell"></div>
+            <div
+              v-for="col in 16"
+              :key="`interaction-col-${col}`"
+              class="cell"
+              @click="makeMove(row - 1, col - 1)"
+              :class="{ disabled: gameState.gameOver }"
+            >
+              <div
+                v-if="gameState.getStoneAt(row - 1, col - 1)"
+                class="stone"
+                :class="gameState.getStoneAt(row - 1, col - 1)"
+              ></div>
+            </div>
           </div>
         </div>
       </div>
     </div>
     <div class="player-info">
       <!-- userIcon -->
-      <div class="playerIcon" :class="{ active: isMyTurn }"></div>
+      <div
+        class="playerIcon"
+        :class="{ active: gameState.currentPlayer === 'black' && !gameState.gameOver }"
+      ></div>
 
       <div class="flex flex-col gap-3 flex-1">
         <!--time bar -->
         <div class="bg-gray-300 rounded-lg w-auto h-2"></div>
 
         <div class="flex justify-between">
-          <span>Player 1</span>
-          <span>뭐 대충 졸라 잘하는 유저</span>
+          <span>흑돌 플레이어</span>
+          <span>{{ playerColor === true ? "나" : "AI" }}</span>
         </div>
       </div>
     </div>
@@ -95,14 +115,65 @@
         </form>
       </div>
     </div>
+    <div v-if="isRockSelecting" class="start-modal">
+      <div class="flex" style="gap: 5rem">
+        <button class="start-modal-content" @click="selectRock(true)">
+          <div
+            class="rounded-full h-30 w-30 bg-black my-auto"
+            style="box-shadow: 0 0 1rem grey"
+          ></div>
+          <h2 class="text-3xl font-bold mt-auto">흑돌</h2>
+        </button>
+        <button class="start-modal-content" @click="selectRock(false)">
+          <div
+            class="rounded-full h-30 w-30 bg-gray-100 my-auto"
+            style="box-shadow: 0 0 1rem grey"
+          ></div>
+          <h2 class="text-3xl font-bold mt-auto">백돌</h2>
+        </button>
+      </div>
+      <span class="text-white text-xl font-bold">원하는 돌을 선택하시오</span>
+    </div>
+
+    <!-- 게임 종료 모달 -->
+    <div v-if="showGameEndModal" class="game-end-modal">
+      <div class="game-end-modal-content">
+        <h2 class="text-4xl font-bold mb-6">게임 종료!</h2>
+        <div class="text-2xl mb-8">
+          <div v-if="gameState.winner === 'draw'">무승부입니다!</div>
+          <div v-else-if="gameState.winner === 'black'">흑돌 승리!</div>
+          <div v-else-if="gameState.winner === 'white'">백돌 승리!</div>
+        </div>
+        <div class="flex gap-4">
+          <button
+            class="px-6 py-3 bg-blue-500 text-white rounded-lg text-xl font-bold hover:bg-blue-600 transition-all"
+            @click="restartGame"
+          >
+            다시 하기
+          </button>
+          <button
+            class="px-6 py-3 bg-gray-500 text-white rounded-lg text-xl font-bold hover:bg-gray-600 transition-all"
+            @click="exitGame"
+          >
+            나가기
+          </button>
+        </div>
+      </div>
+    </div>
   </main>
 </template>
 
 <script setup>
-import { nextTick, ref } from "vue";
+import { nextTick, onMounted, ref, watch } from "vue";
 import { useUserStore } from "@/stores/user.js";
+import { GomokuGameState } from "./utils.js";
 
 const userStore = useUserStore();
+
+const isRockSelecting = ref(false);
+const showGameEndModal = ref(false);
+const gameState = ref(new GomokuGameState());
+const playerColor = ref(null); // true for black, false for white
 
 /**
  * Chat messages
@@ -113,9 +184,19 @@ const messages = ref([]);
 
 const tempMsg = ref("");
 
-const isMyTurn = ref(false);
-
 const chatContainer = ref(null);
+
+// 게임 상태 변화를 감지하여 게임 종료 모달 표시
+watch(
+  () => gameState.value.gameOver,
+  (isGameOver) => {
+    if (isGameOver) {
+      setTimeout(() => {
+        showGameEndModal.value = true;
+      }, 500); // 0.5초 딜레이 후 모달 표시
+    }
+  },
+);
 
 function SendMessage() {
   console.log("message send: ", tempMsg.value);
@@ -128,14 +209,103 @@ function SendMessage() {
 
   tempMsg.value = "";
 
-  isMyTurn.value = !isMyTurn.value; // Toggle turn for test
-
   nextTick(() => {
     if (chatContainer.value) {
       chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
     }
   });
 }
+
+/**
+ * @param {bool} isBlack
+ */
+function selectRock(isBlack) {
+  isRockSelecting.value = false;
+  playerColor.value = isBlack;
+
+  // AI가 흑돌이고 첫 번째 차례인 경우 AI가 먼저 둠
+  if (!isBlack && gameState.value.currentPlayer === "black") {
+    setTimeout(() => {
+      makeAIMove();
+    }, 1000);
+  }
+}
+
+function makeMove(row, col) {
+  // 게임이 끝났거나 유효하지 않은 위치인 경우 무시
+  if (gameState.value.gameOver || row < 0 || row >= 15 || col < 0 || col >= 15) {
+    return;
+  }
+
+  // 현재 플레이어가 사용자인지 확인
+  const isPlayerTurn =
+    (gameState.value.currentPlayer === "black" && playerColor.value === true) ||
+    (gameState.value.currentPlayer === "white" && playerColor.value === false);
+
+  if (!isPlayerTurn) {
+    return;
+  }
+
+  // 돌 놓기
+  if (gameState.value.placeStone(row, col)) {
+    // AI 차례가 되었고 게임이 끝나지 않았으면 AI가 수를 둠
+    if (!gameState.value.gameOver) {
+      setTimeout(() => {
+        makeAIMove();
+      }, 500);
+    }
+  }
+}
+
+function makeAIMove() {
+  if (gameState.value.gameOver) return;
+
+  // 간단한 AI: 랜덤한 빈 위치에 돌 놓기
+  const emptyPositions = [];
+  for (let row = 0; row < 15; row++) {
+    for (let col = 0; col < 15; col++) {
+      if (!gameState.value.getStoneAt(row, col)) {
+        emptyPositions.push([row, col]);
+      }
+    }
+  }
+
+  if (emptyPositions.length > 0) {
+    const randomIndex = Math.floor(Math.random() * emptyPositions.length);
+    const [row, col] = emptyPositions[randomIndex];
+    gameState.value.placeStone(row, col);
+  }
+}
+
+function surrender() {
+  if (gameState.value.gameOver) return;
+
+  const currentPlayer = gameState.value.currentPlayer;
+  gameState.value.surrender(currentPlayer);
+}
+
+function restartGame() {
+  showGameEndModal.value = false;
+  gameState.value.reset();
+
+  // AI가 흑돌이고 첫 번째 차례인 경우 AI가 먼저 둠
+  if (playerColor.value === false && gameState.value.currentPlayer === "black") {
+    setTimeout(() => {
+      makeAIMove();
+    }, 1000);
+  }
+}
+
+function exitGame() {
+  showGameEndModal.value = false;
+  isRockSelecting.value = true;
+  gameState.value.reset();
+  playerColor.value = null;
+}
+
+onMounted(() => {
+  isRockSelecting.value = true;
+});
 </script>
 
 <style scoped>
@@ -401,5 +571,98 @@ function SendMessage() {
 
 .cell:hover {
   background-color: #e0e0e0a1;
+}
+
+.cell.disabled {
+  cursor: not-allowed;
+}
+
+.stone {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.stone.black {
+  background-color: #1a1a1a;
+  border: 1px solid #333;
+}
+
+.stone.white {
+  background-color: #f5f5f5;
+  border: 1px solid #ccc;
+}
+
+.game-end-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+}
+
+.game-end-modal-content {
+  background-color: white;
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  min-width: 400px;
+}
+
+.start-modal {
+  position: fixed;
+
+  top: 0;
+  left: 0;
+
+  width: 100%;
+  height: 100%;
+
+  display: flex;
+
+  justify-content: center;
+  align-items: center;
+
+  flex-direction: column;
+
+  gap: 5rem;
+
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.start-modal-content {
+  background-color: white;
+
+  border-radius: 8px;
+
+  padding: 20px;
+
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+
+  min-width: 275px;
+
+  min-height: 450px;
+
+  position: relative;
+
+  display: flex;
+
+  flex-direction: column;
+  align-items: center;
+
+  transition: all 0.3s ease;
+}
+
+.start-modal-content:hover {
+  transform: scale(1.05);
+
+  border: 0.25rem solid #ff0000;
 }
 </style>
