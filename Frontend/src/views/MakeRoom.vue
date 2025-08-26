@@ -1,7 +1,7 @@
 <template>
   <main class="layout">
     <div class="desc" v-if="gameId">
-      <h1>{{ gameId.name }}</h1>
+      <h1 class="text-3xl font-bold">{{ gameId }}</h1>
       <div v-html="gameDes" class="game-description"></div>
       <RouterLink :to="{ name: 'game-rooms' }" class="goBack-btn">
         <button class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition">
@@ -164,7 +164,7 @@ h1 {
 
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.5rem;
 
   border: 1px solid #000000;
 }

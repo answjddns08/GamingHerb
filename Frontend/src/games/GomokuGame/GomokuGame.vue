@@ -144,7 +144,7 @@
           <div v-else-if="gameState.winner === 'black'">흑돌 승리!</div>
           <div v-else-if="gameState.winner === 'white'">백돌 승리!</div>
         </div>
-        <div class="flex gap-4">
+        <div class="flex gap-4 justify-between">
           <button
             class="px-6 py-3 bg-blue-500 text-white rounded-lg text-xl font-bold hover:bg-blue-600 transition-all"
             @click="restartGame"
@@ -609,10 +609,20 @@ onMounted(() => {
 
 .game-end-modal-content {
   background-color: white;
+
+  display: flex;
+  flex-direction: column;
+
+  justify-content: center;
+
   border-radius: 1rem;
+
   padding: 2rem;
+
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+
   text-align: center;
+
   min-width: 400px;
 }
 

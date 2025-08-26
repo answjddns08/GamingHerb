@@ -22,7 +22,7 @@
       </button>
     </div>
   </main>
-  <div class="player-card">
+  <div class="player-card" v-if="!gameStarted">
     <div class="flex justify-between items-end gap-4">
       <p class="font-bold text-3xl">Players</p>
       <p class="text-sm text-gray-400">
@@ -75,7 +75,7 @@
       </button>
     </div>
   </div>
-  <div class="start-card" v-if="userStore.id === gameSetting?.hostId">
+  <div class="start-card" v-if="!gameStarted && userStore.id === gameSetting?.hostId">
     <button
       @click="startGame"
       :disabled="
@@ -85,10 +85,15 @@
       Start Game
     </button>
   </div>
-  <button v-else class="ready-btn" @click="ReadyGame" :class="{ active: isReady }">
+  <button
+    v-else-if="!gameStarted"
+    class="ready-btn"
+    @click="ReadyGame"
+    :class="{ active: isReady }"
+  >
     {{ isReady ? "Cancel" : "Ready" }}
   </button>
-  <div class="goBack-card">
+  <div class="goBack-card" v-if="!gameStarted">
     <RouterLink :to="{ name: 'game-rooms' }">
       <button class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition">
         Go Back
@@ -100,7 +105,7 @@
 <script setup>
 import { ref, onMounted, shallowRef, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
-import { loadGameComponent, getGameInfo } from "../utils/gameLoader.js";
+import { loadGameComponent, getGameInfo } from "@/games/index.js";
 import { useUserStore } from "@/stores/user.js";
 
 const userStore = useUserStore();
