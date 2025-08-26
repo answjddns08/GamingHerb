@@ -8,6 +8,16 @@ const markdownModules = import.meta.glob("@/games/**/*.md", {
   eager: false,
 });
 
+// Vite의 glob import를 사용하여 설정 파일들을 미리 로드
+const settingsModules = import.meta.glob("@/games/**/settings.js", {
+  eager: false,
+});
+
+// Vite의 glob import를 사용하여 게임 컴포넌트들을 미리 로드
+const componentModules = import.meta.glob("@/games/**/*.vue", {
+  eager: false,
+});
+
 // games.json에서 게임 설정을 가져와서 동적 import와 함께 구성
 export const games = {};
 
@@ -15,11 +25,37 @@ export const games = {};
 Object.entries(gamesConfig.games).forEach(([gameId, config]) => {
   games[gameId] = {
     ...config,
-    // 동적 컴포넌트 로더 추가
-    component: () => import(config.componentPath),
-    // 설정 파일이 있다면 동적 로더 추가
+    // 동적 컴포넌트 로더 추가 (glob 사용)
+    component: () => {
+      // config.componentPath에서 파일명 추출
+      const fileName = config.componentPath.split("/").pop();
+
+      // glob에서 해당 파일을 찾기
+      for (const [path, loader] of Object.entries(componentModules)) {
+        if (path.includes(fileName) && path.includes(gameId)) {
+          return loader();
+        }
+      }
+
+      // 파일을 찾지 못한 경우 에러 throw
+      return Promise.reject(new Error(`컴포넌트 파일을 찾을 수 없습니다: ${config.componentPath}`));
+    },
+    // 설정 파일이 있다면 glob에서 찾아서 추가
     ...(config.configPath && {
-      settings: () => import(config.configPath),
+      settings: () => {
+        // config.configPath에서 파일명 추출 (예: "settings.js")
+        const fileName = config.configPath.split("/").pop();
+
+        // glob에서 해당 파일을 찾기
+        for (const [path, loader] of Object.entries(settingsModules)) {
+          if (path.includes(fileName) && path.includes(gameId)) {
+            return loader();
+          }
+        }
+
+        // 파일을 찾지 못한 경우 에러 throw
+        return Promise.reject(new Error(`설정 파일을 찾을 수 없습니다: ${config.configPath}`));
+      },
     }),
     // 설명 파일이 있다면 glob에서 찾아서 추가
     ...(config.descriptionPath && {
@@ -139,7 +175,8 @@ export async function getGameSettings(gameId) {
 
   try {
     const settingsModule = await gameConfig.settings();
-    return settingsModule.default;
+    // default export가 있으면 그것을 사용하고, 없으면 gameSettings를 사용
+    return settingsModule.default || settingsModule.gameSettings || settingsModule;
   } catch (error) {
     throw new Error(`게임 설정 로드 실패: ${error.message}`);
   }
