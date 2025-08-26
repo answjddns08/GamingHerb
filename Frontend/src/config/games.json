@@ -1,7 +1,7 @@
 {
 	"games": {
-		"gomoku": {
-			"id": "gomoku",
+		"GomokuGame": {
+			"id": "GomokuGame",
 			"name": "오목 게임",
 			"summary": "5개의 돌을 연속으로 놓아 승리하는 게임",
 			"icon": "⚫",
