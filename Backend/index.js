@@ -26,6 +26,7 @@ app.use(
 			"https://gamingherb.redeyes.dev",
 			"http://localhost:5173",
 			"https://redeyes.dev",
+			"https://code.redeyes.dev",
 		],
 		methods: ["GET", "POST", "DELETE", "PUT"],
 	})
