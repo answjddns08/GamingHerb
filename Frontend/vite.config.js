@@ -21,14 +21,15 @@ export default defineConfig({
     port: 3454,
     allowedHosts: ["code.redeyes.dev"],
     hmr: {
-        path: 'sockjs-node'
+      path: "sockjs-node",
     },
     proxy: {
-      "/api": {
-        target: "https://gamingherb.redeyes.dev",
+      "^/absproxy/3454/api": {
+        target: "https://code.redeyes.dev/proxy/3001/",
         changeOrigin: true,
         secure: false,
         ws: true,
+        rewrite: (path) => path.replace(/^\/absproxy\/3454/, ""),
       },
     },
   },
