@@ -18,9 +18,10 @@
       v-for="player in playerList"
       :key="player.userId"
       class="flex items-center justify-between gap-2"
+      :class="{ 'opacity-50': player.disconnected }"
     >
       <div class="flex items-center gap-2">
-        <p>{{ player.username }}</p>
+        <p>{{ player.username }}{{ player.disconnected ? " (연결 끊김)" : "" }}</p>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 640 640"
@@ -60,22 +61,22 @@
   </div>
   <div class="start-card" v-if="userStore.id === gameSetting?.hostId">
     <button
-      @click="ReadyGame" 
-      :disabled="playerList.length < 2 || playerList.some(p => !p.isReady && p.userId !== userStore.id)"
+      @click="ReadyGame"
+      :disabled="
+        playerList.length < 2 || playerList.some((p) => !p.isReady && p.userId !== userStore.id)
+      "
     >
       Start Game
     </button>
   </div>
-  <button
-    v-else
-    class="ready-btn"
-    @click="ReadyGame"
-    :class="{ active: isReady }"
-  >
+  <button v-else class="ready-btn" @click="ReadyGame" :class="{ active: isReady }">
     {{ isReady ? "Cancel" : "Ready" }}
   </button>
   <div class="goBack-card">
-    <button @click="goBack" class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition">
+    <button
+      @click="goBack"
+      class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition"
+    >
       Go Back
     </button>
   </div>
@@ -104,19 +105,31 @@ let isLeaving = false; // 네비게이션 가드로 인한 중복 실행 방지
 
 // --- WebSocket Actions ---
 function send(type, action, payload = {}) {
-  socketStore.sendMessage(type, { 
-    gameId: props.gameId, 
-    roomName: props.roomId, 
+  socketStore.sendMessage(type, {
+    gameId: props.gameId,
+    roomName: props.roomId,
     userId: userStore.id,
     userName: userStore.name,
-    action, 
-    ...payload 
+    action,
+    ...payload,
   });
 }
 
 const ReadyGame = () => {
-  isReady.value = !isReady.value;
-  send("waiting", { type: "setReady", payload: { isReady: isReady.value } });
+  // 호스트라면 게임 시작 시도
+  if (userStore.id === gameSetting.value?.hostId) {
+    // 모든 플레이어가 준비되었는지 확인
+    const nonHostPlayers = playerList.value.filter((p) => p.userId !== userStore.id);
+    const allNonHostReady = nonHostPlayers.every((p) => p.isReady);
+
+    if (playerList.value.length >= 2 && allNonHostReady) {
+      send("waiting", { type: "startGame" });
+    }
+  } else {
+    // 일반 플레이어는 준비 상태 토글
+    isReady.value = !isReady.value;
+    send("waiting", { type: "setReady", payload: { isReady: isReady.value } });
+  }
 };
 
 const kickUser = (targetUserId) => {
@@ -125,14 +138,14 @@ const kickUser = (targetUserId) => {
 
 const goBack = () => {
   isLeaving = true;
-  router.push({ name: 'game-rooms', params: { gameId: props.gameId } });
+  router.push({ name: "game-rooms", params: { gameId: props.gameId } });
 };
 
 // --- WebSocket Handlers ---
 const setupSocketHandlers = () => {
   socketStore.registerHandler("initialize", (data) => {
     gameSetting.value = { ...data.settings, hostId: data.hostId };
-    const playerMap = new Map(data.players.map(p => [p.userId, p]));
+    const playerMap = new Map(data.players.map((p) => [p.userId, p]));
     players.value = playerMap;
   });
 
@@ -142,6 +155,27 @@ const setupSocketHandlers = () => {
 
   socketStore.registerHandler("playerLeft", (data) => {
     players.value.delete(data.playerId);
+  });
+
+  // 플레이어 일시 연결 해제 처리
+  socketStore.registerHandler("playerDisconnected", (data) => {
+    const player = players.value.get(data.playerId);
+    if (player) {
+      player.disconnected = true;
+      if (data.isTemporary) {
+        // 임시 연결 해제 - UI에서 표시만 변경
+        console.log(`${data.playerName} temporarily disconnected`);
+      }
+    }
+  });
+
+  // 플레이어 재연결 처리
+  socketStore.registerHandler("playerReconnected", (data) => {
+    const player = players.value.get(data.playerId);
+    if (player) {
+      player.disconnected = false;
+      console.log(`${data.playerName} reconnected`);
+    }
   });
 
   socketStore.registerHandler("playerReadyState", (data) => {
@@ -159,52 +193,73 @@ const setupSocketHandlers = () => {
 
   socketStore.registerHandler("gameStart", () => {
     isLeaving = true; // 게임 시작은 정상적인 이탈로 간주
-    router.push({ 
-      name: "in-game", 
-      params: { gameId: props.gameId, roomId: props.roomId }
+    router.push({
+      name: "in-game",
+      params: { gameId: props.gameId, roomId: props.roomId },
     });
   });
 
-  socketStore.registerHandler("roomDeleted", () => {
-    alert("방이 호스트에 의해 삭제되었습니다.");
+  socketStore.registerHandler("roomDeleted", (data) => {
+    const reason = data?.reason || "unknown";
+    if (reason === "Host disconnected") {
+      alert("방장의 연결이 끊어져 방이 삭제되었습니다.");
+    } else {
+      alert("방이 삭제되었습니다.");
+    }
     isLeaving = true;
     router.push({ name: "game-rooms", params: { gameId: props.gameId } });
+  });
+
+  // 연결 끊김 처리
+  socketStore.registerHandler("connectionFailed", () => {
+    alert("서버와의 연결이 끊어졌습니다. 게임 로비로 돌아갑니다.");
+    isLeaving = true;
+    router.push({ name: "game-rooms", params: { gameId: props.gameId } });
+  });
+
+  // 에러 메시지 처리
+  socketStore.registerHandler("error", (data) => {
+    console.error("Server error:", data);
+    if (data.message?.includes("Room not found")) {
+      alert("방을 찾을 수 없습니다. 게임 로비로 돌아갑니다.");
+      isLeaving = true;
+      router.push({ name: "game-rooms", params: { gameId: props.gameId } });
+    }
   });
 };
 
 const cleanupSocketHandlers = () => {
-    Object.keys(socketStore.messageHandlers.value).forEach(type => {
-        socketStore.unregisterHandler(type);
-    });
+  Object.keys(socketStore.messageHandlers.value).forEach((type) => {
+    socketStore.unregisterHandler(type);
+  });
 };
 
 onMounted(() => {
   isLeaving = false;
   // 소켓이 연결되어 있지 않으면 연결 시도
   if (!socketStore.socket || socketStore.socket.readyState !== WebSocket.OPEN) {
-      socketStore.connect(`wss://gamingherb.redeyes.dev/api`);
-      socketStore.socket.value.onopen = () => {
-        console.log("소켓 연결 성공. 방에 참여합니다.");
-        setupSocketHandlers();
-        send("join");
-      };
-  } else {
-      // 이미 연결되어 있다면 핸들러만 설정하고 join 메시지 전송
+    socketStore.connect(`wss://gamingherb.redeyes.dev/api`);
+    socketStore.socket.value.onopen = () => {
+      console.log("소켓 연결 성공. 방에 참여합니다.");
       setupSocketHandlers();
       send("join");
+    };
+  } else {
+    // 이미 연결되어 있다면 핸들러만 설정하고 join 메시지 전송
+    setupSocketHandlers();
+    send("join");
   }
 });
 
 onUnmounted(() => {
   cleanupSocketHandlers();
   if (isLeaving) {
-      // 게임 시작이 아닌, 의도된 이탈 시에만 연결 종료
-      if(router.currentRoute.value.name !== 'in-game') {
-          socketStore.disconnect();
-      }
+    // 게임 시작이 아닌, 의도된 이탈 시에만 연결 종료
+    if (router.currentRoute.value.name !== "in-game") {
+      socketStore.disconnect();
+    }
   }
 });
-
 </script>
 
 <style scoped>

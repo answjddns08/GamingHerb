@@ -76,12 +76,12 @@ function makeRoom(gameId, roomName, settings, host, hostId) {
 	}
 	rooms[gameId][roomName] = {
 		settings: settings,
-		players: [player],
-    gameState: null, // 게임 상태를 저장할 속성 추가
+		players: new Map(), // Map으로 초기화
+		gameState: null, // 게임 상태를 저장할 속성 추가
 		host: host,
 		hostId: hostId,
 		status: "waiting",
-		restartRequest: { requesterId: null, status: 'none' }, // none, pending, accepted, declined
+		restartRequest: { requesterId: null, status: "none" }, // none, pending, accepted, declined
 	};
 }
 
@@ -112,7 +112,14 @@ function joinRoom(gameId, roomName, userId, username, ws) {
 		return false;
 	}
 
-	room.players.set(userId, { userId, username, ws });
+	room.players.set(userId, {
+		userId,
+		username,
+		ws,
+		isReady: false,
+		disconnected: false,
+		disconnectTimer: null,
+	});
 
 	return true;
 }
@@ -167,7 +174,7 @@ function broadCastToRoom(gameId, roomName, message, ws = null) {
 /**
  * Find a player by their WebSocket connection
  * @param {WebSocket} ws - The WebSocket connection of the user
- * @returns {{ room: Room|null, gameId: string|null, userId: string|null }} - Returns the room and gameId if the player is found, otherwise null
+ * @returns {{ userId: string|null, room: Room|null, gameId: string|null, roomName: string|null }} - Returns the player info if found, otherwise null
  */
 function findPlayerByWs(ws) {
 	for (const gameId in rooms) {
@@ -175,7 +182,7 @@ function findPlayerByWs(ws) {
 			const room = rooms[gameId][roomName];
 			for (const [userId, player] of room.players) {
 				if (player.ws === ws) {
-					return userId, room, gameId; // Return the room if the WebSocket matches
+					return { userId, room, gameId, roomName }; // Return complete info
 				}
 			}
 		}
@@ -214,10 +221,39 @@ function setGameState(gameId, roomName, gameState) {
  * @param {string} status - The new status for the room
  */
 function updateRoomStatus(gameId, roomName, status) {
-    const room = getRoomDetails(gameId, roomName);
-    if (room) {
-        room.status = status;
-    }
+	const room = getRoomDetails(gameId, roomName);
+	if (room) {
+		room.status = status;
+
+		// 게임 종료 시 게임 상태 정리
+		if (status === "waiting" && room.gameState) {
+			console.log(`Cleaning up game state for ${gameId}/${roomName}`);
+			room.gameState = null;
+			room.restartRequest = { requesterId: null, status: "none" };
+		}
+	}
+}
+
+/**
+ * Clean up room when game ends
+ * @param {string} gameId - The ID of the game
+ * @param {string} roomName - The name of the room
+ */
+function cleanupGameRoom(gameId, roomName) {
+	const room = getRoomDetails(gameId, roomName);
+	if (room) {
+		// 게임 상태 초기화
+		room.gameState = null;
+		room.status = "waiting";
+		room.restartRequest = { requesterId: null, status: "none" };
+
+		// 모든 플레이어의 준비 상태 초기화
+		room.players.forEach((player) => {
+			player.isReady = false;
+		});
+
+		console.log(`Game room ${gameId}/${roomName} cleaned up`);
+	}
 }
 
 export {
@@ -232,4 +268,5 @@ export {
 	getGameState,
 	setGameState,
 	updateRoomStatus,
+	cleanupGameRoom,
 };
