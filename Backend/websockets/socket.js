@@ -143,11 +143,55 @@ function setupWebsocket(wss) {
                             updateRoomStatus(gameId, roomName, 'waiting');
 							break;
 						}
-						case "game:restart": {
+						case "game:restart:request": {
+							const room = getRoomDetails(gameId, roomName);
+							if (!room) return;
+
+							// 요청자 ID 저장
+							room.restartRequest.requesterId = userId;
+							room.restartRequest.status = 'pending';
+
+							// 상대방에게 재시작 요청 알림
+							const opponentPlayer = Array.from(room.players.values()).find(p => p.userId !== userId);
+							if (opponentPlayer) {
+								opponentPlayer.ws.send(JSON.stringify({
+									type: "game:restart:requested",
+									payload: { requesterId: userId, requesterName: userName }
+								}));
+							}
+							break;
+						}
+						case "game:restart:accept": {
+							const room = getRoomDetails(gameId, roomName);
+							const game = getGameState(gameId, roomName);
+							if (!room || !game || room.restartRequest.status !== 'pending' || room.restartRequest.requesterId === userId) {
+								return; // 유효하지 않은 요청
+							}
+
 							game.reset();
+							room.restartRequest.status = 'none'; // 요청 상태 초기화
+
 							broadCastToRoom(gameId, roomName, {
 								type: "game:updateState",
 								payload: game.getState(),
+							});
+							broadCastToRoom(gameId, roomName, {
+								type: "game:restart:accepted",
+								payload: { accepterId: userId }
+							});
+							break;
+						}
+						case "game:restart:decline": {
+							const room = getRoomDetails(gameId, roomName);
+							if (!room || room.restartRequest.status !== 'pending' || room.restartRequest.requesterId === userId) {
+								return; // 유효하지 않은 요청
+							}
+
+							room.restartRequest.status = 'none'; // 요청 상태 초기화
+
+							broadCastToRoom(gameId, roomName, {
+								type: "game:restart:declined",
+								payload: { declinerId: userId }
 							});
 							break;
 						}

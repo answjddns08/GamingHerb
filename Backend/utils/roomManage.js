@@ -81,6 +81,7 @@ function makeRoom(gameId, roomName, settings, host, hostId) {
 		host: host,
 		hostId: hostId,
 		status: "waiting",
+		restartRequest: { requesterId: null, status: 'none' }, // none, pending, accepted, declined
 	};
 }
 

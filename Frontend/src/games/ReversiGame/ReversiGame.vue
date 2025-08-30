@@ -79,6 +79,28 @@
         </div>
       </div>
     </div>
+
+    <!-- 재시작 요청 모달 -->
+    <div v-if="showRestartRequestModal" class="game-end-modal">
+      <div class="game-end-modal-content">
+        <h2 class="text-4xl font-bold mb-6">재시작 요청!</h2>
+        <p class="text-2xl mb-8">상대방({{ restartRequesterName }})이 재시작을 요청했습니다.</p>
+        <div class="flex gap-4 justify-center">
+          <button
+            class="px-6 py-3 bg-blue-500 text-white rounded-lg text-xl font-bold hover:bg-blue-600 transition-all"
+            @click="acceptRestart"
+          >
+            수락
+          </button>
+          <button
+            class="px-6 py-3 bg-gray-500 text-white rounded-lg text-xl font-bold hover:bg-gray-600 transition-all"
+            @click="declineRestart"
+          >
+            거절
+          </button>
+        </div>
+      </div>
+    </div>
   </main>
 </template>
 
@@ -143,12 +165,105 @@ const handleChatMessage = (payload) => {
   });
 };
 
+const myColor = ref(null);
+const showRestartRequestModal = ref(false);
+const restartRequesterName = ref('');
+
+function sendGameAction(type, payload = {}) {
+  socketStore.sendMessage("inGame", {
+    gameId: props.gameId,
+    roomName: props.roomId,
+    userId: userStore.id,
+    userName: userStore.name,
+    action: { type, payload },
+  });
+}
+
+const makeMove = (row, col) => sendGameAction("game:move", { row, col });
+const sendMessage = () => {
+  if (!tempMsg.value) return;
+  sendGameAction("chat:message", { text: tempMsg.value });
+  tempMsg.value = "";
+};
+
+const restartGame = () => {
+  sendGameAction("game:restart:request");
+  // 요청 보낸 후 대기 모달 표시 (선택 사항)
+};
+
+const acceptRestart = () => {
+  sendGameAction("game:restart:accept");
+  showRestartRequestModal.value = false;
+};
+
+const declineRestart = () => {
+  sendGameAction("game:restart:decline");
+  showRestartRequestModal.value = false;
+};
+
+const surrender = () => sendGameAction("game:surrender");
+const exitGame = () => {
+  socketStore.disconnect();
+  router.push("/gamerooms");
+};
+
+const handleUpdateState = (payload) => {
+  gameState.value = payload;
+};
+
+const handleChatMessage = (payload) => {
+  messages.value.push(payload);
+  nextTick(() => {
+    if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+  });
+};
+
 const handleInitialState = (payload) => {
     gameState.value = payload.gameState;
     const playerIds = Object.keys(payload.players);
     const myIndex = playerIds.indexOf(userStore.id);
     myColor.value = myIndex === 0 ? 'black' : 'white';
 };
+
+const handleRestartRequested = (payload) => {
+  restartRequesterName.value = payload.requesterName;
+  showRestartRequestModal.value = true;
+};
+
+const handleRestartAccepted = () => {
+  // 게임 상태는 updateState로 초기화됨
+  showRestartRequestModal.value = false;
+  // 필요시 사용자에게 알림
+};
+
+const handleRestartDeclined = () => {
+  showRestartRequestModal.value = false;
+  alert(`${restartRequesterName.value}님이 재시작 요청을 거절했습니다.`);
+};
+
+onMounted(() => {
+  if (!socketStore.socket || socketStore.socket.readyState !== WebSocket.OPEN) {
+    router.push("/gamerooms");
+    return;
+  }
+  socketStore.registerHandler("game:initialState", handleInitialState);
+  socketStore.registerHandler("game:updateState", handleUpdateState);
+  socketStore.registerHandler("chat:message", handleChatMessage);
+  socketStore.registerHandler("game:restart:requested", handleRestartRequested);
+  socketStore.registerHandler("game:restart:accepted", handleRestartAccepted);
+  socketStore.registerHandler("game:restart:declined", handleRestartDeclined);
+
+  sendGameAction("player:loaded");
+});
+
+onUnmounted(() => {
+  socketStore.unregisterHandler("game:initialState");
+  socketStore.unregisterHandler("game:updateState");
+  socketStore.unregisterHandler("chat:message");
+  socketStore.unregisterHandler("game:restart:requested");
+  socketStore.unregisterHandler("game:restart:accepted");
+  socketStore.unregisterHandler("game:restart:declined");
+});
 
 onMounted(() => {
   if (!socketStore.socket || socketStore.socket.readyState !== WebSocket.OPEN) {
