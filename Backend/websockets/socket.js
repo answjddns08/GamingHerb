@@ -4,9 +4,21 @@ import {
 	deleteRoom,
 	broadCastToRoom,
 	findPlayerByWs,
+	getGameState,
+	setGameState,
+	updateRoomStatus,
 } from "../utils/roomManage.js";
+import GomokuGame from "../games/gomoku.js";
 
 /** @typedef {import('../utils/roomManage').Room} Room */
+
+// Maps game IDs to their corresponding game logic class
+const gameLogicMap = {
+	Gomoku: GomokuGame,
+	Reversi: ReversiGame,
+	// Add other games here in the future
+	// Chess: ChessGame,
+};
 
 /**
  * WebSocket server setup for handling game rooms and in-game actions.
@@ -16,13 +28,10 @@ function setupWebsocket(wss) {
 	wss.on("connection", (ws, request) => {
 		console.log("WebSocket client connected");
 
-		let isNormalLeave = false;
-
 		ws.on("message", (message) => {
 			console.log("received: %s", message);
 
 			let data;
-
 			try {
 				data = JSON.parse(message);
 			} catch (error) {
@@ -30,212 +39,167 @@ function setupWebsocket(wss) {
 				return;
 			}
 
-			if (data.type === "join") {
-				// join a room
+			const { gameId, roomName, userId, userName, action } = data;
 
-				const { gameId, roomName, userId, userName } = data;
-
-				const response = joinRoom(gameId, roomName, userId, userName, ws);
-
-				const room = getRoomDetails(gameId, roomName);
-
-				if (!room) {
-					ws.send(JSON.stringify({ error: "Room not found" }));
-					return;
-				}
-
-				ws.send(
-					// 방장이 설정한 방 설정 정보 전송
-					JSON.stringify({
-						type: "initialize",
-						settings: room.settings,
-						players: Array.from(room.players.values()),
-						hostId: room.hostId,
-					})
-				);
-
-				broadCastToRoom(
-					gameId,
-					roomName,
-					{
-						type: "playerJoined",
-						message: "A new player has joined the room",
-						player: { userId, userName, isReady: false },
-					},
-					ws
-				);
-
-				if (!response) {
-					ws.send(JSON.stringify({ error: "Failed to join room" }));
-					return;
-				}
-			} else if (data.type === "waiting") {
-				// Handle waiting state(WaitingRoom.vue)
-
-				const { gameId, roomName, userId } = data;
-
-				const room = getRoomDetails(gameId, roomName);
-
-				if (!room) {
-					ws.send(JSON.stringify({ error: "Room not found" }));
-					return;
-				}
-
-				if (data.action === "Ready") {
-					// Player is ready
-					room.players.get(userId).isReady = true;
-
-					console.log(`Player ${userId} is ready in room ${roomName}`);
-
-					broadCastToRoom(
-						gameId,
-						roomName,
-						{
-							type: "playerReady",
-							playerId: userId,
-							message: "A player is ready",
-						},
-						ws
-					);
-
-					return;
-				}
-
-				if (data.action === "ReadyCancel") {
-					// Player is not ready
-					room.players.get(userId).isReady = false;
-
-					console.log(`Player ${userId} is not ready in room ${roomName}`);
-
-					broadCastToRoom(
-						gameId,
-						roomName,
-						{
-							type: "playerNotReady",
-							playerId: userId,
-							message: "A player is not ready",
-						},
-						ws
-					);
-
-					return;
-				}
-
-				if (data.action === "KickUser") {
-					const { gameId, roomName, userId } = data;
-
+			switch (data.type) {
+				case "join": {
+					joinRoom(gameId, roomName, userId, userName, ws);
 					const room = getRoomDetails(gameId, roomName);
-
 					if (!room) {
 						ws.send(JSON.stringify({ error: "Room not found" }));
 						return;
 					}
 
-					if (!room.players.has(userId)) {
-						ws.send(JSON.stringify({ error: "User not found in room" }));
-						return;
+					// Send initial room details to the joining player
+					ws.send(
+						JSON.stringify({
+							type: "initialize",
+							settings: room.settings,
+							players: Array.from(room.players.values()).map((p) => ({
+								userId: p.userId,
+								userName: p.userName,
+								isReady: p.isReady,
+							})),
+							hostId: room.hostId,
+						})
+					);
+
+					// Notify other players
+					broadCastToRoom(
+						gameId,
+						roomName,
+						{
+							type: "playerJoined",
+							player: { userId, userName, isReady: false },
+						},
+						ws
+					);
+					break;
+				}
+
+				case "waiting": {
+					const room = getRoomDetails(gameId, roomName);
+					if (!room) return;
+
+					const player = room.players.get(userId);
+					if (!player) return;
+
+					if (action.type === "setReady") {
+						player.isReady = action.payload.isReady;
+						broadCastToRoom(gameId, roomName, {
+							type: "playerReadyState",
+							payload: { userId, isReady: player.isReady },
+						});
+
+						// Check if all players are ready to start the game
+						const allReady = Array.from(room.players.values()).every((p) => p.isReady);
+						if (room.players.size >= 2 && allReady) {
+							const GameClass = gameLogicMap[gameId];
+							if (GameClass) {
+								const game = new GameClass();
+								setGameState(gameId, roomName, game);
+                                updateRoomStatus(gameId, roomName, 'active');
+								broadCastToRoom(gameId, roomName, {
+									type: "gameStart",
+									payload: game.getState(),
+								});
+							}
+						}
 					}
-
-					broadCastToRoom(
-						gameId,
-						roomName,
-						{
-							type: "playerKicked",
-							playerId: userId,
-							message: "A player has been kicked from the room",
-						},
-						ws
-					);
-
-					room.players.delete(userId);
-
-					return;
-				}
-			} else if (data.type === "inGame") {
-				// in-game actions
-			} else if (data.type === "leave") {
-				// quit a room
-
-				const { gameId, roomName, userId } = data;
-				const room = getRoomDetails(gameId, roomName);
-
-				if (!room) {
-					ws.send(JSON.stringify({ error: "Room not found" }));
-					return;
+					break;
 				}
 
-				isNormalLeave = true;
+				case "inGame": {
+					const room = getRoomDetails(gameId, roomName);
+					const game = getGameState(gameId, roomName);
+					if (!room || !game) return;
 
-				room.players.delete(userId);
+					switch (action.type) {
+						case "game:move": {
+							const { row, col } = action.payload;
+							// Determine player color by their join order (1st is black)
+							const playerIds = Array.from(room.players.keys());
+							const playerIndex = playerIds.indexOf(userId);
+							const playerColor = playerIndex === 0 ? "black" : "white";
 
-				broadCastToRoom(
-					gameId,
-					roomName,
-					{
-						type: "playerLeft",
-						playerId: userId,
-						message: "A player has left the room",
-					},
-					ws
-				);
+							if (game.placeStone(row, col, playerColor)) {
+								broadCastToRoom(gameId, roomName, {
+									type: "game:updateState",
+									payload: game.getState(),
+								});
+							}
+							break;
+						}
+						case "game:surrender": {
+							const playerIds = Array.from(room.players.keys());
+							const playerIndex = playerIds.indexOf(userId);
+							const playerColor = playerIndex === 0 ? "black" : "white";
 
-				if (room.hostId === userId || room.players.size === 0) {
-					// Notify the client that the room has been deleted
+							game.surrender(playerColor);
+							broadCastToRoom(gameId, roomName, {
+								type: "game:updateState",
+								payload: game.getState(),
+							});
+                            updateRoomStatus(gameId, roomName, 'waiting');
+							break;
+						}
+						case "game:restart": {
+							game.reset();
+							broadCastToRoom(gameId, roomName, {
+								type: "game:updateState",
+								payload: game.getState(),
+							});
+							break;
+						}
+						case "chat:message": {
+          // ... existing chat logic ...
+							break;
+						}
+            case "player:loaded": {
+              const room = getRoomDetails(gameId, roomName);
+              const game = getGameState(gameId, roomName);
+              if (room && game) {
+                const players = Array.from(room.players.values()).map(p => ({ userId: p.userId, userName: p.userName }));
+                ws.send(JSON.stringify({
+                  type: "game:initialState",
+                  payload: {
+                    gameState: game.getState(),
+                    players: players
+                  }
+                }));
+              }
+              break;
+            }
+							broadCastToRoom(
+								gameId,
+								roomName,
+								{
+									type: "chat:message",
+									payload: {
+										userId,
+										userName,
+										text: action.payload.text,
+										timestamp: Date.now(),
+									},
+								},
+								ws // broadcast to others
+							);
+							break;
+						}
+					}
+					break;
+				}
 
-					broadCastToRoom(
-						gameId,
-						roomName,
-						{
-							type: "roomDeleted",
-							message: "The room has been deleted",
-						},
-						ws
-					);
-
-					deleteRoom(gameId, roomName);
-					console.log(`Room ${roomName} deleted`);
-
-					ws.close();
+				case "leave": {
+					// Handle leave logic
+					break;
 				}
 			}
 		});
 
 		ws.on("close", () => {
 			console.log("WebSocket client disconnected");
-
-			/* if (!isNormalLeave) {
-				// Handle abnormal disconnection
-				console.log("Client disconnected unexpectedly");
-
-				const response = findPlayerByWs(ws);
-
-				if (!response || !response.room) {
-					console.log("No room found for the disconnected client");
-					return;
-				}
-
-				broadCastToRoom(
-					response.gameId,
-					Object.keys(response.room),
-					{
-						type: "playerLeft",
-						playerId: response.userId,
-						message: "A player has left the room unexpectedly",
-					},
-					ws
-				);
-
-				// Remove the user from the room
-				response.room.players.delete(response.userId);
-
-				// If the room is empty or the host left, delete the room
-				if (
-					response.room.players.size === 0 ||
-					response.room.hostId === response.userId
-				) {
-					deleteRoom(response.gameId, response.room.roomName);
-				}
-			} */
+			// Comprehensive cleanup logic should be implemented here
 		});
 
 		ws.on("error", (error) => {
@@ -244,4 +208,10 @@ function setupWebsocket(wss) {
 	});
 }
 
-export default setupWebsocket;
+export default setupWebsocket; => {
+			console.error("WebSocket error:", error);
+		});
+	});
+}
+
+export default setupWebsocket; default setupWebsocket;

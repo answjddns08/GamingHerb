@@ -76,7 +76,8 @@ function makeRoom(gameId, roomName, settings, host, hostId) {
 	}
 	rooms[gameId][roomName] = {
 		settings: settings,
-		players: new Map(),
+		players: [player],
+    gameState: null, // 게임 상태를 저장할 속성 추가
 		host: host,
 		hostId: hostId,
 		status: "waiting",
@@ -181,6 +182,43 @@ function findPlayerByWs(ws) {
 	return null;
 }
 
+/**
+ * Get the game state for a specific room
+ * @param {string} gameId - The ID of the game
+ * @param {string} roomName - The name of the room
+ * @returns {object|null} - The game state object or null if not found
+ */
+function getGameState(gameId, roomName) {
+	const room = getRoomDetails(gameId, roomName);
+	return room ? room.gameState : null;
+}
+
+/**
+ * Set the game state for a specific room
+ * @param {string} gameId - The ID of the game
+ * @param {string} roomName - The name of the room
+ * @param {object} gameState - The new game state object
+ */
+function setGameState(gameId, roomName, gameState) {
+	const room = getRoomDetails(gameId, roomName);
+	if (room) {
+		room.gameState = gameState;
+	}
+}
+
+/**
+ * Update the status of a specific room
+ * @param {string} gameId - The ID of the game
+ * @param {string} roomName - The name of the room
+ * @param {string} status - The new status for the room
+ */
+function updateRoomStatus(gameId, roomName, status) {
+    const room = getRoomDetails(gameId, roomName);
+    if (room) {
+        room.status = status;
+    }
+}
+
 export {
 	getRoomsForGame,
 	getRoomDetails,
@@ -190,4 +228,7 @@ export {
 	leaveRoom,
 	broadCastToRoom,
 	findPlayerByWs,
+	getGameState,
+	setGameState,
+	updateRoomStatus,
 };

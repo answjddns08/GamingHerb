@@ -9,36 +9,41 @@ import { getRoomsForGame, makeRoom } from "../../utils/roomManage.js";
  * @param {import("express").Response} res - Express response object
  */
 function createRoom(req, res) {
-	const newRoom = req.body;
-	const gameId = req.query.gameId;
+	try {
+		const newRoom = req.body;
+		const gameId = req.query.gameId;
 
-	console.log("Received request to create room for game:", gameId);
-	console.log("Creating room:", newRoom);
+		console.log("Received request to create room for game:", gameId);
+		console.log("Creating room:", newRoom);
 
-	if (
-		!newRoom.roomName ||
-		!newRoom.settings ||
-		!newRoom.host ||
-		!newRoom.hostId
-	) {
-		console.error("Missing required room details:", newRoom);
-		return res.status(400).json({ message: "Missing required room details" });
+		if (
+			!newRoom.roomName ||
+			!newRoom.settings ||
+			!newRoom.host ||
+			!newRoom.hostId
+		) {
+			console.error("Missing required room details:", newRoom);
+			return res.status(400).json({ message: "Missing required room details" });
+		}
+
+		newRoom.settings.maxPlayerCount = newRoom.maxPlayerCount;
+
+		makeRoom(
+			gameId,
+			newRoom.roomName,
+			newRoom.settings,
+			newRoom.host,
+			newRoom.hostId
+		);
+
+		res.status(201).json({
+			message: "Room created successfully",
+			roomName: newRoom.roomName,
+		});
+	} catch (error) {
+		console.error("Error creating room:", error);
+		res.status(500).json({ message: "Failed to create room", error: error.message });
 	}
-
-	newRoom.settings.maxPlayerCount = newRoom.maxPlayerCount;
-
-	makeRoom(
-		gameId,
-		newRoom.roomName,
-		newRoom.settings,
-		newRoom.host,
-		newRoom.hostId
-	);
-
-	res.status(201).json({
-		message: "Room created successfully",
-		roomName: newRoom.roomName,
-	});
 }
 
 /** * List all rooms

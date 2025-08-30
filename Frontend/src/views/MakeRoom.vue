@@ -101,8 +101,7 @@ async function StartGame() {
     return;
   }
 
-  const apiPrefix = userStore.apiPrefix;
-  const response = await fetch(`${apiPrefix}/api/rooms/create?gameId=${gameId.value}`, {
+  const response = await fetch(`${import.meta.env.BASE_URL}api/rooms/create?gameId=${gameId.value}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -113,7 +112,7 @@ async function StartGame() {
       status: "Waiting for players",
       settings: gameSetting.value.settings,
       roomName: roomName.value,
-      maxPlayerCount: gameSetting.value.getMaxPlayerCount(),
+      maxPlayerCount: gameSetting.value.maxPlayers,
     }),
   });
 

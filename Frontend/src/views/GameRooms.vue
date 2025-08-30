@@ -55,6 +55,7 @@
         >
           <button
             v-if="
+              rooms[roomName].status === 'waiting' &&
               Object.keys(rooms[roomName].players || {}).length <
               rooms[roomName].settings.maxPlayerCount
             "
@@ -92,11 +93,8 @@ import { onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 import SettingIcon from "../components/settingIcon.vue";
 import userBoard from "../components/userBoard.vue";
-import { useUserStore } from "@/stores/user";
 
 const rooms = ref([]);
-
-const userStore = useUserStore();
 
 const props = defineProps({
   gameId: {
@@ -109,7 +107,14 @@ const props = defineProps({
 onMounted(async () => {
   console.log("Game ID:", props.gameId);
 
-  const fetchRooms = await fetch(`${userStore.apiPrefix}/api/rooms/list/${props.gameId}`);
+  const fetchRooms = await fetch(`${import.meta.env.BASE_URL}api/rooms/list/${props.gameId}`);
+
+  if (!fetchRooms.ok) {
+    console.error("Error occurred", { status: fetchRooms.status });
+  }
+
+  console.log("fetch complete", fetchRooms);
+
   rooms.value = (await fetchRooms.json()).rooms;
 
   console.log("Rooms fetched:", rooms.value);
