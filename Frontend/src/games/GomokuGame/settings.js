@@ -5,7 +5,6 @@
  * number  → 슬라이더
  */
 export const gameSettings = {
-  soloEnabled: false, // 솔로 모드 비활성화
   timerEnabled: false, // 타이머 기능 비활성화
   playerTimeLimit: {
     // 플레이어당 시간 제한 (초)
