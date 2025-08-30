@@ -27,6 +27,30 @@
 				"keyboard": false,
 				"touch": true
 			}
+		},
+		"Reversi": {
+			"id": "Reversi",
+			"name": "리버시",
+			"summary": "상대방의 돌을 뒤집는 고전 전략 게임입니다.",
+			"icon": "⚪",
+			"descriptionPath": "@/games/Reversi/Description.md",
+			"componentPath": "@/games/Reversi/ReversiGame.vue",
+			"configPath": "@/games/Reversi/settings.js",
+			"category": ["보드게임", "전략"],
+			"platform": ["web"],
+			"minPlayers": 2,
+			"maxPlayers": 2,
+			"difficulty": "보통",
+			"features": {
+				"chat": true,
+				"timer": false,
+				"ai": false
+			},
+			"controls": {
+				"mouse": true,
+				"keyboard": false,
+				"touch": true
+			}
 		}
 	}
 }
