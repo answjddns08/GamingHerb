@@ -277,6 +277,28 @@ class MobileLogger {
     this.addLog("info", [`[Vue ${componentName}]`, data]);
   }
 
+  // Utility method to log Vue ref values
+  logRef(label, ref) {
+    const isRef = ref && typeof ref === "object" && ref.__v_isRef === true;
+    if (isRef) {
+      this.addLog("info", [`[Vue Ref] ${label}:`, ref.value]);
+    } else {
+      this.addLog("warn", [`[Vue Ref] ${label} is not a ref:`, ref]);
+    }
+  }
+
+  // Utility method to log multiple Vue refs at once
+  logRefs(refs) {
+    Object.entries(refs).forEach(([key, ref]) => {
+      this.logRef(key, ref);
+    });
+  }
+
+  // Utility method to log Vue reactive data
+  logReactive(label, reactive) {
+    this.addLog("info", [`[Vue Reactive] ${label}:`, reactive]);
+  }
+
   // Utility method to log API responses
   logApiResponse(url, response) {
     this.addLog("info", [`[API Response] ${url}:`, response]);
