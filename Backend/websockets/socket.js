@@ -9,6 +9,7 @@ import {
 	updateRoomStatus,
 } from "../utils/roomManage.js";
 import GomokuGame from "../games/gomoku.js";
+import ReversiGame from "../games/reversi.js";
 
 /** @typedef {import('../utils/roomManage').Room} Room */
 
@@ -92,13 +93,15 @@ function setupWebsocket(wss) {
 						});
 
 						// Check if all players are ready to start the game
-						const allReady = Array.from(room.players.values()).every((p) => p.isReady);
+						const allReady = Array.from(room.players.values()).every(
+							(p) => p.isReady
+						);
 						if (room.players.size >= 2 && allReady) {
 							const GameClass = gameLogicMap[gameId];
 							if (GameClass) {
 								const game = new GameClass();
 								setGameState(gameId, roomName, game);
-                                updateRoomStatus(gameId, roomName, 'active');
+								updateRoomStatus(gameId, roomName, "active");
 								broadCastToRoom(gameId, roomName, {
 									type: "gameStart",
 									payload: game.getState(),
@@ -140,7 +143,7 @@ function setupWebsocket(wss) {
 								type: "game:updateState",
 								payload: game.getState(),
 							});
-                            updateRoomStatus(gameId, roomName, 'waiting');
+							updateRoomStatus(gameId, roomName, "waiting");
 							break;
 						}
 						case "game:restart:request": {
@@ -149,27 +152,36 @@ function setupWebsocket(wss) {
 
 							// 요청자 ID 저장
 							room.restartRequest.requesterId = userId;
-							room.restartRequest.status = 'pending';
+							room.restartRequest.status = "pending";
 
 							// 상대방에게 재시작 요청 알림
-							const opponentPlayer = Array.from(room.players.values()).find(p => p.userId !== userId);
+							const opponentPlayer = Array.from(room.players.values()).find(
+								(p) => p.userId !== userId
+							);
 							if (opponentPlayer) {
-								opponentPlayer.ws.send(JSON.stringify({
-									type: "game:restart:requested",
-									payload: { requesterId: userId, requesterName: userName }
-								}));
+								opponentPlayer.ws.send(
+									JSON.stringify({
+										type: "game:restart:requested",
+										payload: { requesterId: userId, requesterName: userName },
+									})
+								);
 							}
 							break;
 						}
 						case "game:restart:accept": {
 							const room = getRoomDetails(gameId, roomName);
 							const game = getGameState(gameId, roomName);
-							if (!room || !game || room.restartRequest.status !== 'pending' || room.restartRequest.requesterId === userId) {
+							if (
+								!room ||
+								!game ||
+								room.restartRequest.status !== "pending" ||
+								room.restartRequest.requesterId === userId
+							) {
 								return; // 유효하지 않은 요청
 							}
 
 							game.reset();
-							room.restartRequest.status = 'none'; // 요청 상태 초기화
+							room.restartRequest.status = "none"; // 요청 상태 초기화
 
 							broadCastToRoom(gameId, roomName, {
 								type: "game:updateState",
@@ -177,60 +189,68 @@ function setupWebsocket(wss) {
 							});
 							broadCastToRoom(gameId, roomName, {
 								type: "game:restart:accepted",
-								payload: { accepterId: userId }
+								payload: { accepterId: userId },
 							});
 							break;
 						}
 						case "game:restart:decline": {
 							const room = getRoomDetails(gameId, roomName);
-							if (!room || room.restartRequest.status !== 'pending' || room.restartRequest.requesterId === userId) {
+							if (
+								!room ||
+								room.restartRequest.status !== "pending" ||
+								room.restartRequest.requesterId === userId
+							) {
 								return; // 유효하지 않은 요청
 							}
 
-							room.restartRequest.status = 'none'; // 요청 상태 초기화
+							room.restartRequest.status = "none"; // 요청 상태 초기화
 
 							broadCastToRoom(gameId, roomName, {
 								type: "game:restart:declined",
-								payload: { declinerId: userId }
+								payload: { declinerId: userId },
 							});
 							break;
 						}
-						case "chat:message": {
-          // ... existing chat logic ...
-							break;
-						}
-            case "player:loaded": {
-              const room = getRoomDetails(gameId, roomName);
-              const game = getGameState(gameId, roomName);
-              if (room && game) {
-                const players = Array.from(room.players.values()).map(p => ({ userId: p.userId, userName: p.userName }));
-                ws.send(JSON.stringify({
-                  type: "game:initialState",
-                  payload: {
-                    gameState: game.getState(),
-                    players: players
-                  }
-                }));
-              }
-              break;
-            }
-							broadCastToRoom(
-								gameId,
-								roomName,
-								{
-									type: "chat:message",
-									payload: {
-										userId,
-										userName,
-										text: action.payload.text,
-										timestamp: Date.now(),
-									},
-								},
-								ws // broadcast to others
-							);
+
+						case "player:loaded": {
+							const room = getRoomDetails(gameId, roomName);
+							const game = getGameState(gameId, roomName);
+							if (room && game) {
+								const players = Array.from(room.players.values()).map((p) => ({
+									userId: p.userId,
+									userName: p.userName,
+								}));
+								ws.send(
+									JSON.stringify({
+										type: "game:initialState",
+										payload: {
+											gameState: game.getState(),
+											players: players,
+										},
+									})
+								);
+							}
 							break;
 						}
 					}
+					break; // This break closes the inGame case
+				}
+
+				case "chat:message": {
+					broadCastToRoom(
+						gameId,
+						roomName,
+						{
+							type: "chat:message",
+							payload: {
+								userId,
+								userName,
+								text: action.payload.text,
+								timestamp: Date.now(),
+							},
+						},
+						ws // broadcast to others
+					);
 					break;
 				}
 
@@ -252,10 +272,4 @@ function setupWebsocket(wss) {
 	});
 }
 
-export default setupWebsocket; => {
-			console.error("WebSocket error:", error);
-		});
-	});
-}
-
-export default setupWebsocket; default setupWebsocket;
+export default setupWebsocket;
