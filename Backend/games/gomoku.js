@@ -103,4 +103,4 @@ class GomokuGame {
   }
 }
 
-module.exports = GomokuGame;
+export default GomokuGame;
