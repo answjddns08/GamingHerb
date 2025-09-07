@@ -154,6 +154,7 @@ onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
   align-items: center;
   justify-content: center;
   background-color: rgba(0, 0, 0, 0.4);
+  z-index: 100; /* 모든 요소보다 위에 표시 */
 }
 
 .modal-content {
@@ -163,5 +164,6 @@ onUnmounted(() => window.removeEventListener("keydown", handleKeydown));
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   min-width: 400px;
   position: relative;
+  z-index: 110; /* 모달 배경보다도 위에 표시 */
 }
 </style>
