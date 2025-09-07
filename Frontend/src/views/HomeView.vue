@@ -49,12 +49,18 @@
 </template>
 
 <script setup>
+/**
+ * @file HomeView.vue
+ * @description 메인 페이지 컴포넌트입니다.
+ *              플레이 가능한 전체 게임 목록을 보여줍니다.
+ */
 import { RouterLink } from "vue-router";
 import { onMounted, ref } from "vue";
 import { getAvailableGames } from "@/games/index.js";
 import userBoard from "../components/userBoard.vue";
 import SettingIcon from "../components/settingIcon.vue";
 
+/** @type {import('vue').Ref<Array<Object>>} 이용 가능한 게임 목록 */
 const games = ref([]);
 
 onMounted(() => {
