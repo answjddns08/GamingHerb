@@ -24,7 +24,7 @@ app.use(
 	cors({
 		origin: [
 			"https://gamingherb.redeyes.dev",
-			"http://localhost:5173",
+			"http://localhost:3454",
 			"https://redeyes.dev",
 			"https://code.redeyes.dev",
 		],
