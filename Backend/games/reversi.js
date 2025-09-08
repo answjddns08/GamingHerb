@@ -143,6 +143,144 @@ class ReversiGame {
 			},
 		};
 	}
+
+	/**
+	 * 게임 액션을 처리하는 중앙 메서드
+	 * @param {Object} action - 액션 객체 { type, payload }
+	 * @param {string} userId - 액션을 수행하는 사용자 ID
+	 * @param {Object} room - 방 정보 (플레이어 목록 등)
+	 * @returns {Object} - { success: boolean, response?: Object, shouldBroadcast?: boolean }
+	 */
+	handleAction(action, userId, room) {
+		const playerIds = Array.from(room.players.keys());
+		const playerIndex = playerIds.indexOf(userId);
+		const playerColor = playerIndex === 0 ? "black" : "white";
+
+		switch (action.type) {
+			case "game:move": {
+				const { row, col } = action.payload;
+				if (this.placeStone(row, col, playerColor)) {
+					return {
+						success: true,
+						response: {
+							type: "game:updateState",
+							payload: this.getState(),
+						},
+						shouldBroadcast: true,
+					};
+				}
+				return { success: false };
+			}
+
+			case "game:surrender": {
+				// 리버시에서는 항복이 상대방 승리로 처리
+				this.gameOver = true;
+				this.winner = playerColor === "black" ? "white" : "black";
+
+				return {
+					success: true,
+					response: {
+						type: "game:updateState",
+						payload: this.getState(),
+					},
+					shouldBroadcast: true,
+					shouldUpdateRoomStatus: "waiting",
+				};
+			}
+
+			case "game:restart:request": {
+				// 요청자 ID 저장
+				room.restartRequest.requesterId = userId;
+				room.restartRequest.status = "pending";
+
+				// 상대방 찾기
+				const opponentPlayer = Array.from(room.players.values()).find(
+					(p) => p.userId !== userId
+				);
+
+				return {
+					success: true,
+					response: {
+						type: "game:restart:requested",
+						payload: {
+							requesterId: userId,
+							requesterName: room.players.get(userId)?.username || "Unknown",
+						},
+					},
+					targetPlayer: opponentPlayer,
+				};
+			}
+
+			case "game:restart:accept": {
+				if (
+					room.restartRequest.status !== "pending" ||
+					room.restartRequest.requesterId === userId
+				) {
+					return { success: false };
+				}
+
+				this.reset();
+				room.restartRequest.status = "none";
+
+				return {
+					success: true,
+					responses: [
+						{
+							type: "game:updateState",
+							payload: this.getState(),
+						},
+						{
+							type: "game:restart:accepted",
+							payload: { accepterId: userId },
+						},
+					],
+					shouldBroadcast: true,
+				};
+			}
+
+			case "game:restart:decline": {
+				if (
+					room.restartRequest.status !== "pending" ||
+					room.restartRequest.requesterId === userId
+				) {
+					return { success: false };
+				}
+
+				room.restartRequest.status = "none";
+
+				return {
+					success: true,
+					response: {
+						type: "game:restart:declined",
+						payload: { declinerId: userId },
+					},
+					shouldBroadcast: true,
+				};
+			}
+
+			case "player:loaded": {
+				const players = Array.from(room.players.values()).map((p) => ({
+					userId: p.userId,
+					userName: p.username,
+				}));
+
+				return {
+					success: true,
+					response: {
+						type: "game:initialState",
+						payload: {
+							gameState: this.getState(),
+							players: players,
+						},
+					},
+					shouldBroadcast: false, // 요청한 플레이어에게만 전송
+				};
+			}
+
+			default:
+				return { success: false };
+		}
+	}
 }
 
 export default ReversiGame;

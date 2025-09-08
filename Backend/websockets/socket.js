@@ -15,7 +15,7 @@ import ReversiGame from "../games/reversi.js";
 
 // Maps game IDs to their corresponding game logic class
 const gameLogicMap = {
-	Gomoku: GomokuGame,
+	GomokuGame: GomokuGame,
 	Reversi: ReversiGame,
 	// Add other games here in the future
 	// Chess: ChessGame,
@@ -40,17 +40,44 @@ function setupWebsocket(wss) {
 				return;
 			}
 
-			const { gameId, roomName, userId, userName, action } = data;
+			// 안전하게 속성 추출 (undefined 방지)
+			const { gameId, roomName, userId, userName, action, type } = data || {};
 
-			switch (data.type) {
+			// 필수 속성 검증
+			if (!type) {
+				console.error("Message type is required");
+				return;
+			}
+
+			switch (type) {
 				case "join": {
+					// join 메시지에 필요한 속성 검증
+					if (!gameId || !roomName || !userId || !userName) {
+						console.error("Join message missing required properties:", {
+							gameId,
+							roomName,
+							userId,
+							userName,
+						});
+						ws.send(
+							JSON.stringify({
+								type: "error",
+								message: "Join message missing required properties",
+							})
+						);
+						return;
+					}
+
 					// 재연결인지 확인 (같은 userId가 이미 있는지)
 					const room = getRoomDetails(gameId, roomName);
+					let isReconnecting = false;
+
 					if (room && room.players.has(userId)) {
 						// 재연결: WebSocket만 업데이트
 						const existingPlayer = room.players.get(userId);
 						existingPlayer.ws = ws;
 						existingPlayer.disconnected = false;
+						isReconnecting = true;
 
 						// 재연결 타이머가 있다면 취소
 						if (existingPlayer.disconnectTimer) {
@@ -60,7 +87,7 @@ function setupWebsocket(wss) {
 
 						console.log(`Player ${userId} reconnected to room ${roomName}`);
 
-						// 재연결 알림
+						// 재연결 알림 (자신 제외)
 						broadCastToRoom(
 							gameId,
 							roomName,
@@ -73,23 +100,34 @@ function setupWebsocket(wss) {
 						);
 					} else {
 						// 새로운 연결
-						joinRoom(gameId, roomName, userId, userName, ws);
+						const joinResult = joinRoom(gameId, roomName, userId, userName, ws);
+						if (!joinResult) {
+							ws.send(
+								JSON.stringify({
+									type: "error",
+									message: "Failed to join room",
+								})
+							);
+							return;
+						}
 					}
 
 					const updatedRoom = getRoomDetails(gameId, roomName);
 					if (!updatedRoom) {
-						ws.send(JSON.stringify({ error: "Room not found" }));
+						ws.send(
+							JSON.stringify({ type: "error", message: "Room not found" })
+						);
 						return;
 					}
 
-					// Send initial room details to the joining player
+					// Send initial room details to the joining/reconnecting player
 					ws.send(
 						JSON.stringify({
 							type: "initialize",
 							settings: updatedRoom.settings,
 							players: Array.from(updatedRoom.players.values()).map((p) => ({
 								userId: p.userId,
-								userName: p.userName,
+								userName: p.username,
 								isReady: p.isReady,
 								disconnected: p.disconnected || false,
 							})),
@@ -98,13 +136,13 @@ function setupWebsocket(wss) {
 					);
 
 					// 새 연결인 경우에만 다른 플레이어들에게 알림
-					if (!room || !room.players.has(userId)) {
+					if (!isReconnecting) {
 						broadCastToRoom(
 							gameId,
 							roomName,
 							{
 								type: "playerJoined",
-								player: { userId, userName, isReady: false },
+								player: { userId: userId, userName: userName, isReady: false },
 							},
 							ws
 						);
@@ -113,6 +151,17 @@ function setupWebsocket(wss) {
 				}
 
 				case "waiting": {
+					// waiting 메시지에 필요한 속성 검증
+					if (!gameId || !roomName || !userId || !action) {
+						console.error("Waiting message missing required properties:", {
+							gameId,
+							roomName,
+							userId,
+							action,
+						});
+						return;
+					}
+
 					const room = getRoomDetails(gameId, roomName);
 					if (!room) return;
 
@@ -125,21 +174,57 @@ function setupWebsocket(wss) {
 							type: "playerReadyState",
 							payload: { userId, isReady: player.isReady },
 						});
+						// Ready 상태만 브로드캐스트하고 자동 게임 시작은 제거
+						// 호스트만 게임을 시작할 수 있도록 함
+					} else if (action.type === "chat") {
+						// 대기방 채팅 처리
+						if (action.payload?.text) {
+							broadCastToRoom(
+								gameId,
+								roomName,
+								{
+									type: "waitingChat",
+									payload: {
+										userId,
+										userName,
+										text: action.payload.text,
+										timestamp: Date.now(),
+									},
+								},
+								ws
+							);
+						}
+					} else if (action.type === "kickUser") {
+						// 호스트만 플레이어를 강퇴할 수 있음
+						if (userId === room.hostId && action.payload?.targetUserId) {
+							const targetUserId = action.payload.targetUserId;
+							const targetPlayer = room.players.get(targetUserId);
 
-						// Check if all players are ready to start the game
-						const allReady = Array.from(room.players.values()).every(
-							(p) => p.isReady
-						);
-						if (room.players.size >= 2 && allReady) {
-							const GameClass = gameLogicMap[gameId];
-							if (GameClass) {
-								const game = new GameClass();
-								setGameState(gameId, roomName, game);
-								updateRoomStatus(gameId, roomName, "active");
+							if (targetPlayer && targetUserId !== room.hostId) {
+								// 강퇴당한 플레이어에게 알림
+								try {
+									targetPlayer.ws.send(
+										JSON.stringify({
+											type: "playerKicked",
+											playerId: targetUserId,
+										})
+									);
+								} catch (error) {
+									console.error("Failed to notify kicked player:", error);
+								}
+
+								// 방에서 플레이어 제거
+								room.players.delete(targetUserId);
+
+								// 다른 플레이어들에게 알림
 								broadCastToRoom(gameId, roomName, {
-									type: "gameStart",
-									payload: game.getState(),
+									type: "playerKicked",
+									playerId: targetUserId,
 								});
+
+								console.log(
+									`Player ${targetUserId} was kicked from room ${roomName} by host ${userId}`
+								);
 							}
 						}
 					} else if (action.type === "startGame") {
@@ -168,149 +253,128 @@ function setupWebsocket(wss) {
 				}
 
 				case "inGame": {
+					// inGame 메시지에 필요한 속성 검증
+					if (!gameId || !roomName || !userId || !action) {
+						console.error("InGame message missing required properties:", {
+							gameId,
+							roomName,
+							userId,
+							action,
+						});
+						return;
+					}
+
 					const room = getRoomDetails(gameId, roomName);
 					const game = getGameState(gameId, roomName);
 					if (!room || !game) return;
 
-					switch (action.type) {
-						case "game:move": {
-							const { row, col } = action.payload;
-							// Determine player color by their join order (1st is black)
-							const playerIds = Array.from(room.players.keys());
-							const playerIndex = playerIds.indexOf(userId);
-							const playerColor = playerIndex === 0 ? "black" : "white";
-
-							if (game.placeStone(row, col, playerColor)) {
-								broadCastToRoom(gameId, roomName, {
-									type: "game:updateState",
-									payload: game.getState(),
-								});
-							}
-							break;
-						}
-						case "game:surrender": {
-							const playerIds = Array.from(room.players.keys());
-							const playerIndex = playerIds.indexOf(userId);
-							const playerColor = playerIndex === 0 ? "black" : "white";
-
-							game.surrender(playerColor);
-							broadCastToRoom(gameId, roomName, {
-								type: "game:updateState",
-								payload: game.getState(),
-							});
-							updateRoomStatus(gameId, roomName, "waiting");
-							break;
-						}
-						case "game:restart:request": {
-							const room = getRoomDetails(gameId, roomName);
-							if (!room) return;
-
-							// 요청자 ID 저장
-							room.restartRequest.requesterId = userId;
-							room.restartRequest.status = "pending";
-
-							// 상대방에게 재시작 요청 알림
-							const opponentPlayer = Array.from(room.players.values()).find(
-								(p) => p.userId !== userId
+					// 채팅 메시지 처리
+					if (action.type === "chat:message") {
+						if (action.payload?.text) {
+							broadCastToRoom(
+								gameId,
+								roomName,
+								{
+									type: "chat:message",
+									payload: {
+										userId,
+										userName,
+										text: action.payload.text,
+										timestamp: Date.now(),
+									},
+								},
+								ws
 							);
-							if (opponentPlayer) {
-								opponentPlayer.ws.send(
-									JSON.stringify({
-										type: "game:restart:requested",
-										payload: { requesterId: userId, requesterName: userName },
-									})
+						}
+						break;
+					}
+
+					// 게임 클래스의 handleAction 메서드를 호출
+					const result = game.handleAction(action, userId, room);
+
+					if (result.success) {
+						// 방 상태 업데이트가 필요한 경우
+						if (result.shouldUpdateRoomStatus) {
+							updateRoomStatus(gameId, roomName, result.shouldUpdateRoomStatus);
+						}
+
+						// 특정 플레이어에게만 전송하는 경우
+						if (result.targetPlayer && result.response) {
+							try {
+								result.targetPlayer.ws.send(JSON.stringify(result.response));
+							} catch (error) {
+								console.error(
+									"Failed to send message to target player:",
+									error
 								);
 							}
-							break;
 						}
-						case "game:restart:accept": {
-							const room = getRoomDetails(gameId, roomName);
-							const game = getGameState(gameId, roomName);
-							if (
-								!room ||
-								!game ||
-								room.restartRequest.status !== "pending" ||
-								room.restartRequest.requesterId === userId
-							) {
-								return; // 유효하지 않은 요청
-							}
-
-							game.reset();
-							room.restartRequest.status = "none"; // 요청 상태 초기화
-
-							broadCastToRoom(gameId, roomName, {
-								type: "game:updateState",
-								payload: game.getState(),
-							});
-							broadCastToRoom(gameId, roomName, {
-								type: "game:restart:accepted",
-								payload: { accepterId: userId },
-							});
-							break;
+						// 요청한 플레이어에게만 전송하는 경우
+						else if (!result.shouldBroadcast && result.response) {
+							ws.send(JSON.stringify(result.response));
 						}
-						case "game:restart:decline": {
-							const room = getRoomDetails(gameId, roomName);
-							if (
-								!room ||
-								room.restartRequest.status !== "pending" ||
-								room.restartRequest.requesterId === userId
-							) {
-								return; // 유효하지 않은 요청
+						// 모든 플레이어에게 브로드캐스트하는 경우
+						else if (result.shouldBroadcast) {
+							if (result.responses) {
+								// 여러 응답이 있는 경우
+								result.responses.forEach((response) => {
+									broadCastToRoom(gameId, roomName, response);
+								});
+							} else if (result.response) {
+								// 단일 응답인 경우
+								broadCastToRoom(gameId, roomName, result.response);
 							}
-
-							room.restartRequest.status = "none"; // 요청 상태 초기화
-
-							broadCastToRoom(gameId, roomName, {
-								type: "game:restart:declined",
-								payload: { declinerId: userId },
-							});
-							break;
-						}
-
-						case "player:loaded": {
-							const room = getRoomDetails(gameId, roomName);
-							const game = getGameState(gameId, roomName);
-							if (room && game) {
-								const players = Array.from(room.players.values()).map((p) => ({
-									userId: p.userId,
-									userName: p.userName,
-								}));
-								ws.send(
-									JSON.stringify({
-										type: "game:initialState",
-										payload: {
-											gameState: game.getState(),
-											players: players,
-										},
-									})
-								);
-							}
-							break;
 						}
 					}
-					break; // This break closes the inGame case
-				}
-
-				case "chat:message": {
-					broadCastToRoom(
-						gameId,
-						roomName,
-						{
-							type: "chat:message",
-							payload: {
-								userId,
-								userName,
-								text: action.payload.text,
-								timestamp: Date.now(),
-							},
-						},
-						ws // broadcast to others
-					);
 					break;
 				}
 
 				case "leave": {
-					// Handle leave logic
+					// 의도적으로 나가는 경우 - 유예 기간 없이 즉시 제거
+					const playerInfo = findPlayerByWs(ws);
+					if (playerInfo) {
+						const {
+							userId,
+							gameId: playerGameId,
+							roomName: playerRoomName,
+							room,
+						} = playerInfo;
+
+						// 재연결 타이머가 있다면 취소
+						const player = room.players.get(userId);
+						if (player && player.disconnectTimer) {
+							clearTimeout(player.disconnectTimer);
+						}
+
+						// 플레이어 즉시 제거
+						room.players.delete(userId);
+
+						// 다른 플레이어들에게 알림
+						broadCastToRoom(playerGameId, playerRoomName, {
+							type: "playerLeft",
+							playerId: userId,
+							playerName: player?.username || "Unknown",
+							reason: "intentional",
+						});
+
+						// 방이 비었거나 호스트가 나간 경우 방 삭제
+						if (room.players.size === 0 || room.hostId === userId) {
+							if (room.players.size > 0) {
+								broadCastToRoom(playerGameId, playerRoomName, {
+									type: "roomDeleted",
+									reason: "Host left",
+								});
+							}
+							deleteRoom(playerGameId, playerRoomName);
+							console.log(
+								`Room ${playerRoomName} deleted - host left intentionally`
+							);
+						}
+
+						console.log(
+							`Player ${userId} left room ${playerRoomName} intentionally`
+						);
+					}
 					break;
 				}
 			}
@@ -356,7 +420,7 @@ function handlePlayerDisconnectWithGrace(ws) {
 			broadCastToRoom(gameId, roomName, {
 				type: "playerDisconnected",
 				playerId: userId,
-				playerName: player.userName,
+				playerName: player.username,
 				isTemporary: true, // 임시 연결 해제임을 표시
 			});
 
@@ -373,7 +437,7 @@ function handlePlayerDisconnectWithGrace(ws) {
 				broadCastToRoom(gameId, roomName, {
 					type: "playerLeft",
 					playerId: userId,
-					playerName: player.userName,
+					playerName: player.username,
 					reason: "timeout",
 				});
 
@@ -394,7 +458,7 @@ function handlePlayerDisconnectWithGrace(ws) {
 					broadCastToRoom(gameId, roomName, {
 						type: "gameInterrupted",
 						reason: "playerDisconnected",
-						disconnectedPlayer: player.userName,
+						disconnectedPlayer: player.username,
 					});
 					updateRoomStatus(gameId, roomName, "interrupted");
 				}
