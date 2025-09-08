@@ -42,7 +42,9 @@ function createRoom(req, res) {
 		});
 	} catch (error) {
 		console.error("Error creating room:", error);
-		res.status(500).json({ message: "Failed to create room", error: error.message });
+		res
+			.status(500)
+			.json({ message: "Failed to create room", error: error.message });
 	}
 }
 
@@ -52,9 +54,20 @@ function createRoom(req, res) {
  */
 function listRooms(req, res) {
 	const { gameId } = req.params;
+	const rooms = getRoomsForGame(gameId);
+
+	// Map 객체를 일반 객체로 변환
+	const roomsWithSerializablePlayers = {};
+
+	for (const [roomName, room] of Object.entries(rooms)) {
+		roomsWithSerializablePlayers[roomName] = {
+			...room,
+			players: Object.fromEntries(room.players), // Map을 일반 객체로 변환
+		};
+	}
 
 	res.status(200).json({
-		rooms: getRoomsForGame(gameId),
+		rooms: roomsWithSerializablePlayers,
 	});
 }
 
