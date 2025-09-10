@@ -58,41 +58,56 @@
 </template>
 
 <script setup>
+/**
+ * @file MakeRoom.vue
+ * @description 새로운 게임 방을 생성하는 페이지 컴포넌트입니다.
+ *              게임 설명 표시, 방 이름 및 게임별 세부 설정 기능을 제공합니다.
+ */
 import { onMounted, ref } from "vue";
 import { useRoute, RouterLink, useRouter } from "vue-router";
 import { getGameDescription, getGameSettings } from "@/games/index.js";
 import { useUserStore } from "../stores/user.js";
 
+/**
+ * @todo
+ * - 게임별 설정 UI 개선 (예: 드롭다운, 체크박스 등)
+ * - 방 이름 중복 체크
+ */
+
 const route = useRoute();
-
 const router = useRouter();
-
 const userStore = useUserStore();
 
+/** @type {import('vue').Ref<String>} 사용자에게 표시될 알림 메시지 */
 const alarm = ref("");
-
+/** @type {import('vue').Ref<String|null>} 현재 게임의 ID */
 const gameId = ref(null);
-
+/** @type {import('vue').Ref<Object|null>} 현재 게임의 설정 객체 */
 const gameSetting = ref(null);
-
+/** @type {import('vue').Ref<String>} 현재 게임의 설명을 담는 HTML 문자열 */
 const gameDes = ref("");
-
+/** @type {import('vue').Ref<String>} 생성할 방의 이름 */
 const roomName = ref("");
 
 onMounted(async () => {
   gameId.value = route.params.gameId;
 
-  // games/index.js의 getGameSettings 함수 사용
   try {
+    // games/index.js의 getGameSettings 함수 사용
     gameSetting.value = await getGameSettings(route.params.gameId);
+    // games/index.js의 getGameDescription 함수 사용
+    gameDes.value = await getGameDescription(route.params.gameId);
   } catch (error) {
-    console.error("게임 설정 로드 실패:", error);
-    alarm.value = "게임 설정을 로드할 수 없습니다." + error;
+    console.error("게임 데이터 로드 실패:", error);
+    alarm.value = "게임 데이터를 불러오는 중 오류가 발생했습니다.";
   }
-
-  gameDes.value = await getGameDescription(route.params.gameId);
 });
 
+/**
+ * 'Start Game' 버튼 클릭 시 호출됩니다.
+ * 입력된 정보로 새로운 게임 방 생성을 서버에 요청하고,
+ * 성공 시 대기방으로 이동합니다.
+ */
 async function StartGame() {
   alarm.value = ""; // 초기화
 
@@ -101,40 +116,44 @@ async function StartGame() {
     return;
   }
 
-  const response = await fetch(`${import.meta.env.BASE_URL}api/rooms/create?gameId=${gameId.value}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      host: userStore.name,
-      hostId: userStore.id, // for checking host in waiting room
-      status: "Waiting for players",
-      settings: gameSetting.value.settings,
-      roomName: roomName.value,
-      maxPlayerCount: gameSetting.value.maxPlayers,
-    }),
-  });
+  try {
+    const response = await fetch(
+      `${import.meta.env.BASE_URL}api/rooms/create?gameId=${gameId.value}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          host: userStore.name,
+          hostId: userStore.id, // for checking host in waiting room
+          status: "Waiting for players",
+          settings: gameSetting.value.settings,
+          roomName: roomName.value,
+          maxPlayerCount: gameSetting.value.maxPlayers,
+        }),
+      },
+    );
 
-  if (!response.ok) {
-    console.error("게임 시작 실패:", response);
-    return;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error("게임 방 생성 실패:", response.status, errorData);
+      alarm.value = `방 생성에 실패했습니다: ${errorData.message || response.statusText}`;
+      return;
+    }
+
+    const data = await response.json();
+    console.log("게임 방 생성 성공:", data);
+    alarm.value = "게임 방이 생성되었습니다.";
+
+    router.push({
+      name: "waiting-room",
+      params: { gameId: gameId.value, roomId: roomName.value },
+    });
+  } catch (error) {
+    console.error("방 생성 요청 중 예외 발생:", error);
+    alarm.value = "서버와 통신 중 오류가 발생했습니다.";
   }
-
-  const data = await response.json();
-  console.log("게임 시작 성공:", data);
-
-  alarm.value = "게임 방이 생성되었습니다.";
-
-  console.log("게임 방으로 이동:", data.roomName, gameId.value);
-
-  router.push({
-    name: "waiting-room",
-    params: { gameId: gameId.value, roomId: roomName.value },
-  });
-
-  // 예: 게임 방으로 이동
-  // router.push({ name: 'game-room', params: { gameId: game.value.id } });
 }
 </script>
 
