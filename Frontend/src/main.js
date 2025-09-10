@@ -8,7 +8,9 @@ import router from "./router";
 import { useUserStore } from "./stores/user";
 
 // Import mobile logger for debugging on mobile devices
-import { mobileLogger } from "./utils/mobileLogger";
+//import { mobileLogger } from "./utils/mobileLogger";
+
+import eruda from "eruda";
 
 const app = createApp(App);
 const pinia = createPinia();
@@ -21,12 +23,10 @@ app.use(router);
 async function initializeApp() {
   const userStore = useUserStore();
   await userStore.initializeUser();
-  
 
-  // Initialize mobile logger for development
-  console.log("Mobile logger initialized for debugging");
+  eruda.init();
 
-  mobileLogger.show(); // Show the logger by default for easier access during development
+  //mobileLogger.show(); // Show the logger by default for easier access during development
 
   app.mount("#app");
 }
