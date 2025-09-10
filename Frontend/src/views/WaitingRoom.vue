@@ -3,6 +3,7 @@
     <div class="waiting-content">
       <h1>Waiting Room</h1>
       <p>Please wait for other players to get ready...</p>
+      <p>Next time, this room will have the mini game soon</p>
     </div>
   </main>
   <div class="player-card">
@@ -21,12 +22,12 @@
       :class="{ 'opacity-50': player.disconnected }"
     >
       <div class="flex items-center gap-2">
-        <p>{{ player.username }}{{ player.disconnected ? " (연결 끊김)" : "" }}</p>
+        <p>{{ player.userName }}{{ player.disconnected ? " (연결 끊김)" : "" }}</p>
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 640 640"
           style="height: 1.5rem; fill: gold"
-          v-if="player.userId === gameSetting.hostId"
+          v-if="player.userId === gameSetting?.hostId"
         >
           <!-- host icon -->
           <path
@@ -46,7 +47,7 @@
         </svg>
       </div>
       <button
-        v-if="player.userId !== userStore.id && userStore.id === gameSetting.hostId"
+        v-if="player.userId !== userStore.id && userStore.id === gameSetting?.hostId"
         @click="kickUser(player.userId)"
         class="kick-btn"
       >
@@ -83,10 +84,22 @@
 </template>
 
 <script setup>
+/**
+ * @file WaitingRoom.vue
+ * @description 게임 시작 전 플레이어들이 대기하는 방 컴포넌트입니다.
+ *              플레이어 목록, 준비 상태, 호스트의 게임 시작 기능을 관리하고
+ *              WebSocket을 통해 실시간으로 상태를 동기화합니다.
+ */
 import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user.js";
 import { useSocketStore } from "@/stores/socket.js";
+
+/**
+ * @todo 대기방에서 간단한 2D 멀티플레이 게임 + 채팅창 추가
+ * @todo 플레이어 참가 시 웹소켓으로 연동안되는 문제 해결
+ * 나머지 웹소켓 연결도 확인해봐야 함
+ */
 
 const userStore = useUserStore();
 const socketStore = useSocketStore();
@@ -97,13 +110,25 @@ const props = defineProps({
   roomId: { type: String, required: true },
 });
 
+/** @type {import('vue').Ref<Object|null>} 게임 설정 객체 (최대 플레이어 수, 호스트 ID 등) */
 const gameSetting = ref(null);
+/** @type {import('vue').Ref<Map<String, Object>>} 플레이어 목록을 담는 Map 객체 (key: userId) */
 const players = ref(new Map());
+/** @type {import('vue').ComputedRef<Object[]>} players Map을 배열로 변환한 계산된 속성 */
 const playerList = computed(() => Array.from(players.value.values()));
+/** @type {import('vue').Ref<Boolean>} 현재 유저의 준비 상태 */
 const isReady = ref(false);
+/** @type {Boolean} 컴포넌트를 떠나는 중인지 여부 (중복된 소켓 메시지 방지) */
 let isLeaving = false; // 네비게이션 가드로 인한 중복 실행 방지
 
 // --- WebSocket Actions ---
+
+/**
+ * WebSocket 메시지를 서버로 전송합니다.
+ * @param {String} type - 메시지 타입 (e.g., 'waiting', 'game')
+ * @param {Object} action - 수행할 액션 정보 (e.g., { type: 'setReady' })
+ * @param {Object} [payload={}] - 추가 데이터
+ */
 function send(type, action, payload = {}) {
   socketStore.sendMessage(type, {
     gameId: props.gameId,
@@ -113,8 +138,24 @@ function send(type, action, payload = {}) {
     action,
     ...payload,
   });
+
+  console.log(
+    "Sent message:",
+    type,
+    action,
+    payload,
+    props.gameId,
+    props.roomId,
+    userStore.id,
+    userStore.name,
+  );
 }
 
+/**
+ * '준비' 또는 '게임 시작' 액션을 처리합니다.
+ * 호스트는 모든 플레이어가 준비되면 게임을 시작할 수 있습니다.
+ * 일반 플레이어는 자신의 준비 상태를 토글합니다.
+ */
 const ReadyGame = () => {
   // 호스트라면 게임 시작 시도
   if (userStore.id === gameSetting.value?.hostId) {
@@ -132,65 +173,152 @@ const ReadyGame = () => {
   }
 };
 
+/**
+ * 호스트가 특정 유저를 강퇴합니다.
+ * @param {String} targetUserId - 강퇴할 유저의 ID
+ */
 const kickUser = (targetUserId) => {
   send("waiting", { type: "kickUser", payload: { targetUserId } });
 };
 
+/**
+ * '뒤로 가기' 버튼 클릭 시 게임방 목록으로 이동합니다.
+ */
 const goBack = () => {
   isLeaving = true;
-  router.push({ name: "game-rooms", params: { gameId: props.gameId } });
+  // 의도적으로 나가는 경우 서버에 알림
+  send("leave");
+  // 약간의 지연 후 페이지 이동 (메시지 전송 보장)
+  setTimeout(() => {
+    router.push({ name: "game-rooms", params: { gameId: props.gameId } });
+  }, 100);
 };
 
 // --- WebSocket Handlers ---
+
+/**
+ * WebSocket 이벤트 핸들러들을 설정합니다.
+ */
 const setupSocketHandlers = () => {
+  /**
+   * 방 초기화 정보를 수신하여 상태를 설정합니다.
+   * @param {Object} data - { settings, hostId, players }
+   */
   socketStore.registerHandler("initialize", (data) => {
-    gameSetting.value = { ...data.settings, hostId: data.hostId };
-    const playerMap = new Map(data.players.map((p) => [p.userId, p]));
-    players.value = playerMap;
+    console.log("initialize handler received:", data);
+    if (data && data.settings && data.hostId && data.players) {
+      gameSetting.value = { ...data.settings, hostId: data.hostId };
+      const playerMap = new Map(data.players.map((p) => [p.userId, p]));
+      players.value = playerMap;
+    } else {
+      console.error("Invalid initialize data structure:", data);
+    }
   });
 
+  /**
+   * 새로운 플레이어 참가 시 목록에 추가합니다.
+   * @param {Object} data - { player }
+   */
   socketStore.registerHandler("playerJoined", (data) => {
-    players.value.set(data.player.userId, data.player);
+    console.log("playerJoined handler received:", data);
+    if (data && data.player && data.player.userId) {
+      if (!players.value.has(data.player.userId)) {
+        players.value.set(data.player.userId, data.player);
+        console.log(`새로운 플레이어 참가: ${data.player.userName}`);
+      }
+    } else {
+      console.error("Invalid playerJoined data structure:", data);
+    }
   });
 
+  /**
+   * 플레이어 퇴장 시 목록에서 제거합니다.
+   * @param {Object} data - { playerId }
+   */
   socketStore.registerHandler("playerLeft", (data) => {
+    const removedPlayer = players.value.get(data.playerId);
     players.value.delete(data.playerId);
+    if (removedPlayer) {
+      console.log(`플레이어 퇴장: ${removedPlayer.userName} (${data.reason || "unknown"})`);
+    }
   });
 
-  // 플레이어 일시 연결 해제 처리
+  /**
+   * 플레이어의 일시적인 연결 끊김을 처리합니다.
+   * @param {Object} data - { playerId, isTemporary, playerName }
+   */
   socketStore.registerHandler("playerDisconnected", (data) => {
     const player = players.value.get(data.playerId);
     if (player) {
       player.disconnected = true;
-      if (data.isTemporary) {
-        // 임시 연결 해제 - UI에서 표시만 변경
-        console.log(`${data.playerName} temporarily disconnected`);
-      }
+      console.log(`${data.playerName} 연결 끊김 (임시: ${data.isTemporary})`);
     }
   });
 
-  // 플레이어 재연결 처리
+  /**
+   * 플레이어 재연결을 처리합니다.
+   * @param {Object} data - { playerId, playerName }
+   */
   socketStore.registerHandler("playerReconnected", (data) => {
     const player = players.value.get(data.playerId);
     if (player) {
       player.disconnected = false;
-      console.log(`${data.playerName} reconnected`);
+      console.log(`${data.playerName} 재연결됨`);
     }
   });
 
+  /**
+   * 플레이어의 준비 상태 변경을 처리합니다.
+   * @param {Object} data - { userId, isReady } or { payload: { userId, isReady } }
+   */
   socketStore.registerHandler("playerReadyState", (data) => {
-    const player = players.value.get(data.payload.userId);
-    if (player) player.isReady = data.payload.isReady;
+    console.log("playerReadyState handler received:", data);
+
+    // 데이터 구조 검증 - payload가 있는 경우와 직접 오는 경우 모두 처리
+    let userId, isReady;
+
+    if (data?.payload?.userId) {
+      // payload 래퍼가 있는 경우
+      userId = data.payload.userId;
+      isReady = data.payload.isReady;
+    } else if (data?.userId) {
+      // 직접 오는 경우
+      userId = data.userId;
+      isReady = data.isReady;
+    } else {
+      console.error("Invalid playerReadyState data structure:", data);
+      return;
+    }
+
+    const player = players.value.get(userId);
+    if (player) {
+      player.isReady = isReady;
+      console.log(`Player ${userId} ready state changed to:`, isReady);
+    } else {
+      console.warn(`Player not found for userId: ${userId}`);
+    }
   });
 
+  /**
+   * 플레이어 강퇴를 처리합니다.
+   * @param {Object} data - { playerId }
+   */
   socketStore.registerHandler("playerKicked", (data) => {
+    const kickedPlayer = players.value.get(data.playerId);
     players.value.delete(data.playerId);
+
     if (data.playerId === userStore.id) {
       isLeaving = true;
+      alert("방에서 강퇴당했습니다.");
       router.push({ name: "game-rooms", params: { gameId: props.gameId } });
+    } else if (kickedPlayer) {
+      console.log(`${kickedPlayer.userName}이(가) 강퇴되었습니다.`);
     }
   });
 
+  /**
+   * 게임 시작 신호를 받으면 인게임 화면으로 이동합니다.
+   */
   socketStore.registerHandler("gameStart", () => {
     isLeaving = true; // 게임 시작은 정상적인 이탈로 간주
     router.push({
@@ -199,6 +327,10 @@ const setupSocketHandlers = () => {
     });
   });
 
+  /**
+   * 방 삭제 신호를 처리합니다.
+   * @param {Object} data - { reason }
+   */
   socketStore.registerHandler("roomDeleted", (data) => {
     const reason = data?.reason || "unknown";
     if (reason === "Host disconnected") {
@@ -210,14 +342,19 @@ const setupSocketHandlers = () => {
     router.push({ name: "game-rooms", params: { gameId: props.gameId } });
   });
 
-  // 연결 끊김 처리
+  /**
+   * 소켓 연결 실패 시 처리합니다.
+   */
   socketStore.registerHandler("connectionFailed", () => {
     alert("서버와의 연결이 끊어졌습니다. 게임 로비로 돌아갑니다.");
     isLeaving = true;
     router.push({ name: "game-rooms", params: { gameId: props.gameId } });
   });
 
-  // 에러 메시지 처리
+  /**
+   * 서버로부터 에러 메시지를 수신합니다.
+   * @param {Object} data - { message }
+   */
   socketStore.registerHandler("error", (data) => {
     console.error("Server error:", data);
     if (data.message?.includes("Room not found")) {
@@ -228,35 +365,69 @@ const setupSocketHandlers = () => {
   });
 };
 
+/**
+ * 등록된 모든 WebSocket 이벤트 핸들러를 정리합니다.
+ */
 const cleanupSocketHandlers = () => {
-  Object.keys(socketStore.messageHandlers.value).forEach((type) => {
+  const waitingRoomHandlers = [
+    "initialize",
+    "playerJoined",
+    "playerLeft",
+    "playerDisconnected",
+    "playerReconnected",
+    "playerReadyState",
+    "playerKicked",
+    "gameStart",
+    "roomDeleted",
+    "connectionFailed",
+    "error",
+  ];
+
+  waitingRoomHandlers.forEach((type) => {
     socketStore.unregisterHandler(type);
   });
 };
 
 onMounted(() => {
   isLeaving = false;
+
+  // 소켓 핸들러를 먼저 설정
+  setupSocketHandlers();
+
   // 소켓이 연결되어 있지 않으면 연결 시도
   if (!socketStore.socket || socketStore.socket.readyState !== WebSocket.OPEN) {
     socketStore.connect(`wss://gamingherb.redeyes.dev/api`);
-    socketStore.socket.value.onopen = () => {
-      console.log("소켓 연결 성공. 방에 참여합니다.");
-      setupSocketHandlers();
-      send("join");
+    // 연결이 완료될 때까지 잠시 기다린 후 join 메시지 전송
+    const checkConnection = () => {
+      if (socketStore.socket && socketStore.socket.readyState === WebSocket.OPEN) {
+        console.log("소켓 연결 성공. 방에 참여합니다.");
+        send("join");
+      } else {
+        setTimeout(checkConnection, 100); // 100ms 후 다시 확인
+      }
     };
+    checkConnection();
   } else {
-    // 이미 연결되어 있다면 핸들러만 설정하고 join 메시지 전송
-    setupSocketHandlers();
+    // 이미 연결되어 있다면 즉시 join 메시지 전송
     send("join");
   }
 });
 
 onUnmounted(() => {
   cleanupSocketHandlers();
+  // 의도적으로 컴포넌트를 떠날 때 (예: 뒤로가기) 소켓에 알림
   if (isLeaving) {
-    // 게임 시작이 아닌, 의도된 이탈 시에만 연결 종료
+    // 게임 시작으로 인한 이동이 아닌 경우에만 leave 메시지 전송
     if (router.currentRoute.value.name !== "in-game") {
-      socketStore.disconnect();
+      try {
+        send("leave");
+      } catch (error) {
+        console.log("Leave message send failed:", error);
+      }
+      // 잠시 후 소켓 연결 해제
+      setTimeout(() => {
+        socketStore.disconnect();
+      }, 100);
     }
   }
 });

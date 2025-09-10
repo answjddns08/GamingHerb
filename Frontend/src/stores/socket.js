@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { defineStore } from "pinia";
 
 export const useSocketStore = defineStore("socket", () => {
@@ -108,10 +108,12 @@ export const useSocketStore = defineStore("socket", () => {
   return {
     socket,
     isReconnecting,
+    messageHandlers,
     connect,
     sendMessage,
     registerHandler,
     unregisterHandler,
     disconnect,
+    isConnected: computed(() => socket.value?.readyState === WebSocket.OPEN),
   };
 });
