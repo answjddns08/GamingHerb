@@ -34,11 +34,10 @@ const router = createRouter({
       props: true,
     },
     {
-      // 게임 프론트 개발 & 테스트용 라우트(임시)
-      path: "/gameTest",
-      name: "game-test",
-      component: () => import("../games/GomokuGame/GomokuGame.vue"),
-      props: true,
+      // UI 테스트용 라우트 (웹소켓 없이)
+      path: "/uiTest",
+      name: "ui-test",
+      component: () => import("../views/GomokuUITest.vue"),
     },
   ],
 });
