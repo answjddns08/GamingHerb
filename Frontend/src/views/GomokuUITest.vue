@@ -17,9 +17,10 @@
         :class="{ active: gameState.currentPlayer !== myColor && !gameState.gameOver }"
       ></div>
       <div class="flex flex-col gap-3 flex-1">
-        <div class="bg-gray-300 rounded-lg w-auto h-2"></div>
+        <progress class="time-bar" max="100" value="50" min="0"></progress>
         <div class="flex justify-between">
           <span>상대방</span>
+          <span>1:20</span>
         </div>
       </div>
     </div>
@@ -55,9 +56,10 @@
         :class="{ active: gameState.currentPlayer === myColor && !gameState.gameOver }"
       ></div>
       <div class="flex flex-col gap-3 flex-1">
-        <div class="bg-gray-300 rounded-lg w-auto h-2"></div>
+        <progress class="time-bar" max="100" value="75" min="0"></progress>
         <div class="flex justify-between">
           <span>나</span>
+          <span>1:59</span>
         </div>
       </div>
     </div>
@@ -91,34 +93,42 @@
     <div class="test-controls">
       <button @click="showColorModal" class="test-btn">색상 선택 모달</button>
       <button @click="showGameEndModal" class="test-btn">게임 종료 모달</button>
-      <button @click="showRestartModal" class="test-btn">재시작 요청 모달</button>
       <button @click="testToast('테스트 메시지', 'info')" class="test-btn">토스트 알림</button>
-      <button @click="testToast('성공!', 'success')" class="test-btn">성공 토스트</button>
-      <button @click="testToast('경고!', 'warning')" class="test-btn">경고 토스트</button>
-      <button @click="testToast('오류!', 'error')" class="test-btn">오류 토스트</button>
+      <button @click="testToast('상대가 재시작 요청을 보냈습니다', 'info')" class="test-btn">
+        재시작 요청 토스트
+      </button>
     </div>
 
     <!-- 돌 선택 모달 -->
     <div v-if="!isSelectedColor" class="modal flex flex-col">
       <h2 class="text-4xl font-bold text-white mb-6">돌 색깔 선택</h2>
       <p class="text-lg text-white mb-8">어떤 색깔의 돌로 플레이하시겠습니까?</p>
-      <div class="flex gap-5 mb-10">
+      <div class="flex gap-10 mb-10">
         <button
           @click="selectColor('black')"
-          class="color-selection-btn min-h-[400px] min-w-[250px]"
+          class="color-selection-btn min-h-[350px] min-w-[250px]"
+          :disabled="enemyColor === 'black'"
+          :class="{ selected: myColor === 'black' }"
         >
           <div class="stone-preview black"></div>
           <span>흑돌 (선공)</span>
+          <span
+            v-if="(enemyColor === 'black') | (myColor === 'black')"
+            class="text-sm text-gray-700"
+            >선택됨</span
+          >
         </button>
         <button
           @click="selectColor('white')"
-          class="color-selection-btn min-h-[400px] min-w-[250px]"
+          class="color-selection-btn min-h-[350px] min-w-[250px]"
+          :disabled="enemyColor === 'white'"
+          :class="{ selected: myColor === 'white' }"
         >
           <div class="stone-preview white"></div>
           <span>백돌 (후공)</span>
         </button>
       </div>
-      <p class="text-sm text-gray-100">흑돌이 먼저 시작합니다</p>
+      <p class="text-gray-100">흑돌이 먼저 시작합니다</p>
     </div>
 
     <!-- 토스트 알림 -->
@@ -151,28 +161,6 @@
         </div>
       </div>
     </div>
-
-    <!-- 재시작 요청 모달 -->
-    <div v-if="showRestartRequestModal" class="modal">
-      <div class="modal-content">
-        <h2 class="text-4xl font-bold mb-6">재시작 요청!</h2>
-        <p class="text-2xl mb-8">상대방({{ restartRequesterName }})이 재시작을 요청했습니다.</p>
-        <div class="flex gap-4 justify-center">
-          <button
-            class="px-6 py-3 bg-blue-500 text-white rounded-lg text-xl font-bold hover:bg-blue-600 transition-all"
-            @click="testAcceptRestart"
-          >
-            수락
-          </button>
-          <button
-            class="px-6 py-3 bg-gray-500 text-white rounded-lg text-xl font-bold hover:bg-gray-600 transition-all"
-            @click="testDeclineRestart"
-          >
-            거절
-          </button>
-        </div>
-      </div>
-    </div>
   </main>
 </template>
 
@@ -190,15 +178,22 @@ const gameState = ref({
 });
 
 /**
- * @todo 재시작 요청 모달 대신 토스트로(둘다 재시작하면 재시작, 둘중 한명이라도 나가면 재시작 못함)
- * @todo 토스트는 하나로 통일(오류나 경고는 딱히 보여줄 일 없음)
+- 재시작 모달 생성
+	- 상대가 돌 선택하면 그 돌의 모달은 사용 못하게 비활성화 처리
+- 재시작 신청
+	- 상대가 재시작 신청을 하면 토스트 메세지가 옴
+	- 양측 모두 재시작 버튼을 누를 때에만 재시작
+	- 둘중 한명이라도 나가면 재시작이 비활성화되고 토스트로 나갔다고 메세지가 옴
+- 타이머 바(timer-bar) 구현
+	- 각 플레이어의 남은 시간을 표시
+	- 시간이 다 되면 자동으로 기권 처리
+- 그외 대충 오류 확인 정도
  */
 
 // UI 상태 변수들
 const tempMsg = ref("");
-const myColor = ref("black");
-const showRestartRequestModal = ref(false);
-const restartRequesterName = ref("테스트 플레이어");
+const myColor = ref("");
+const enemyColor = ref("black");
 const isSelectedColor = ref(true);
 const showGameOverModal = ref(false);
 const toastMessage = ref("");
@@ -222,9 +217,12 @@ function testToast(message, type = "info", duration = 3000) {
 
 // 돌 색깔 선택
 function selectColor(color) {
+  if (myColor.value === color) {
+    myColor.value = "";
+    return;
+  }
+
   myColor.value = color;
-  isSelectedColor.value = true;
-  testToast(`${color === "black" ? "흑돌" : "백돌"}을 선택했습니다!`, "success");
 }
 
 // 테스트 함수들
@@ -253,22 +251,6 @@ const testRestartGame = () => {
   showGameOverModal.value = false;
 };
 
-const testAcceptRestart = () => {
-  showRestartRequestModal.value = false;
-  gameState.value.gameOver = false;
-  gameState.value.winner = null;
-  gameState.value.currentPlayer = "black";
-  gameState.value.board = Array(15)
-    .fill(null)
-    .map(() => Array(15).fill(null));
-  testToast("재시작이 수락되었습니다!", "success");
-};
-
-const testDeclineRestart = () => {
-  showRestartRequestModal.value = false;
-  testToast("재시작을 거절했습니다", "warning");
-};
-
 // 테스트 모달 표시 함수들
 const showColorModal = () => {
   isSelectedColor.value = false;
@@ -283,10 +265,6 @@ const showGameEndModal = () => {
 const hideGameEndModal = () => {
   showGameOverModal.value = false;
   gameState.value.gameOver = false;
-};
-
-const showRestartModal = () => {
-  showRestartRequestModal.value = true;
 };
 
 onMounted(() => {
@@ -538,6 +516,16 @@ onMounted(() => {
   transition: all 0.3s;
 }
 
+.color-selection-btn:disabled {
+  background: #9ea7b5;
+  pointer-events: none;
+}
+
+.color-selection-btn.selected {
+  border: 4px solid #2563eb;
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.7);
+}
+
 .color-selection-btn:hover {
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -597,5 +585,22 @@ onMounted(() => {
     transform: translateX(0);
     opacity: 1;
   }
+}
+
+.time-bar {
+  width: 100%;
+  height: 8px;
+  background-color: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.time-bar::-webkit-progress-bar {
+  background-color: #e5e7eb;
+}
+
+.time-bar::-webkit-progress-value {
+  background-color: #12c323;
 }
 </style>
