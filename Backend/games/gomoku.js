@@ -370,31 +370,75 @@ class GomokuGame {
 				if (color !== "black" && color !== "white") {
 					return { success: false };
 				}
-				// 이미 선택된 색상인지 확인
-				const otherPlayerIndex = playerIndex === 0 ? 1 : 0;
-				const otherPlayerColor = otherPlayerIndex === 0 ? "black" : "white";
 
-				if (color === otherPlayerColor) {
+				// 플레이어 색상 정보 저장 (room에 저장)
+				if (!room.playerColors) {
+					room.playerColors = new Map();
+				}
+
+				// 이미 다른 플레이어가 선택한 색상인지 확인
+				const existingPlayerWithColor = Array.from(
+					room.playerColors.entries()
+				).find(
+					([playerId, playerColor]) =>
+						playerId !== userId && playerColor === color
+				);
+
+				if (existingPlayerWithColor) {
 					return { success: false }; // 이미 선택된 색상
 				}
 
-				// 색상 선택 성공
-				// 현재 플레이어가 흑돌을 선택하면 그대로, 백돌을 선택하면 색상 교체
-				if (color === "white") {
-					this.currentPlayer = "white";
-				} else {
-					this.currentPlayer = "black";
+				// 색상 선택 저장
+				room.playerColors.set(userId, color);
+
+				// 양쪽 플레이어가 모두 색상을 선택했는지 확인
+				const playerIds = Array.from(room.players.keys());
+				const allColorsSelected =
+					playerIds.length >= 2 &&
+					playerIds.every((id) => room.playerColors.has(id));
+
+				let gameStartResponse = null;
+				if (allColorsSelected) {
+					// 게임 시작
+					this.gameOver = false;
+					this.currentPlayer = "black"; // 흑돌부터 시작
+
+					// 타이머 시작 (설정에서 타이머가 활성화된 경우)
+					if (this.settings.timerEnabled !== false) {
+						room.gameTimerActive = true;
+					}
+
+					gameStartResponse = {
+						type: "game:started",
+						payload: {
+							gameState: this.getState(),
+							message: "게임이 시작되었습니다!",
+						},
+					};
 				}
 
 				return {
 					success: true,
-					response: {
-						type: "game:colorSelected",
-						payload: {
-							playerId: userId,
-							color: color,
-						},
-					},
+					responses: gameStartResponse
+						? [
+								{
+									type: "game:selectColor",
+									payload: {
+										player: userId,
+										color: color,
+									},
+								},
+								gameStartResponse,
+						  ]
+						: [
+								{
+									type: "game:selectColor",
+									payload: {
+										player: userId,
+										color: color,
+									},
+								},
+						  ],
 					shouldBroadcast: true,
 				};
 			}
