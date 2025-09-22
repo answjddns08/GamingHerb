@@ -1,8 +1,19 @@
 /**
- * 게임 설정
+ * @file GomokuGame/settings.js
+ * @description 오목 게임의 기본 설정을 정의합니다.
+ *              이 설정은 방 생성 시 기본값으로 사용되며, 유저가 값을 변경할 수 있습니다.
+ */
+
+/**
  * @type {Object}
- * boolean → 토글 버튼
- * number  → 슬라이더
+ * @property {boolean} timerEnabled - 타이머 사용 여부 (현재 미사용)
+ * @property {Object} playerTimeLimit - 플레이어당 제한 시간 설정
+ * @property {number} playerTimeLimit.value - 제한 시간 (초)
+ * @property {number} playerTimeLimit.min - 최소 설정 가능 시간
+ * @property {number} playerTimeLimit.max - 최대 설정 가능 시간
+ * @property {number} playerTimeLimit.step - 시간 조절 단위
+ * @property {string} playerTimeLimit.unit - 시간 단위 표시
+ * @property {boolean} allowSpectator - 관전 허용 여부
  */
 export const gameSettings = {
   timerEnabled: false, // 타이머 기능 비활성화
@@ -18,15 +29,12 @@ export const gameSettings = {
 };
 
 /**
- * 플레이 가능 사용자 수를 계산하는 함수
- * @returns {number} 현재 설정에 따른 플레이 가능 사용자 수
+ * @type {number} 오목 게임의 최대 플레이어 수
  */
-export function getMaxPlayerCount() {
-  return gameSettings.soloEnabled ? 1 : 2;
-}
+export const maxPlayers = 2;
 
-// 호환성을 위한 기본 export
+// 호환성을 위한 default export
 export default {
   settings: gameSettings,
-  getMaxPlayerCount,
+  maxPlayers: maxPlayers,
 };

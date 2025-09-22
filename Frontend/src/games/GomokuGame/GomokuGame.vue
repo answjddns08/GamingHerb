@@ -17,9 +17,17 @@
         :class="{ active: gameState.currentPlayer !== myColor && !gameState.gameOver }"
       ></div>
       <div class="flex flex-col gap-3 flex-1">
-        <div class="bg-gray-300 rounded-lg w-auto h-2"></div>
+        <progress
+          class="time-bar"
+          :max="gameState.settings?.playerTimeLimit || 60"
+          :value="gameState.playerTimers?.white || gameState.settings?.playerTimeLimit || 60"
+          min="0"
+        ></progress>
         <div class="flex justify-between">
           <span>상대방</span>
+          <span class="timer-display" :class="enemyTimerClass"
+            >{{ gameState.playerTimers?.white || 60 }}초</span
+          >
         </div>
       </div>
     </div>
@@ -55,14 +63,22 @@
         :class="{ active: gameState.currentPlayer === myColor && !gameState.gameOver }"
       ></div>
       <div class="flex flex-col gap-3 flex-1">
-        <div class="bg-gray-300 rounded-lg w-auto h-2"></div>
+        <progress
+          class="time-bar"
+          :max="gameState.settings?.playerTimeLimit || 60"
+          :value="gameState.playerTimers?.black || gameState.settings?.playerTimeLimit || 60"
+          min="0"
+        ></progress>
         <div class="flex justify-between">
           <span>나</span>
+          <span class="timer-display" :class="myTimerClass"
+            >{{ gameState.playerTimers?.black || 60 }}초</span
+          >
         </div>
       </div>
     </div>
     <div class="chat-container">
-      <h1 class="text-5xl font-bold">Chat</h1>
+      <h1 class="text-4xl font-bold">Chat</h1>
       <div class="chat-area" ref="chatContainer">
         <div
           v-for="(msg, index) in messages"
@@ -136,10 +152,12 @@
         </div>
         <div class="flex gap-4 justify-center">
           <button
-            class="px-6 py-3 bg-blue-500 text-white rounded-lg text-xl font-bold hover:bg-blue-600 transition-all"
+            class="retry-btn"
+            :class="{ 'restart-requested': isRestartRequested }"
             @click="restartGame"
+            :disabled="isEnemyLeaved"
           >
-            다시 하기
+            {{ isRestartRequested ? "재시작 동의" : "다시 하기" }}
           </button>
           <button
             class="px-6 py-3 bg-gray-500 text-white rounded-lg text-xl font-bold hover:bg-gray-600 transition-all"
@@ -160,17 +178,26 @@
  *              게임 보드, 플레이어 정보, 채팅, 게임 종료 및 재시작 로직을 포함합니다.
  *              WebSocket을 통해 서버와 실시간으로 게임 상태를 동기화합니다.
  */
-import { nextTick, onMounted, onUnmounted, ref } from "vue";
+import { nextTick, onMounted, onUnmounted, ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user.js";
 import { useSocketStore } from "@/stores/socket.js";
 
 /**
  * @todo 돌 선택 모달 설정 - Done
- * @todo 기권, 재시작 기능 구현
+ * @todo 재시작 시 모달이 나타나지 않고 토스트만 나타나도록 설정 - Done (아직 프론트엔드 부분만 구현)
  * @todo 프로그래스 바를 사용하여 타임 바 구현
  * @todo 게임 종료 후 UI 개선
- * @todo 채팅 UI 개선
+ */
+
+/**
+ * 양측이 재시작 요청을 보내면 게임 재시작
+ * 한명이라도 취소하면 재시작 안됨
+ */
+
+/**
+ * 백엔드에서 아마 시간을 처리하도록 하면 안정성이 증가하긴 할 듯(부담은 늘어나겠지만)
+ * 주기적으로 초를 보내고 그걸 받아서 프로그래스 바에 표시
  */
 
 const props = defineProps({
@@ -192,6 +219,8 @@ const gameState = ref({
   currentPlayer: null,
   gameOver: true, // 초기에는 게임오버 상태로 시작
   winner: null,
+  playerTimers: { black: 60, white: 60 }, // 기본 타이머
+  settings: { playerTimeLimit: 60 }, // 기본 설정
 });
 
 /** @type {import('vue').Ref<Array<Object>>} 채팅 메시지 목록 */
@@ -209,11 +238,8 @@ const myColor = ref(null);
 /** @type {import('vue').Ref<'black'|'white'|null>} 상대 플레이어의 돌 색깔 */
 const enemyColor = ref(null);
 
-/** @type {import('vue').Ref<Boolean>} 재시작 요청 모달 표시 여부 */
-const showRestartRequestModal = ref(false);
-
-/** @type {import('vue').Ref<String>} 재시작을 요청한 플레이어의 이름 */
-const restartRequesterName = ref("");
+/** @type {import('vue').Ref<Boolean>} 상대방이 나간 상태 여부 */
+const isEnemyLeaved = ref(false);
 
 /** @type {import('vue').Ref<Boolean>} 돌 색깔 선택 모달 표시 여부 (false: 표시, true: 비표시) */
 const isSelectedColor = ref(false);
@@ -221,11 +247,32 @@ const isSelectedColor = ref(false);
 /** @type {import('vue').Ref<String>} 토스트 알림 메시지 */
 const toastMessage = ref("");
 
+/** @type {import('vue').Ref<Boolean>} 재시작 요청 중인 상태 */
+const isRestartRequested = ref(false);
+
+/** @type {import('vue').Ref<String>} 재시작을 요청한 플레이어 이름 */
+const restartRequester = ref("");
+
 /** @type {import('vue').Ref<String>} 토스트 알림 타입 (success, info, warning, error) */
 const toastType = ref("info");
 
 /** @type {number} 토스트 알림 타이머 ID */
 let toastTimer = null;
+
+// Computed properties for timer styling
+const myTimerClass = computed(() => {
+  const time = gameState.value.playerTimers?.black || 60;
+  if (time <= 10) return "danger";
+  if (time <= 30) return "warning";
+  return "";
+});
+
+const enemyTimerClass = computed(() => {
+  const time = gameState.value.playerTimers?.white || 60;
+  if (time <= 10) return "danger";
+  if (time <= 30) return "warning";
+  return "";
+});
 
 // --- WebSocket Actions ---
 
@@ -304,8 +351,14 @@ const sendMessage = () => {
 
 /** 재시작 요청을 서버로 전송합니다. */
 const restartGame = () => {
-  sendGameAction("game:restart:request");
-  showToast("재시작 요청을 보냈습니다", "info");
+  // 이미 요청 중이면 자동으로 양측 동의로 처리됨
+  if (isRestartRequested.value) {
+    sendGameAction("game:restart:request");
+    showToast("재시작에 동의했습니다", "success");
+  } else {
+    sendGameAction("game:restart:request");
+    showToast("재시작 요청을 보냈습니다", "info");
+  }
 };
 
 /** 기권 액션을 서버로 전송합니다. */
@@ -366,6 +419,11 @@ const handleInitialState = (payload) => {
   const playerIds = Object.keys(payload.players);
   const myIndex = playerIds.indexOf(userStore.id);
   myColor.value = myIndex === 0 ? "black" : "white";
+
+  // 게임이 시작된 상태라면 돌 선택 모달 숨김
+  if (!gameState.value.gameOver && gameState.value.currentPlayer) {
+    isSelectedColor.value = true;
+  }
 };
 
 /**
@@ -373,25 +431,65 @@ const handleInitialState = (payload) => {
  * @param {Object} payload - { requesterName }
  */
 const handleRestartRequested = (payload) => {
-  if (payload.requesterId !== userStore.id) {
-    restartRequesterName.value = payload.requesterName;
-    showRestartRequestModal.value = true;
-  }
+  if (payload.requesterId === userStore.id) return;
+
+  isRestartRequested.value = true;
+  restartRequester.value = payload.requesterName || "상대방";
+  showToast(`${restartRequester.value}이 게임 재시작을 요청했습니다`, "info");
 };
 
 /** 재시작이 수락되었음을 처리합니다. */
-const handleRestartAccepted = () => {
-  showRestartRequestModal.value = false;
+const handleRestartAccepted = (payload) => {
   messages.value = []; // 채팅 초기화
+  isRestartRequested.value = false;
+  restartRequester.value = "";
+
+  // 게임 상태가 payload에 포함되어 있으면 업데이트
+  if (payload.gameState) {
+    gameState.value = payload.gameState;
+  }
+
   showToast("게임이 재시작됩니다!", "success");
+
+  // 돌 선택 모달 다시 표시
+  isSelectedColor.value = false;
+  myColor.value = null;
+  enemyColor.value = null;
 };
 
 /** 재시작 요청 중 플레이어가 나간 경우를 처리합니다. */
 const handleRestartCancelled = (payload) => {
-  showRestartRequestModal.value = false;
-  const reason =
-    payload.reason === "playerLeft" ? "상대방이 나갔습니다" : "재시작 요청이 취소되었습니다";
-  showToast(reason, "error");
+  isRestartRequested.value = false;
+  restartRequester.value = "";
+
+  const message =
+    payload.reason === "playerLeft" || payload.reason === "playerDisconnected"
+      ? "상대방이 나갔습니다"
+      : "재시작 요청이 취소되었습니다";
+
+  showToast(message, "error");
+  isEnemyLeaved.value = true;
+};
+
+/**
+ * 타이머 업데이트를 처리합니다.
+ * @param {Object} payload - { black, white, currentPlayer }
+ */
+const handleTimerUpdate = (payload) => {
+  if (gameState.value.playerTimers) {
+    gameState.value.playerTimers.black = payload.black;
+    gameState.value.playerTimers.white = payload.white;
+  }
+};
+
+/**
+ * 시간 초과를 처리합니다.
+ * @param {Object} payload - { winner, reason }
+ */
+const handleTimeout = (payload) => {
+  gameState.value.gameOver = true;
+  gameState.value.winner = payload.winner;
+  showToast("시간이 초과되었습니다!", "warning");
 };
 
 /**
@@ -405,6 +503,8 @@ const setupSocketHandlers = () => {
   socketStore.registerHandler("game:restart:accepted", handleRestartAccepted);
   socketStore.registerHandler("game:restart:cancelled", handleRestartCancelled);
   socketStore.registerHandler("game:selectColor", handleColorSelection);
+  socketStore.registerHandler("game:timerUpdate", handleTimerUpdate);
+  socketStore.registerHandler("game:timeout", handleTimeout);
 };
 
 /**
@@ -649,6 +749,58 @@ onUnmounted(() => {
   min-width: 400px;
 }
 
+.retry-btn {
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+
+  background-color: #2563eb;
+
+  color: white;
+
+  border-radius: 0.5rem;
+
+  font-size: 1.25rem;
+
+  font-weight: bold;
+
+  transition: all 0.3s;
+}
+
+.retry-btn:hover {
+  background-color: #1e40af;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transform: translateY(-2px);
+}
+
+.retry-btn:disabled {
+  background-color: #9ea7b5;
+  pointer-events: none;
+  transform: none;
+  box-shadow: none;
+}
+
+.retry-btn.restart-requested {
+  background-color: #10b981;
+  animation: pulse 1.5s infinite;
+}
+
+.retry-btn.restart-requested:hover {
+  background-color: #059669;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
 .color-selection-btn {
   display: flex;
   flex-direction: column;
@@ -729,6 +881,51 @@ onUnmounted(() => {
   to {
     transform: translateX(0);
     opacity: 1;
+  }
+}
+
+.time-bar {
+  width: 100%;
+  height: 8px;
+  background-color: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.time-bar::-webkit-progress-bar {
+  background-color: #e5e7eb;
+}
+
+.time-bar::-webkit-progress-value {
+  background-color: #12c323;
+  transition: width 1s linear;
+}
+
+.timer-display {
+  font-weight: bold;
+  color: #333;
+  min-width: 50px;
+  text-align: right;
+}
+
+.timer-display.warning {
+  color: #f59e0b;
+}
+
+.timer-display.danger {
+  color: #ef4444;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0.5;
   }
 }
 </style>

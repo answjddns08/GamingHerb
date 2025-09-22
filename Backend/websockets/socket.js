@@ -11,7 +11,7 @@ import {
 import GomokuGame from "../games/gomoku.js";
 import ReversiGame from "../games/reversi.js";
 
-/** @typedef {import('../utils/roomManage').Room} Room */
+/** @typedef {import('../utils/roomManage.js').Room} Room */
 
 // Maps game IDs to their corresponding game logic class
 const gameLogicMap = {
@@ -238,7 +238,29 @@ function setupWebsocket(wss) {
 							if (room.players.size >= 2 && allNonHostReady) {
 								const GameClass = gameLogicMap[gameId];
 								if (GameClass) {
-									const game = new GameClass();
+									// 방 설정을 게임에 전달
+									const gameSettings = room.settings || {};
+									const game = new GameClass(gameSettings);
+
+									// 타이머 콜백 설정
+									game.startTimer(
+										// 타이머 업데이트 콜백
+										(timerData) => {
+											broadCastToRoom(gameId, roomName, {
+												type: "game:timerUpdate",
+												payload: timerData,
+											});
+										},
+										// 시간 초과 콜백
+										(timeoutData) => {
+											broadCastToRoom(gameId, roomName, {
+												type: "game:timeout",
+												payload: timeoutData,
+											});
+											updateRoomStatus(gameId, roomName, "waiting");
+										}
+									);
+
 									setGameState(gameId, roomName, game);
 									updateRoomStatus(gameId, roomName, "active");
 									broadCastToRoom(gameId, roomName, {
@@ -346,6 +368,21 @@ function setupWebsocket(wss) {
 							clearTimeout(player.disconnectTimer);
 						}
 
+						// 진행 중인 재시작 요청이 있다면 취소
+						if (
+							room.restartRequest &&
+							room.restartRequest.status === "pending"
+						) {
+							room.restartRequest.status = "none";
+							broadCastToRoom(playerGameId, playerRoomName, {
+								type: "game:restart:cancelled",
+								payload: {
+									reason: "playerLeft",
+									leftPlayer: player?.username || "Unknown",
+								},
+							});
+						}
+
 						// 플레이어 즉시 제거
 						room.players.delete(userId);
 
@@ -423,6 +460,18 @@ function handlePlayerDisconnectWithGrace(ws) {
 				playerName: player.username,
 				isTemporary: true, // 임시 연결 해제임을 표시
 			});
+
+			// 진행 중인 재시작 요청이 있다면 취소
+			if (room.restartRequest && room.restartRequest.status === "pending") {
+				room.restartRequest.status = "none";
+				broadCastToRoom(gameId, roomName, {
+					type: "game:restart:cancelled",
+					payload: {
+						reason: "playerDisconnected",
+						disconnectedPlayer: player.username,
+					},
+				});
+			}
 
 			// 30초 후 완전 제거 타이머 설정
 			player.disconnectTimer = setTimeout(() => {

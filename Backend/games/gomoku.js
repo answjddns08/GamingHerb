@@ -1,5 +1,14 @@
 class GomokuGame {
-	constructor() {
+	constructor(settings = {}) {
+		this.settings = {
+			playerTimeLimit: 60, // 기본값 60초
+			...settings,
+		};
+		this.playerTimers = {
+			black: this.settings.playerTimeLimit,
+			white: this.settings.playerTimeLimit,
+		};
+		this.timerInterval = null;
 		this.reset();
 	}
 
@@ -12,6 +21,62 @@ class GomokuGame {
 		this.gameOver = false;
 		this.winner = null;
 		this.moveCount = 0;
+
+		// 타이머 초기화
+		this.playerTimers = {
+			black: this.settings.playerTimeLimit,
+			white: this.settings.playerTimeLimit,
+		};
+		this.clearTimer();
+	}
+
+	// 타이머 시작
+	startTimer(onTimerUpdate, onTimeOut) {
+		this.clearTimer();
+		this.onTimerUpdate = onTimerUpdate;
+		this.onTimeOut = onTimeOut;
+
+		this.timerInterval = setInterval(() => {
+			if (!this.gameOver && this.playerTimers[this.currentPlayer] > 0) {
+				this.playerTimers[this.currentPlayer]--;
+
+				// 타이머 업데이트 콜백 호출
+				if (this.onTimerUpdate) {
+					this.onTimerUpdate({
+						black: this.playerTimers.black,
+						white: this.playerTimers.white,
+						currentPlayer: this.currentPlayer,
+					});
+				}
+
+				// 시간 초과 확인
+				if (this.playerTimers[this.currentPlayer] <= 0) {
+					this.handleTimeOut();
+				}
+			}
+		}, 1000);
+	}
+
+	// 타이머 정지
+	clearTimer() {
+		if (this.timerInterval) {
+			clearInterval(this.timerInterval);
+			this.timerInterval = null;
+		}
+	}
+
+	// 시간 초과 처리
+	handleTimeOut() {
+		this.gameOver = true;
+		this.winner = this.currentPlayer === "black" ? "white" : "black";
+		this.clearTimer();
+
+		if (this.onTimeOut) {
+			this.onTimeOut({
+				winner: this.winner,
+				reason: "timeout",
+			});
+		}
 	}
 
 	// 돌 놓기
@@ -122,6 +187,8 @@ class GomokuGame {
 			gameOver: this.gameOver,
 			winner: this.winner,
 			moveCount: this.moveCount,
+			playerTimers: this.playerTimers,
+			settings: this.settings,
 		};
 	}
 
@@ -167,14 +234,35 @@ class GomokuGame {
 			}
 
 			case "game:restart:request": {
-				// 요청자 ID 저장
+				// 이미 재시작 요청이 있는 경우
+				if (room.restartRequest && room.restartRequest.status === "pending") {
+					// 다른 플레이어가 이미 요청을 보낸 경우 - 자동 승인
+					if (room.restartRequest.requesterId !== userId) {
+						this.reset();
+						room.restartRequest.status = "none";
+
+						return {
+							success: true,
+							response: {
+								type: "game:restart:accepted",
+								payload: {
+									message: "양측이 재시작에 동의했습니다.",
+									gameState: this.getState(),
+								},
+							},
+							shouldBroadcast: true,
+						};
+					}
+					// 같은 플레이어가 다시 요청하는 경우는 무시
+					return { success: false };
+				}
+
+				// 첫 번째 재시작 요청
+				if (!room.restartRequest) {
+					room.restartRequest = {};
+				}
 				room.restartRequest.requesterId = userId;
 				room.restartRequest.status = "pending";
-
-				// 상대방 찾기
-				const opponentPlayer = Array.from(room.players.values()).find(
-					(p) => p.userId !== userId
-				);
 
 				return {
 					success: true,
@@ -185,12 +273,13 @@ class GomokuGame {
 							requesterName: room.players.get(userId)?.username || "Unknown",
 						},
 					},
-					targetPlayer: opponentPlayer,
+					shouldBroadcast: true,
 				};
 			}
 
 			case "game:restart:accept": {
 				if (
+					!room.restartRequest ||
 					room.restartRequest.status !== "pending" ||
 					room.restartRequest.requesterId === userId
 				) {
@@ -202,22 +291,20 @@ class GomokuGame {
 
 				return {
 					success: true,
-					responses: [
-						{
-							type: "game:updateState",
-							payload: this.getState(),
+					response: {
+						type: "game:restart:accepted",
+						payload: {
+							accepterId: userId,
+							gameState: this.getState(),
 						},
-						{
-							type: "game:restart:accepted",
-							payload: { accepterId: userId },
-						},
-					],
+					},
 					shouldBroadcast: true,
 				};
 			}
 
 			case "game:restart:decline": {
 				if (
+					!room.restartRequest ||
 					room.restartRequest.status !== "pending" ||
 					room.restartRequest.requesterId === userId
 				) {
@@ -230,10 +317,33 @@ class GomokuGame {
 					success: true,
 					response: {
 						type: "game:restart:declined",
-						payload: { declinerId: userId },
+						payload: {
+							declinerId: userId,
+							declinerName: room.players.get(userId)?.username || "Unknown",
+						},
 					},
 					shouldBroadcast: true,
 				};
+			}
+
+			// 플레이어가 나갔을 때 재시작 요청 취소
+			case "player:left": {
+				if (room.restartRequest && room.restartRequest.status === "pending") {
+					room.restartRequest.status = "none";
+
+					return {
+						success: true,
+						response: {
+							type: "game:restart:cancelled",
+							payload: {
+								reason: "playerLeft",
+								message: "상대방이 나갔습니다.",
+							},
+						},
+						shouldBroadcast: true,
+					};
+				}
+				return { success: true };
 			}
 
 			case "player:loaded": {
@@ -252,6 +362,40 @@ class GomokuGame {
 						},
 					},
 					shouldBroadcast: false, // 요청한 플레이어에게만 전송
+				};
+			}
+
+			case "game:selectColor": {
+				const { color } = action.payload;
+				if (color !== "black" && color !== "white") {
+					return { success: false };
+				}
+				// 이미 선택된 색상인지 확인
+				const otherPlayerIndex = playerIndex === 0 ? 1 : 0;
+				const otherPlayerColor = otherPlayerIndex === 0 ? "black" : "white";
+
+				if (color === otherPlayerColor) {
+					return { success: false }; // 이미 선택된 색상
+				}
+
+				// 색상 선택 성공
+				// 현재 플레이어가 흑돌을 선택하면 그대로, 백돌을 선택하면 색상 교체
+				if (color === "white") {
+					this.currentPlayer = "white";
+				} else {
+					this.currentPlayer = "black";
+				}
+
+				return {
+					success: true,
+					response: {
+						type: "game:colorSelected",
+						payload: {
+							playerId: userId,
+							color: color,
+						},
+					},
+					shouldBroadcast: true,
 				};
 			}
 
