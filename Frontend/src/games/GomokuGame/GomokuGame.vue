@@ -41,9 +41,12 @@
           :value="
             gameState.settings?.playerTimeLimit === 0 || !gameState.settings?.playerTimeLimit
               ? 0
-              : enemyColor === 'black'
-                ? (gameState.playerTimers?.black ?? (gameState.settings?.playerTimeLimit || 60))
-                : (gameState.playerTimers?.white ?? (gameState.settings?.playerTimeLimit || 60))
+              : Number(
+                  enemyColor === 'black'
+                    ? (gameState.playerTimers?.black ?? (gameState.settings?.playerTimeLimit || 60))
+                    : (gameState.playerTimers?.white ??
+                        (gameState.settings?.playerTimeLimit || 60)),
+                )
           "
           min="0"
         ></progress>
@@ -81,7 +84,6 @@
               @click="makeMove(row - 1, col - 1)"
               @mouseenter="handleCellHover(row - 1, col - 1)"
               @mouseleave="handleCellLeave()"
-              :class="{ disabled: gameState.gameOver || gameState.currentPlayer !== myColor }"
             >
               <div
                 v-if="gameState.board[row - 1]?.[col - 1]"
@@ -116,9 +118,12 @@
           :value="
             gameState.settings?.playerTimeLimit === 0 || !gameState.settings?.playerTimeLimit
               ? 0
-              : myColor === 'black'
-                ? (gameState.playerTimers?.black ?? (gameState.settings?.playerTimeLimit || 60))
-                : (gameState.playerTimers?.white ?? (gameState.settings?.playerTimeLimit || 60))
+              : Number(
+                  myColor === 'black'
+                    ? (gameState.playerTimers?.black ?? (gameState.settings?.playerTimeLimit || 60))
+                    : (gameState.playerTimers?.white ??
+                        (gameState.settings?.playerTimeLimit || 60)),
+                )
           "
           min="0"
         ></progress>
@@ -234,7 +239,10 @@
         <div class="flex gap-4 justify-center">
           <button
             class="retry-btn"
-            :class="{ 'restart-requested': isRestartRequested }"
+            :class="{
+              'restart-requested': isRestartRequested,
+              disabled: isEnemyLeaved,
+            }"
             @click="restartGame"
             :disabled="isEnemyLeaved"
           >
@@ -399,6 +407,9 @@ function selectColor(color) {
   if (myColor.value === color) {
     myColor.value = null;
     showToast("색깔 선택이 해제되었습니다", "info");
+
+    // 서버에 색깔 선택 해제 전송
+    sendGameAction("game:selectColor", { player: userStore.id, color: null });
     return;
   }
 
@@ -465,6 +476,22 @@ const handleCellLeave = () => {
 /** 채팅 메시지를 서버로 전송합니다. */
 const sendMessage = () => {
   if (!tempMsg.value.trim()) return;
+
+  // 로컬에서 즉시 메시지 표시
+  const message = {
+    userId: userStore.id,
+    userName: userStore.name,
+    text: tempMsg.value,
+    timestamp: Date.now(),
+  };
+  messages.value.push(message);
+
+  // 스크롤을 맨 아래로 이동
+  nextTick(() => {
+    if (chatContainer.value) chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+  });
+
+  // 서버에 메시지 전송
   sendGameAction("chat:message", { text: tempMsg.value });
   tempMsg.value = "";
 };
@@ -526,7 +553,7 @@ const handleUpdateState = (payload) => {
  * 돌 선택 업데이트를 처리합니다.
  * @param {Object} payload - { player, color }
  * @param {String} payload.player - 돌을 선택한 플레이어의 ID
- * @param {String} payload.color - 선택된 돌 색깔 ('black' 또는 'white')
+ * @param {String|null} payload.color - 선택된 돌 색깔 ('black', 'white', 또는 null for 선택 해제)
  */
 const handleColorSelection = (payload) => {
   console.log("색상 선택 업데이트:", payload);
@@ -537,15 +564,25 @@ const handleColorSelection = (payload) => {
   } else {
     // 상대방이 선택한 색상
     enemyColor.value = payload.color;
-    showToast(
-      `상대방이 ${payload.color === "black" ? "흑돌(선공)" : "백돌(후공)"}을 선택했습니다`,
-      "info",
-    );
+
+    if (payload.color === null) {
+      // 상대방이 색상 선택을 해제한 경우
+      showToast("상대방이 돌 색깔 선택을 해제했습니다", "info");
+    } else {
+      // 상대방이 색상을 선택한 경우
+      showToast(
+        `상대방이 ${payload.color === "black" ? "흑돌(선공)" : "백돌(후공)"}을 선택했습니다`,
+        "info",
+      );
+    }
   }
 
   // 양쪽이 모두 색상을 선택했으면 모달 숨김
   if (myColor.value && enemyColor.value) {
     isSelectedColor.value = true;
+  } else {
+    // 한쪽이라도 색상을 선택하지 않았거나 해제했으면 모달 표시
+    isSelectedColor.value = false;
   }
 };
 
@@ -565,6 +602,11 @@ const handleGameStarted = (payload) => {
  * @param {Object} payload - { userId, userName, text }
  */
 const handleChatMessage = (payload) => {
+  // 내가 보낸 메시지는 이미 로컬에서 추가했으므로 중복 방지
+  if (payload.userId === userStore.id) {
+    return;
+  }
+
   messages.value.push(payload);
   // 스크롤을 맨 아래로 이동
   nextTick(() => {
@@ -614,13 +656,42 @@ const handleRestartRequested = (payload) => {
 
 /** 재시작이 수락되었음을 처리합니다. */
 const handleRestartAccepted = (payload) => {
+  // 모든 게임 관련 상태 초기화 (설정값 제외)
   messages.value = []; // 채팅 초기화
   isRestartRequested.value = false;
   restartRequester.value = "";
+  isEnemyLeaved.value = false; // 상대방 나감 상태 초기화
+  hoverPosition.value = null; // 호버 위치 초기화
 
-  // 게임 상태가 payload에 포함되어 있으면 업데이트
+  // 토스트 메시지 초기화
+  toastMessage.value = "";
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+  }
+
+  // 게임 상태 초기화 (설정값은 유지)
+  const currentSettings = gameState.value.settings || { playerTimeLimit: 60 };
+  gameState.value = {
+    board: Array(15)
+      .fill(null)
+      .map(() => Array(15).fill(null)),
+    currentPlayer: null,
+    gameOver: true,
+    winner: null,
+    playerTimers: {
+      black: currentSettings.playerTimeLimit || 60,
+      white: currentSettings.playerTimeLimit || 60,
+    },
+    settings: currentSettings, // 기존 설정 유지
+  };
+
+  // 서버에서 받은 게임 상태가 있으면 업데이트 (설정값 우선 보존)
   if (payload.gameState) {
-    gameState.value = payload.gameState;
+    gameState.value = {
+      ...payload.gameState,
+      settings: currentSettings, // 설정값은 기존 것 유지
+    };
   }
 
   showToast("게임이 재시작됩니다!", "success");
@@ -723,12 +794,30 @@ const setupSocketHandlers = () => {
  * 등록된 WebSocket 이벤트 핸들러들을 모두 해제합니다.
  */
 const cleanupSocketHandlers = () => {
-  Object.keys(socketStore.messageHandlers.value).forEach((type) => {
-    if (type.startsWith("game:")) {
-      socketStore.unregisterHandler(type);
+  // 게임 관련 핸들러들을 개별적으로 해제
+  const gameHandlers = [
+    "game:initialState",
+    "game:updateState",
+    "game:restart:requested",
+    "game:restart:accepted",
+    "game:restart:cancelled",
+    "game:selectColor",
+    "game:started",
+    "game:timerUpdate",
+    "game:timeout",
+    "playerLeft",
+    "playerDisconnected",
+    "playerReconnected",
+    "chat:message",
+  ];
+
+  gameHandlers.forEach((handlerType) => {
+    try {
+      socketStore.unregisterHandler(handlerType);
+    } catch (error) {
+      console.warn(`Failed to unregister handler ${handlerType}:`, error);
     }
   });
-  socketStore.unregisterHandler("chat:message");
 };
 
 // --- Lifecycle Hooks ---
@@ -949,17 +1038,6 @@ onUnmounted(() => {
   cursor: pointer;
   transition: background-color 0.2s ease;
 }
-
-.cell.disabled {
-  cursor: not-allowed !important;
-  opacity: 0.6;
-  pointer-events: auto; /* 호버 효과를 위해 유지 */
-}
-
-.cell.disabled:hover {
-  background-color: #ffcccc50; /* 빨간색 힌트로 클릭 불가능함을 표시 */
-  cursor: not-allowed !important;
-}
 .stone {
   width: 2rem;
   height: 2rem;
@@ -1034,11 +1112,14 @@ onUnmounted(() => {
   transform: translateY(-2px);
 }
 
-.retry-btn:disabled {
+.retry-btn:disabled,
+.retry-btn.disabled {
   background-color: #9ea7b5;
+  opacity: 0.6;
   pointer-events: none;
   transform: none;
   box-shadow: none;
+  cursor: not-allowed;
 }
 
 .retry-btn.restart-requested {

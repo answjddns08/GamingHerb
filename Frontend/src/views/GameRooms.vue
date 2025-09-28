@@ -118,6 +118,10 @@ import { RouterLink } from "vue-router";
 import SettingIcon from "../components/settingIcon.vue";
 import userBoard from "../components/userBoard.vue";
 
+/**
+ * @todo 간단한 게임 설명 추가
+ */
+
 /** @type {import('vue').Ref<Object>} 게임 방 목록을 저장하는 객체 */
 const rooms = ref([]);
 

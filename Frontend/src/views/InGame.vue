@@ -15,14 +15,22 @@
 </template>
 
 <script setup>
+/**
+ * @file InGame.vue
+ * @description 실제 게임 플레이 화면을 렌더링하는 컨테이너 컴포넌트입니다.
+ *              URL 파라미터(gameId)에 따라 해당 게임 컴포넌트를 동적으로 불러옵니다.
+ */
 import { shallowRef, onMounted } from "vue";
 import { loadGameComponent } from "@/games/index.js";
 
 const props = defineProps({
+  /** @type {String} 현재 게임의 고유 ID */
   gameId: { type: String, required: true },
+  /** @type {String} 현재 방의 고유 ID */
   roomId: { type: String, required: true },
 });
 
+/** @type {import('vue').ShallowRef<import('vue').Component | null>} 동적으로 로드될 게임 컴포넌트 */
 const gameComponent = shallowRef(null);
 
 onMounted(async () => {

@@ -1,203 +1,156 @@
+/**
+ * @file games/index.js
+ * @description 게임 관련 모듈과 데이터를 동적으로 로드하고 관리하는 중앙 허브 역할을 합니다.
+ *              Vite의 glob import 기능을 사용하여 게임 컴포넌트, 설정, 설명 파일을 효율적으로 처리합니다.
+ *              또한, 다양한 기준에 따라 게임을 검색하고 필터링하는 유틸리티 함수들을 제공합니다.
+ */
+
 import gamesConfig from "@/config/games.json";
 import { markdownToHtml } from "@/utils/markdownConvert.js";
 
-// Vite의 glob import를 사용하여 마크다운 파일들을 미리 로드
+// Vite의 glob import를 사용하여 마크다운 파일들을 동적으로 가져옵니다.
+// eager: false는 해당 모듈이 필요할 때만 비동기적으로 로드되도록 합니다.
 const markdownModules = import.meta.glob("@/games/**/*.md", {
   query: "?raw",
   import: "default",
   eager: false,
 });
 
-// Vite의 glob import를 사용하여 설정 파일들을 미리 로드
+// Vite의 glob import를 사용하여 설정 파일들을 동적으로 가져옵니다.
 const settingsModules = import.meta.glob("@/games/**/settings.js", {
   eager: false,
 });
 
-// Vite의 glob import를 사용하여 게임 컴포넌트들을 미리 로드
+// Vite의 glob import를 사용하여 게임 컴포넌트(.vue) 파일들을 동적으로 가져옵니다.
 const componentModules = import.meta.glob("@/games/**/*.vue", {
   eager: false,
 });
 
-// games.json에서 게임 설정을 가져와서 동적 import와 함께 구성
+/**
+ * @type {Object.<string, Object>}
+ * @description games.json 설정을 기반으로 구성된 게임 객체들의 맵입니다.
+ *              각 게임 객체는 동적 로더 함수(component, settings, description)를 포함합니다.
+ */
 export const games = {};
 
-// games.json의 각 게임에 대해 동적 컴포넌트 로더 추가
+// games.json의 각 게임에 대해 동적 로더를 포함한 객체를 생성합니다.
 Object.entries(gamesConfig.games).forEach(([gameId, config]) => {
   games[gameId] = {
     ...config,
-    // 동적 컴포넌트 로더 추가 (glob 사용)
+    /**
+     * 게임 Vue 컴포넌트를 비동기적으로 로드합니다.
+     * @returns {Promise<import('vue').Component>}
+     */
     component: () => {
-      // config.componentPath에서 파일명 추출
-      const fileName = config.componentPath.split("/").pop();
-
-      // glob에서 해당 파일을 찾기
-      for (const [path, loader] of Object.entries(componentModules)) {
-        if (path.includes(fileName) && path.includes(gameId)) {
-          return loader();
-        }
-      }
-
-      // 파일을 찾지 못한 경우 에러 throw
-      return Promise.reject(new Error(`컴포넌트 파일을 찾을 수 없습니다: ${config.componentPath}`));
+      const path = Object.keys(componentModules).find(p => p.includes(gameId));
+      if (path) return componentModules[path]();
+      return Promise.reject(new Error(`Component not found for ${gameId}`));
     },
-    // 설정 파일이 있다면 glob에서 찾아서 추가
+    /**
+     * 게임 설정 모듈을 비동기적으로 로드합니다.
+     * @returns {Promise<Object>|undefined}
+     */
     ...(config.configPath && {
       settings: () => {
-        // config.configPath에서 파일명 추출 (예: "settings.js")
-        const fileName = config.configPath.split("/").pop();
-
-        // glob에서 해당 파일을 찾기
-        for (const [path, loader] of Object.entries(settingsModules)) {
-          if (path.includes(fileName) && path.includes(gameId)) {
-            return loader();
-          }
-        }
-
-        // 파일을 찾지 못한 경우 에러 throw
-        return Promise.reject(new Error(`설정 파일을 찾을 수 없습니다: ${config.configPath}`));
+        const path = Object.keys(settingsModules).find(p => p.includes(gameId));
+        if (path) return settingsModules[path]();
+        return Promise.reject(new Error(`Settings not found for ${gameId}`));
       },
     }),
-    // 설명 파일이 있다면 glob에서 찾아서 추가
+    /**
+     * 게임 설명(마크다운)을 비동기적으로 로드합니다.
+     * @returns {Promise<string>|undefined}
+     */
     ...(config.descriptionPath && {
       description: () => {
-        // config.descriptionPath에서 파일명 추출 (예: "Description.md")
-        const fileName = config.descriptionPath.split("/").pop();
-
-        // glob에서 해당 파일을 찾기
-        for (const [path, loader] of Object.entries(markdownModules)) {
-          if (path.includes(fileName)) {
-            return loader();
-          }
-        }
-
-        // 파일을 찾지 못한 경우 기본값 반환
-        return Promise.resolve(`# ${config.name}\n\n게임 설명을 불러올 수 없습니다.`);
+        const path = Object.keys(markdownModules).find(p => p.includes(gameId));
+        if (path) return markdownModules[path]();
+        return Promise.resolve(`# ${config.name}\n\nDescription not available.`);
       },
     }),
   };
 });
 
-// 게임 관련 유틸리티 함수들
+
+// --- 게임 데이터 조회 유틸리티 ---
+
+/**
+ * 지정된 ID의 게임 설정을 가져옵니다.
+ * @param {string} gameId - 게임의 고유 ID
+ * @returns {Object|null} 해당 게임의 설정 객체 또는 null
+ */
 export function getGameConfig(gameId) {
   return games[gameId] || null;
 }
 
+/**
+ * 모든 게임의 목록을 배열로 반환합니다.
+ * @returns {Array<Object>} 모든 게임 객체의 배열
+ */
 export function getAllGames() {
   return Object.values(games);
 }
 
-export function getGamesByCategory(category) {
-  return getAllGames().filter((game) => game.category.includes(category));
-}
-
-export function getGamesByDifficulty(difficulty) {
-  return getAllGames().filter((game) => game.difficulty.toLowerCase() === difficulty.toLowerCase());
-}
-
-export function getGamesByPlatform(platform) {
-  return getAllGames().filter((game) => game.platform.includes(platform));
-}
-
-export function getGamesByFeature(feature) {
-  return getAllGames().filter((game) => game.features && game.features[feature]);
-}
-
-export function getGamesWithAI() {
-  return getGamesByFeature("ai");
-}
-
-export function getGamesWithChat() {
-  return getGamesByFeature("chat");
-}
-
-export function getGamesWithTimer() {
-  return getGamesByFeature("timer");
-}
-
-// 추가 유틸리티 함수들
-export function getGameIds() {
-  return Object.keys(games);
-}
-
-export function isValidGameId(gameId) {
-  return gameId in games;
-}
-
-export function getGamesByPlayerCount(playerCount) {
-  return getAllGames().filter(
-    (game) => playerCount >= game.minPlayers && playerCount <= game.maxPlayers,
-  );
-}
-
-export function searchGames(query) {
-  const lowercaseQuery = query.toLowerCase();
-  return getAllGames().filter(
-    (game) =>
-      game.name.toLowerCase().includes(lowercaseQuery) ||
-      game.summary.toLowerCase().includes(lowercaseQuery) ||
-      game.category.some((cat) => cat.toLowerCase().includes(lowercaseQuery)),
-  );
-}
-
-// gameLoader.js와 호환성을 위한 별칭 함수들
-export function getGameInfo(gameId) {
-  return getGameConfig(gameId);
-}
-
+/**
+ * 이용 가능한 모든 게임의 목록을 반환합니다. (gameLoader.js 호환용)
+ * @returns {Array<Object>} 각 게임의 ID와 설정이 포함된 객체의 배열
+ */
 export function getAvailableGames() {
-  return getAllGames().map((game) => ({
-    id: game.id,
-    ...game,
-  }));
+  return Object.keys(games).map(id => ({ id, ...games[id] }));
 }
 
+
+// --- 동적 로더 함수 ---
+
+/**
+ * 지정된 ID의 게임 Vue 컴포넌트를 비동기적으로 로드합니다.
+ * @param {string} gameId - 로드할 게임의 ID
+ * @returns {Promise<import('vue').Component>} 로드된 Vue 컴포넌트
+ * @throws {Error} 게임 ID나 컴포넌트를 찾을 수 없을 때
+ */
 export async function loadGameComponent(gameId) {
   const gameConfig = getGameConfig(gameId);
-
-  if (!gameConfig) {
-    throw new Error(`게임 ID "${gameId}"에 해당하는 게임을 찾을 수 없습니다.`);
+  if (!gameConfig || !gameConfig.component) {
+    throw new Error(`Game component loader not found for ID "${gameId}".`);
   }
-
-  try {
-    const gameModule = await gameConfig.component();
-    return gameModule.default;
-  } catch (error) {
-    throw new Error(`게임 컴포넌트 로드 실패: ${error.message}`);
-  }
+  const gameModule = await gameConfig.component();
+  return gameModule.default;
 }
 
+/**
+ * 지정된 ID의 게임 설정 모듈을 비동기적으로 로드합니다.
+ * @param {string} gameId - 로드할 게임의 ID
+ * @returns {Promise<Object>} 로드된 설정 객체
+ * @throws {Error} 게임 ID나 설정을 찾을 수 없을 때
+ */
 export async function getGameSettings(gameId) {
   const gameConfig = getGameConfig(gameId);
-
   if (!gameConfig || !gameConfig.settings) {
-    throw new Error(`게임 ID "${gameId}"에 해당하는 설정을 찾을 수 없습니다.`);
+    // 설정이 없는 게임일 경우, 기본값 반환
+    return { settings: {}, maxPlayers: 2 };
   }
-
-  try {
-    const settingsModule = await gameConfig.settings();
-    // default export가 있으면 그것을 사용하고, 없으면 gameSettings를 사용
-    return settingsModule.default || settingsModule.gameSettings || settingsModule;
-  } catch (error) {
-    throw new Error(`게임 설정 로드 실패: ${error.message}`);
-  }
+  const settingsModule = await gameConfig.settings();
+  return settingsModule.default || settingsModule;
 }
 
+/**
+ * 지정된 ID의 게임 설명을 마크다운에서 HTML로 변환하여 비동기적으로 가져옵니다.
+ * @param {string} gameId - 가져올 게임의 ID
+ * @returns {Promise<string>} HTML로 변환된 게임 설명
+ */
 export async function getGameDescription(gameId) {
   const gameConfig = getGameConfig(gameId);
-
   if (!gameConfig) {
-    return `<h2>게임을 찾을 수 없습니다</h2><p>게임 ID "${gameId}"에 해당하는 게임을 찾을 수 없습니다.</p>`;
+    return `<h2>Game Not Found</h2><p>Cannot find a game with ID "${gameId}".</p>`;
   }
-
   if (!gameConfig.description) {
-    return `<h2>${gameConfig.name} 게임 설명</h2><p>게임 설명을 찾을 수 없습니다.</p>`;
+    return `<h2>${gameConfig.name}</h2><p>No description available.</p>`;
   }
-
   try {
     const markdownContent = await gameConfig.description();
     return markdownToHtml(markdownContent);
   } catch (error) {
-    console.error("설명 파일 로드 실패:", error);
-    return `<h2>${gameConfig.name} 게임 설명</h2><p>게임 설명을 불러오는 데 실패했습니다. 나중에 다시 시도해주세요.</p>`;
+    console.error("Failed to load game description:", error);
+    return `<h2>${gameConfig.name}</h2><p>Failed to load description.</p>`;
   }
 }

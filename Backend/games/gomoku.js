@@ -239,7 +239,11 @@ class GomokuGame {
 					// 다른 플레이어가 이미 요청을 보낸 경우 - 자동 승인
 					if (room.restartRequest.requesterId !== userId) {
 						this.reset();
+
+						// 방 관련 게임 설정 초기화
 						room.restartRequest.status = "none";
+						room.playerColors = new Map(); // 플레이어 색상 선택 초기화
+						room.gameTimerActive = false; // 타이머 비활성화
 
 						return {
 							success: true,
@@ -287,7 +291,11 @@ class GomokuGame {
 				}
 
 				this.reset();
+
+				// 방 관련 게임 설정 초기화
 				room.restartRequest.status = "none";
+				room.playerColors = new Map(); // 플레이어 색상 선택 초기화
+				room.gameTimerActive = false; // 타이머 비활성화
 
 				return {
 					success: true,
@@ -346,11 +354,36 @@ class GomokuGame {
 				return { success: true };
 			}
 
+			// 플레이어가 일시적으로 연결이 끊어졌을 때 재시작 요청 취소
+			case "player:disconnected": {
+				if (room.restartRequest && room.restartRequest.status === "pending") {
+					room.restartRequest.status = "none";
+
+					return {
+						success: true,
+						response: {
+							type: "game:restart:cancelled",
+							payload: {
+								reason: "playerDisconnected",
+								message: "상대방의 연결이 끊어졌습니다.",
+							},
+						},
+						shouldBroadcast: true,
+					};
+				}
+				return { success: true };
+			}
+
 			case "player:loaded": {
-				const players = Array.from(room.players.values()).map((p) => ({
-					userId: p.userId,
-					userName: p.username,
-				}));
+				// 플레이어 목록과 색상 정보 준비
+				const players = {};
+				room.players.forEach((player, playerId) => {
+					players[playerId] = {
+						userId: player.userId,
+						userName: player.username,
+						color: room.playerColors ? room.playerColors.get(playerId) : null,
+					};
+				});
 
 				return {
 					success: true,
@@ -367,16 +400,31 @@ class GomokuGame {
 
 			case "game:selectColor": {
 				const { color } = action.payload;
-				if (color !== "black" && color !== "white") {
-					return { success: false };
-				}
 
 				// 플레이어 색상 정보 저장 (room에 저장)
 				if (!room.playerColors) {
 					room.playerColors = new Map();
 				}
 
-				// 이미 다른 플레이어가 선택한 색상인지 확인
+				// 색깔 선택 해제인 경우 (color가 null)
+				if (color === null) {
+					// 해당 플레이어의 색상 선택을 제거
+					room.playerColors.delete(userId);
+
+					return {
+						success: true,
+						response: {
+							type: "game:selectColor",
+							payload: {
+								player: userId,
+								color: null,
+							},
+						},
+						shouldBroadcast: true,
+					};
+				}
+
+				// 이미 다른 플레이어가 선택한 색상인지 확인 (null이 아닌 경우만)
 				const existingPlayerWithColor = Array.from(
 					room.playerColors.entries()
 				).find(
@@ -395,7 +443,10 @@ class GomokuGame {
 				const playerIds = Array.from(room.players.keys());
 				const allColorsSelected =
 					playerIds.length >= 2 &&
-					playerIds.every((id) => room.playerColors.has(id));
+					playerIds.every((id) => {
+						const playerColor = room.playerColors.get(id);
+						return playerColor && playerColor !== null;
+					});
 
 				let gameStartResponse = null;
 				if (allColorsSelected) {

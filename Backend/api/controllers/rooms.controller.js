@@ -56,13 +56,33 @@ function listRooms(req, res) {
 	const { gameId } = req.params;
 	const rooms = getRoomsForGame(gameId);
 
-	// Map 객체를 일반 객체로 변환
+	// Map 객체를 일반 객체로 변환하고 직렬화할 수 없는 속성들 안전하게 제거
 	const roomsWithSerializablePlayers = {};
 
 	for (const [roomName, room] of Object.entries(rooms)) {
+		// 플레이어 데이터에서 직렬화할 수 없는 속성들 제거
+		const serializablePlayers = {};
+		for (const [playerId, player] of room.players.entries()) {
+			serializablePlayers[playerId] = {
+				userId: player.userId,
+				username: player.username,
+				isReady: player.isReady || false,
+				disconnected: player.disconnected || false,
+				// ws, disconnectTimer, 기타 함수나 순환참조 객체들은 제외
+			};
+		}
+
+		// room 객체에서도 안전하게 필요한 속성들만 추출
 		roomsWithSerializablePlayers[roomName] = {
-			...room,
-			players: Object.fromEntries(room.players), // Map을 일반 객체로 변환
+			roomName: room.roomName,
+			gameId: room.gameId,
+			hostId: room.hostId,
+			settings: room.settings || {},
+			status: room.status,
+			createdAt: room.createdAt,
+			maxPlayers: room.maxPlayers,
+			players: serializablePlayers,
+			// game, restartRequest, playerColors, gameTimerActive 등 복잡한 객체들은 제외
 		};
 	}
 

@@ -1,7 +1,7 @@
 /**
  * @typedef {Object} Room
  * @property {Object} settings - The settings for the room
- * @property {Map<string, { userId: string, username: string, ws: WebSocket, isReady: boolean }> } players - A Map containing player details, keyed by userId
+ * @property {Map<string, { userId: string, username: string, ws: WebSocket, isReady: boolean, disconnected: boolean, disconnectTimer: string }> } players - A Map containing player details, keyed by userId
  * @property {string} host - The username of the room host
  * @property {string} hostId - The ID of the user who is the host
  * @property {string} status - The current status of the room (e.g., "waiting", "active")
@@ -161,13 +161,22 @@ function broadCastToRoom(gameId, roomName, message, ws = null) {
 
 	room.players.forEach((player) => {
 		if (ws && player.ws === ws) return; // Skip sending to the sender
+		if (!player.ws || player.ws.readyState !== 1) return; // Skip disconnected players
 
-		console.log(
-			`Broadcasting to ${player.userId} in room ${roomName}:`,
-			message
-		);
-
-		player.ws.send(JSON.stringify(message));
+		try {
+			console.log(
+				`Broadcasting to ${player.userId} in room ${roomName}:`,
+				message
+			);
+			player.ws.send(JSON.stringify(message));
+		} catch (error) {
+			console.error(
+				`Failed to send message to player ${player.userId}:`,
+				error
+			);
+			// Mark player as disconnected if send fails
+			player.disconnected = true;
+		}
 	});
 }
 
