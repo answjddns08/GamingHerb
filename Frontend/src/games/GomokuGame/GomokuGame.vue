@@ -240,13 +240,14 @@
           <button
             class="retry-btn"
             :class="{
-              'restart-requested': isRestartRequested,
+              'restart-requested': isRestartRequested && !isEnemyLeaved,
               disabled: isEnemyLeaved,
+              'player-left': isEnemyLeaved,
             }"
             @click="restartGame"
             :disabled="isEnemyLeaved"
           >
-            {{ isRestartRequested ? "재시작 동의" : "다시 하기" }}
+            {{ isEnemyLeaved ? "상대방이 나감" : isRestartRequested ? "재시작 동의" : "다시 하기" }}
           </button>
           <button
             class="px-6 py-3 bg-gray-500 text-white rounded-lg text-xl font-bold hover:bg-gray-600 transition-all"
@@ -397,6 +398,12 @@ function showToast(message, type = "info", duration = 3000) {
  * @param {String} color - 선택한 돌 색깔 ('black' 또는 'white')
  */
 function selectColor(color) {
+  console.log("Color selection attempted:", {
+    color,
+    myCurrentColor: myColor.value,
+    enemyCurrentColor: enemyColor.value,
+  });
+
   // 이미 상대방이 선택한 색깔인지 확인
   if (enemyColor.value === color) {
     showToast("상대방이 이미 선택한 색깔입니다", "warning");
@@ -405,6 +412,9 @@ function selectColor(color) {
 
   // 같은 색깔을 다시 클릭하면 선택 해제
   if (myColor.value === color) {
+    console.log("Deselecting color:", color);
+
+    // 로컬에서 즉시 해제 (서버 응답 전까지)
     myColor.value = null;
     showToast("색깔 선택이 해제되었습니다", "info");
 
@@ -413,17 +423,17 @@ function selectColor(color) {
     return;
   }
 
+  console.log("Selecting color:", color);
+
+  // 로컬에서 즉시 선택 (서버 응답 전까지)
   myColor.value = color;
   showToast(`${color === "black" ? "흑돌(선공)" : "백돌(후공)"}을 선택했습니다`, "success");
 
   // 서버에 색깔 선택 전송
   sendGameAction("game:selectColor", { player: userStore.id, color: color });
 
-  // 양 플레이어가 모두 색깔을 선택했으면 모달 숨김
-  if (myColor.value && enemyColor.value) {
-    isSelectedColor.value = true;
-    showToast("게임을 시작합니다!", "success");
-  }
+  // 양 플레이어가 모두 색깔을 선택했는지 확인 (자동으로 handleColorSelection에서 처리됨)
+  console.log("Color selected. Waiting for game start...");
 }
 
 /**
@@ -443,25 +453,58 @@ function sendGameAction(type, payload = {}) {
 
 /** 돌 놓기 액션을 서버로 전송합니다. */
 const makeMove = (row, col) => {
-  // 게임이 끝났거나 내 차례가 아니거나 이미 돌이 놓인 곳이면 무시
-  if (
-    gameState.value.gameOver ||
-    gameState.value.currentPlayer !== myColor.value ||
-    gameState.value.board[row]?.[col]
-  ) {
-    showToast("지금은 돌을 놓을 수 없습니다", "warning", 1500);
+  console.log("=== MOVE ATTEMPT ===");
+  console.log("Position:", { row, col });
+  console.log("Game State:", {
+    gameOver: gameState.value.gameOver,
+    currentPlayer: gameState.value.currentPlayer,
+    myColor: myColor.value,
+    enemyColor: enemyColor.value,
+    cellValue: gameState.value.board[row]?.[col],
+  });
+
+  // 기본 유효성 검사
+  if (gameState.value.gameOver) {
+    showToast("게임이 종료되었습니다", "warning", 1500);
     return;
   }
 
+  if (!myColor.value) {
+    showToast("먼저 돌 색상을 선택해주세요", "warning", 1500);
+    return;
+  }
+
+  if (gameState.value.board[row]?.[col]) {
+    showToast("이미 돌이 놓인 자리입니다", "warning", 1500);
+    return;
+  }
+
+  if (gameState.value.currentPlayer !== myColor.value) {
+    console.log("Turn mismatch:", {
+      currentPlayer: gameState.value.currentPlayer,
+      myColor: myColor.value,
+    });
+    showToast("상대방의 차례입니다", "warning", 1500);
+    return;
+  }
+
+  console.log("✅ Move validation passed - sending to server");
+
+  // 호버 상태 제거
+  hoverPosition.value = null;
+
+  // 서버에만 전송 - 로컬 상태는 서버 응답을 기다림
   sendGameAction("game:move", { row, col });
 };
 
 /** 셀 호버 시 미리보기 표시 */
 const handleCellHover = (row, col) => {
+  // 게임이 끝났거나, 내 차례가 아니거나, 이미 돌이 놓인 곳이거나, 색상을 선택하지 않은 경우 미리보기 표시 안함
   if (
     gameState.value.gameOver ||
     gameState.value.currentPlayer !== myColor.value ||
-    gameState.value.board[row]?.[col]
+    gameState.value.board[row]?.[col] ||
+    !myColor.value
   ) {
     return;
   }
@@ -520,13 +563,13 @@ const surrender = () => {
 
   const confirmed = confirm("정말로 기권하시겠습니까? 게임에서 패배하게 됩니다.");
   if (confirmed) {
+    console.log("=== SURRENDER ===");
+    console.log("Player surrendering:", myColor.value);
+
     sendGameAction("game:surrender");
     showToast("기권했습니다. 게임이 종료됩니다.", "warning");
 
-    // 로컬에서 즉시 게임 상태 업데이트 (서버 응답 전까지)
-    gameState.value.gameOver = true;
-    gameState.value.winner = myColor.value === "black" ? "white" : "black";
-    gameState.value.winReason = "surrender";
+    // 서버 응답을 기다리지 않고 로컬 상태는 그대로 두고 서버 응답으로 처리
   }
 };
 
@@ -545,31 +588,72 @@ const exitGame = () => {
  * @param {Object} payload - 새로운 게임 상태
  */
 const handleUpdateState = (payload) => {
-  gameState.value = payload;
-  console.log("게임 상태 업데이트:", gameState.value);
+  console.log("=== GAME STATE UPDATE ===");
+  console.log("Before:", {
+    currentPlayer: gameState.value.currentPlayer,
+    gameOver: gameState.value.gameOver,
+    boardState: gameState.value.board
+      .map((row) => row.map((cell) => (cell ? cell.charAt(0) : ".")))
+      .join("\n"),
+  });
+
+  console.log("Server payload:", payload);
+
+  // 설정값은 기존 것을 유지하면서 게임 상태 업데이트
+  const currentSettings = gameState.value.settings || { playerTimeLimit: 60 };
+
+  // 서버 상태로 완전히 교체
+  gameState.value = {
+    ...payload,
+    settings: currentSettings,
+  };
+
+  console.log("After:", {
+    currentPlayer: gameState.value.currentPlayer,
+    gameOver: gameState.value.gameOver,
+    myColor: myColor.value,
+    enemyColor: enemyColor.value,
+    isMyTurn: gameState.value.currentPlayer === myColor.value,
+  });
+  console.log("======================");
 };
 
 /**
+ * 서버에서 이동이 거부되었을 때 처리 (롤백)
+ * @param {Object} payload - 에러 정보
+ */
+const handleMoveRejected = (payload) => {
+  console.log("=== MOVE REJECTED ===");
+  console.log("Reason:", payload);
+
+  showToast(payload.message || "유효하지 않은 이동입니다", "error", 2000);
+
+  // 서버에서 최신 게임 상태를 요청하여 동기화
+  console.log("Requesting fresh game state from server...");
+  sendGameAction("player:loaded");
+}; /**
  * 돌 선택 업데이트를 처리합니다.
  * @param {Object} payload - { player, color }
  * @param {String} payload.player - 돌을 선택한 플레이어의 ID
  * @param {String|null} payload.color - 선택된 돌 색깔 ('black', 'white', 또는 null for 선택 해제)
  */
 const handleColorSelection = (payload) => {
-  console.log("색상 선택 업데이트:", payload);
+  console.log("=== COLOR SELECTION UPDATE ===");
+  console.log("Payload:", payload);
+  console.log("Current colors:", { myColor: myColor.value, enemyColor: enemyColor.value });
 
   if (payload.player === userStore.id) {
     // 내가 선택한 색상 확인
     myColor.value = payload.color;
+    console.log(`My color updated to: ${payload.color}`);
   } else {
     // 상대방이 선택한 색상
     enemyColor.value = payload.color;
+    console.log(`Enemy color updated to: ${payload.color}`);
 
     if (payload.color === null) {
-      // 상대방이 색상 선택을 해제한 경우
       showToast("상대방이 돌 색깔 선택을 해제했습니다", "info");
     } else {
-      // 상대방이 색상을 선택한 경우
       showToast(
         `상대방이 ${payload.color === "black" ? "흑돌(선공)" : "백돌(후공)"}을 선택했습니다`,
         "info",
@@ -578,12 +662,17 @@ const handleColorSelection = (payload) => {
   }
 
   // 양쪽이 모두 색상을 선택했으면 모달 숨김
-  if (myColor.value && enemyColor.value) {
+  const bothSelected = myColor.value && enemyColor.value;
+  console.log(`Both colors selected: ${bothSelected}`);
+
+  if (bothSelected) {
     isSelectedColor.value = true;
   } else {
-    // 한쪽이라도 색상을 선택하지 않았거나 해제했으면 모달 표시
     isSelectedColor.value = false;
   }
+
+  console.log("Final colors:", { myColor: myColor.value, enemyColor: enemyColor.value });
+  console.log("=============================");
 };
 
 /**
@@ -591,10 +680,32 @@ const handleColorSelection = (payload) => {
  * @param {Object} payload - { gameState, message }
  */
 const handleGameStarted = (payload) => {
-  gameState.value = payload.gameState;
-  isSelectedColor.value = true; // 모달 숨김
+  console.log("=== GAME STARTED ===");
+  console.log("Payload:", payload);
+
+  // 게임 상태 업데이트
+  if (payload.gameState) {
+    const currentSettings = gameState.value.settings || { playerTimeLimit: 60 };
+    gameState.value = {
+      ...payload.gameState,
+      settings: currentSettings,
+    };
+  }
+
+  // 색상 선택 모달 숨김
+  isSelectedColor.value = true;
+
+  // 성공 메시지 표시
   showToast(payload.message || "게임이 시작되었습니다!", "success");
-  console.log("게임 시작됨:", payload);
+
+  console.log("Game started - Final state:", {
+    gameOver: gameState.value.gameOver,
+    currentPlayer: gameState.value.currentPlayer,
+    myColor: myColor.value,
+    enemyColor: enemyColor.value,
+    isMyTurn: gameState.value.currentPlayer === myColor.value,
+  });
+  console.log("==================");
 };
 
 /**
@@ -619,10 +730,17 @@ const handleChatMessage = (payload) => {
  * @param {Object} payload - { gameState, players }
  */
 const handleInitialState = (payload) => {
-  gameState.value = payload.gameState;
-  console.log("초기 게임 상태:", payload);
+  console.log("=== INITIAL STATE RECEIVED ===");
+  console.log("Payload:", payload);
 
-  // 플레이어 색깔 정보가 있다면 설정
+  // 게임 상태 설정
+  const currentSettings = gameState.value.settings || { playerTimeLimit: 60 };
+  gameState.value = {
+    ...payload.gameState,
+    settings: currentSettings,
+  };
+
+  // 플레이어 색깔 정보 설정
   if (payload.players && payload.players[userStore.id]) {
     myColor.value = payload.players[userStore.id].color;
 
@@ -633,13 +751,32 @@ const handleInitialState = (payload) => {
     }
   }
 
-  // 게임이 대기 상태이고 색깔이 선택되지 않았다면 모달 표시
-  if (gameState.value.status === "waiting" || (!myColor.value && !gameState.value.gameOver)) {
+  console.log("Initial state processed:", {
+    gameOver: gameState.value.gameOver,
+    currentPlayer: gameState.value.currentPlayer,
+    myColor: myColor.value,
+    enemyColor: enemyColor.value,
+    isMyTurn: gameState.value.currentPlayer === myColor.value,
+  });
+
+  // UI 상태 결정
+  const bothColorsSelected = myColor.value && enemyColor.value;
+  const gameActive = !gameState.value.gameOver;
+
+  if (bothColorsSelected && gameActive) {
+    isSelectedColor.value = true; // 모달 숨김
+    showToast("게임이 진행 중입니다", "info");
+  } else if (!bothColorsSelected) {
     isSelectedColor.value = false; // 모달 표시
     showToast("돌 색깔을 선택해주세요", "info");
-  } else if (myColor.value && enemyColor.value) {
-    isSelectedColor.value = true; // 모달 숨김
   }
+
+  console.log("UI state:", {
+    modalVisible: !isSelectedColor.value,
+    bothColorsSelected,
+    gameActive,
+  });
+  console.log("============================");
 };
 
 /**
@@ -656,7 +793,9 @@ const handleRestartRequested = (payload) => {
 
 /** 재시작이 수락되었음을 처리합니다. */
 const handleRestartAccepted = (payload) => {
-  // 모든 게임 관련 상태 초기화 (설정값 제외)
+  console.log("Game restart accepted:", payload);
+
+  // 모든 게임 관련 상태 초기화
   messages.value = []; // 채팅 초기화
   isRestartRequested.value = false;
   restartRequester.value = "";
@@ -670,36 +809,45 @@ const handleRestartAccepted = (payload) => {
     toastTimer = null;
   }
 
+  // 색상 선택 상태 완전 초기화
+  myColor.value = null;
+  enemyColor.value = null;
+  isSelectedColor.value = false; // 모달 표시
+
   // 게임 상태 초기화 (설정값은 유지)
   const currentSettings = gameState.value.settings || { playerTimeLimit: 60 };
-  gameState.value = {
-    board: Array(15)
-      .fill(null)
-      .map(() => Array(15).fill(null)),
-    currentPlayer: null,
-    gameOver: true,
-    winner: null,
-    playerTimers: {
-      black: currentSettings.playerTimeLimit || 60,
-      white: currentSettings.playerTimeLimit || 60,
-    },
-    settings: currentSettings, // 기존 설정 유지
-  };
 
-  // 서버에서 받은 게임 상태가 있으면 업데이트 (설정값 우선 보존)
+  // 서버에서 받은 게임 상태가 있으면 사용, 없으면 기본값으로 초기화
   if (payload.gameState) {
     gameState.value = {
       ...payload.gameState,
       settings: currentSettings, // 설정값은 기존 것 유지
     };
+    console.log("Game state updated from server:", gameState.value);
+  } else {
+    // 서버 응답이 없으면 기본 상태로 초기화
+    gameState.value = {
+      board: Array(15)
+        .fill(null)
+        .map(() => Array(15).fill(null)),
+      currentPlayer: null,
+      gameOver: true,
+      winner: null,
+      playerTimers: {
+        black: currentSettings.playerTimeLimit || 60,
+        white: currentSettings.playerTimeLimit || 60,
+      },
+      settings: currentSettings,
+    };
+    console.log("Game state initialized to default:", gameState.value);
   }
 
-  showToast("게임이 재시작됩니다!", "success");
+  showToast("게임이 재시작됩니다! 돌 색깔을 다시 선택해주세요.", "success");
 
-  // 돌 선택 모달 다시 표시
-  isSelectedColor.value = false;
-  myColor.value = null;
-  enemyColor.value = null;
+  // 색상 선택 모달 표시를 지연시켜 안정적으로 표시
+  nextTick(() => {
+    isSelectedColor.value = false;
+  });
 };
 
 /**
@@ -755,9 +903,14 @@ const handleRestartCancelled = (payload) => {
  * @param {Object} payload - { black, white, currentPlayer }
  */
 const handleTimerUpdate = (payload) => {
-  if (gameState.value.playerTimers) {
-    gameState.value.playerTimers.black = payload.black;
-    gameState.value.playerTimers.white = payload.white;
+  if (gameState.value.playerTimers && !gameState.value.gameOver) {
+    gameState.value.playerTimers.black = payload.black || 0;
+    gameState.value.playerTimers.white = payload.white || 0;
+
+    // 현재 플레이어 정보도 업데이트
+    if (payload.currentPlayer) {
+      gameState.value.currentPlayer = payload.currentPlayer;
+    }
   }
 };
 
@@ -766,9 +919,18 @@ const handleTimerUpdate = (payload) => {
  * @param {Object} payload - { winner, reason }
  */
 const handleTimeout = (payload) => {
+  console.log("Timer timeout:", payload);
+
   gameState.value.gameOver = true;
   gameState.value.winner = payload.winner;
-  showToast("시간이 초과되었습니다!", "warning");
+
+  const timeoutPlayer = payload.winner === "black" ? "white" : "black"; // 시간 초과한 플레이어
+  const timeoutMessage =
+    timeoutPlayer === myColor.value
+      ? "시간이 초과되어 패배했습니다!"
+      : "상대방의 시간이 초과되어 승리했습니다!";
+
+  showToast(timeoutMessage, payload.winner === myColor.value ? "success" : "error");
 };
 
 /**
@@ -777,6 +939,7 @@ const handleTimeout = (payload) => {
 const setupSocketHandlers = () => {
   socketStore.registerHandler("game:initialState", handleInitialState);
   socketStore.registerHandler("game:updateState", handleUpdateState);
+  socketStore.registerHandler("game:moveRejected", handleMoveRejected);
   socketStore.registerHandler("chat:message", handleChatMessage);
   socketStore.registerHandler("game:restart:requested", handleRestartRequested);
   socketStore.registerHandler("game:restart:accepted", handleRestartAccepted);
@@ -798,6 +961,7 @@ const cleanupSocketHandlers = () => {
   const gameHandlers = [
     "game:initialState",
     "game:updateState",
+    "game:moveRejected",
     "game:restart:requested",
     "game:restart:accepted",
     "game:restart:cancelled",
@@ -822,25 +986,38 @@ const cleanupSocketHandlers = () => {
 
 // --- Lifecycle Hooks ---
 onMounted(() => {
+  console.log("GomokuGame component mounted");
+
   if (!socketStore.isConnected) {
     // 소켓이 연결되지 않은 상태에서 페이지에 접근한 경우
+    console.error("Socket not connected, redirecting to game rooms");
     alert("잘못된 접근입니다. 게임 로비로 돌아갑니다.");
     router.push({ name: "game-rooms", params: { gameId: props.gameId } });
     return;
   }
 
+  // 핸들러 등록
   setupSocketHandlers();
 
   // 서버에 이 화면이 준비되었음을 알리고 초기 게임 상태를 요청
+  console.log("Sending player:loaded to server");
   sendGameAction("player:loaded");
 
-  // 초기에는 돌 선택 모달을 표시 (서버 응답을 기다리면서)
+  // 초기 상태 설정을 위한 짧은 지연
   setTimeout(() => {
-    if (!myColor.value && !enemyColor.value) {
+    console.log("Initial state check:", {
+      myColor: myColor.value,
+      enemyColor: enemyColor.value,
+      gameOver: gameState.value.gameOver,
+      modalVisible: !isSelectedColor.value,
+    });
+
+    // 게임이 진행 중이 아니고 색상이 선택되지 않았다면 모달 표시
+    if (gameState.value.gameOver && (!myColor.value || !enemyColor.value)) {
       isSelectedColor.value = false; // 모달 표시
       showToast("돌 색깔을 선택해주세요", "info");
     }
-  }, 1000);
+  }, 500);
 });
 
 onUnmounted(() => {
@@ -1120,6 +1297,15 @@ onUnmounted(() => {
   transform: none;
   box-shadow: none;
   cursor: not-allowed;
+}
+
+.retry-btn.player-left {
+  background-color: #dc2626;
+  color: white;
+  opacity: 0.8;
+  pointer-events: none;
+  cursor: not-allowed;
+  font-weight: bold;
 }
 
 .retry-btn.restart-requested {

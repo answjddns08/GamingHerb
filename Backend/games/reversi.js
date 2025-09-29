@@ -252,7 +252,10 @@ class ReversiGame {
 					success: true,
 					response: {
 						type: "game:restart:declined",
-						payload: { declinerId: userId },
+						payload: {
+							declinerId: userId,
+							declinerName: room.players.get(userId)?.username || "Unknown",
+						},
 					},
 					shouldBroadcast: true,
 				};

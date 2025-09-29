@@ -200,14 +200,40 @@ class GomokuGame {
 	 * @returns {Object} - { success: boolean, response?: Object, shouldBroadcast?: boolean }
 	 */
 	handleAction(action, userId, room) {
-		const playerIds = Array.from(room.players.keys());
-		const playerIndex = playerIds.indexOf(userId);
-		const playerColor = playerIndex === 0 ? "black" : "white";
+		// 플레이어 색상을 room.playerColors에서 가져옴 (더 정확함)
+		const playerColor = room.playerColors
+			? room.playerColors.get(userId)
+			: null;
 
 		switch (action.type) {
 			case "game:move": {
 				const { row, col } = action.payload;
+				console.log(
+					`Move attempt: ${userId} (${playerColor}) -> (${row}, ${col})`
+				);
+				console.log(
+					`Current game state: player=${this.currentPlayer}, gameOver=${this.gameOver}`
+				);
+
+				// 플레이어 색상이 없으면 실패
+				if (!playerColor) {
+					console.log("Move failed: No player color assigned");
+					return {
+						success: false,
+						response: {
+							type: "game:moveRejected",
+							payload: { message: "색상이 선택되지 않았습니다" },
+						},
+						shouldBroadcast: false,
+					};
+				}
+
 				if (this.placeStone(row, col, playerColor)) {
+					console.log(`Move successful: Game state updated`);
+					console.log(
+						`New state: player=${this.currentPlayer}, gameOver=${this.gameOver}`
+					);
+
 					return {
 						success: true,
 						response: {
@@ -217,16 +243,34 @@ class GomokuGame {
 						shouldBroadcast: true,
 					};
 				}
-				return { success: false };
+
+				console.log("Move failed: Invalid move");
+				return {
+					success: false,
+					response: {
+						type: "game:moveRejected",
+						payload: { message: "유효하지 않은 이동입니다" },
+					},
+					shouldBroadcast: false,
+				};
 			}
 
 			case "game:surrender": {
+				console.log(`Player ${userId} (${playerColor}) surrendering`);
+
 				this.surrender(playerColor);
+
+				// 승부 이유 추가
+				const currentState = this.getState();
+				currentState.winReason = "surrender";
+
+				console.log("Surrender processed - final state:", currentState);
+
 				return {
 					success: true,
 					response: {
 						type: "game:updateState",
-						payload: this.getState(),
+						payload: currentState,
 					},
 					shouldBroadcast: true,
 					shouldUpdateRoomStatus: "waiting",
@@ -450,6 +494,8 @@ class GomokuGame {
 
 				let gameStartResponse = null;
 				if (allColorsSelected) {
+					console.log("All colors selected - starting game");
+
 					// 게임 시작
 					this.gameOver = false;
 					this.currentPlayer = "black"; // 흑돌부터 시작
@@ -458,6 +504,8 @@ class GomokuGame {
 					if (this.settings.timerEnabled !== false) {
 						room.gameTimerActive = true;
 					}
+
+					console.log("Game started with state:", this.getState());
 
 					gameStartResponse = {
 						type: "game:started",
