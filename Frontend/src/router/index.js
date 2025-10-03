@@ -33,6 +33,12 @@ const router = createRouter({
       component: () => import("../views/InGame.vue"),
       props: true,
     },
+    {
+      path: "/phaser",
+      name: "phaser-test",
+      component: () => import("../views/TestPhaser.vue"),
+      props: true,
+    },
   ],
 });
 
