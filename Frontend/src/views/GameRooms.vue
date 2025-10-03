@@ -120,6 +120,7 @@ import userBoard from "../components/userBoard.vue";
 
 /**
  * @todo 간단한 게임 설명 추가
+ * @todo 방장 표시 안됨
  */
 
 /** @type {import('vue').Ref<Object>} 게임 방 목록을 저장하는 객체 */

@@ -242,24 +242,33 @@ function setupWebsocket(wss) {
 									const gameSettings = room.settings || {};
 									const game = new GameClass(gameSettings);
 
-									// 타이머 콜백 설정
-									game.startTimer(
-										// 타이머 업데이트 콜백
-										(timerData) => {
-											broadCastToRoom(gameId, roomName, {
-												type: "game:timerUpdate",
-												payload: timerData,
-											});
-										},
-										// 시간 초과 콜백
-										(timeoutData) => {
-											broadCastToRoom(gameId, roomName, {
-												type: "game:timeout",
-												payload: timeoutData,
-											});
-											updateRoomStatus(gameId, roomName, "waiting");
-										}
-									);
+									// 타이머가 활성화된 경우에만 타이머 시작
+									if (
+										game.settings.timerEnabled &&
+										game.settings.playerTimeLimit > 0
+									) {
+										// 타이머 콜백 설정
+										game.startTimer(
+											// 타이머 업데이트 콜백
+											(timerData) => {
+												broadCastToRoom(gameId, roomName, {
+													type: "game:timerUpdate",
+													payload: timerData,
+												});
+											},
+											// 시간 초과 콜백
+											(timeoutData) => {
+												broadCastToRoom(gameId, roomName, {
+													type: "game:timeout",
+													payload: timeoutData,
+												});
+												updateRoomStatus(gameId, roomName, "waiting");
+											}
+										);
+										room.gameTimerActive = true;
+									} else {
+										room.gameTimerActive = false;
+									}
 
 									setGameState(gameId, roomName, game);
 									updateRoomStatus(gameId, roomName, "active");

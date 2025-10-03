@@ -33,12 +33,6 @@ const router = createRouter({
       component: () => import("../views/InGame.vue"),
       props: true,
     },
-    {
-      // UI 테스트용 라우트 (웹소켓 없이)
-      path: "/uiTest",
-      name: "ui-test",
-      component: () => import("../views/GomokuUITest.vue"),
-    },
   ],
 });
 

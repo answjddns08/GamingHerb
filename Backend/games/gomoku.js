@@ -1,7 +1,15 @@
 class GomokuGame {
 	constructor(settings = {}) {
+		// playerTimeLimit이 객체 형태인 경우 value 속성 사용, 아니면 기본값 사용
+		const playerTimeLimit =
+			typeof settings.playerTimeLimit === "object" &&
+			settings.playerTimeLimit !== null
+				? settings.playerTimeLimit.value || 60
+				: settings.playerTimeLimit || 60;
+
 		this.settings = {
-			playerTimeLimit: 60, // 기본값 60초
+			playerTimeLimit: playerTimeLimit,
+			timerEnabled: settings.timerEnabled !== false, // 기본값은 true
 			...settings,
 		};
 		this.playerTimers = {
@@ -501,8 +509,14 @@ class GomokuGame {
 					this.currentPlayer = "black"; // 흑돌부터 시작
 
 					// 타이머 시작 (설정에서 타이머가 활성화된 경우)
-					if (this.settings.timerEnabled !== false) {
+					if (this.settings.timerEnabled && this.settings.playerTimeLimit > 0) {
+						// 타이머 콜백이 이미 설정되어 있다면 타이머 시작
+						if (this.onTimerUpdate && this.onTimeOut) {
+							this.startTimer(this.onTimerUpdate, this.onTimeOut);
+						}
 						room.gameTimerActive = true;
+					} else {
+						room.gameTimerActive = false;
 					}
 
 					console.log("Game started with state:", this.getState());

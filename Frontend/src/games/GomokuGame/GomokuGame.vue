@@ -36,17 +36,15 @@
       ></div>
       <div class="flex flex-col gap-3 flex-1">
         <progress
+          v-if="gameState.settings?.timerEnabled && gameState.settings?.playerTimeLimit > 0"
           class="time-bar"
-          :max="gameState.settings?.playerTimeLimit || 60"
+          :max="gameState.settings.playerTimeLimit"
           :value="
-            gameState.settings?.playerTimeLimit === 0 || !gameState.settings?.playerTimeLimit
-              ? 0
-              : Number(
-                  enemyColor === 'black'
-                    ? (gameState.playerTimers?.black ?? (gameState.settings?.playerTimeLimit || 60))
-                    : (gameState.playerTimers?.white ??
-                        (gameState.settings?.playerTimeLimit || 60)),
-                )
+            Number(
+              enemyColor === 'black'
+                ? (gameState.playerTimers?.black ?? gameState.settings.playerTimeLimit)
+                : (gameState.playerTimers?.white ?? gameState.settings.playerTimeLimit),
+            )
           "
           min="0"
         ></progress>
@@ -55,12 +53,12 @@
           <span
             class="timer-display"
             :class="enemyTimerClass"
-            v-if="gameState.settings?.playerTimeLimit > 0"
+            v-if="gameState.settings?.timerEnabled && gameState.settings?.playerTimeLimit > 0"
             >{{
               Math.floor(
                 enemyColor === "black"
-                  ? (gameState.playerTimers?.black ?? (gameState.settings?.playerTimeLimit || 60))
-                  : (gameState.playerTimers?.white ?? (gameState.settings?.playerTimeLimit || 60)),
+                  ? (gameState.playerTimers?.black ?? gameState.settings.playerTimeLimit)
+                  : (gameState.playerTimers?.white ?? gameState.settings.playerTimeLimit),
               )
             }}초</span
           >
@@ -113,17 +111,15 @@
       ></div>
       <div class="flex flex-col gap-3 flex-1">
         <progress
+          v-if="gameState.settings?.timerEnabled && gameState.settings?.playerTimeLimit > 0"
           class="time-bar"
-          :max="gameState.settings?.playerTimeLimit || 60"
+          :max="gameState.settings.playerTimeLimit"
           :value="
-            gameState.settings?.playerTimeLimit === 0 || !gameState.settings?.playerTimeLimit
-              ? 0
-              : Number(
-                  myColor === 'black'
-                    ? (gameState.playerTimers?.black ?? (gameState.settings?.playerTimeLimit || 60))
-                    : (gameState.playerTimers?.white ??
-                        (gameState.settings?.playerTimeLimit || 60)),
-                )
+            Number(
+              myColor === 'black'
+                ? (gameState.playerTimers?.black ?? gameState.settings.playerTimeLimit)
+                : (gameState.playerTimers?.white ?? gameState.settings.playerTimeLimit),
+            )
           "
           min="0"
         ></progress>
@@ -132,12 +128,12 @@
           <span
             class="timer-display"
             :class="myTimerClass"
-            v-if="gameState.settings?.playerTimeLimit > 0"
+            v-if="gameState.settings?.timerEnabled && gameState.settings?.playerTimeLimit > 0"
             >{{
               Math.floor(
                 myColor === "black"
-                  ? (gameState.playerTimers?.black ?? (gameState.settings?.playerTimeLimit || 60))
-                  : (gameState.playerTimers?.white ?? (gameState.settings?.playerTimeLimit || 60)),
+                  ? (gameState.playerTimers?.black ?? gameState.settings.playerTimeLimit)
+                  : (gameState.playerTimers?.white ?? gameState.settings.playerTimeLimit),
               )
             }}초</span
           >
@@ -285,6 +281,12 @@ const socketStore = useSocketStore();
 const router = useRouter();
 
 /**
+ * @todo 타이머 기능 구현
+ * @todo 마지막에 둔 돌 표시
+ * @todo 종종 재시작 요청이 안보내짐, 재시작시 게임이 약간 이상해짐(이건 인터넷 문제인 것 같진 않은데)
+ */
+
+/**
  * @type {import('vue').Ref<Object>} 게임의 현재 상태 (보드, 현재 플레이어, 종료 여부 등)
  * settings.js에서 의 설정들이 settings에 포함됨
  */
@@ -340,14 +342,19 @@ let toastTimer = null;
 
 // Computed properties for timer styling
 const myTimerClass = computed(() => {
-  if (!gameState.value.settings?.playerTimeLimit || gameState.value.settings.playerTimeLimit <= 0) {
-    return ""; // 시간 제한이 없으면 스타일 없음
+  // 타이머가 비활성화되어 있거나 시간 제한이 없으면 빈 스타일 반환
+  if (
+    !gameState.value.settings?.timerEnabled ||
+    !gameState.value.settings?.playerTimeLimit ||
+    gameState.value.settings.playerTimeLimit <= 0
+  ) {
+    return "";
   }
 
   const time = Math.floor(
     myColor.value === "black"
-      ? (gameState.value.playerTimers?.black ?? (gameState.value.settings?.playerTimeLimit || 60))
-      : (gameState.value.playerTimers?.white ?? (gameState.value.settings?.playerTimeLimit || 60)),
+      ? (gameState.value.playerTimers?.black ?? gameState.value.settings.playerTimeLimit)
+      : (gameState.value.playerTimers?.white ?? gameState.value.settings.playerTimeLimit),
   );
   if (time <= 10) return "danger";
   if (time <= 30) return "warning";
@@ -355,14 +362,19 @@ const myTimerClass = computed(() => {
 });
 
 const enemyTimerClass = computed(() => {
-  if (!gameState.value.settings?.playerTimeLimit || gameState.value.settings.playerTimeLimit <= 0) {
-    return ""; // 시간 제한이 없으면 스타일 없음
+  // 타이머가 비활성화되어 있거나 시간 제한이 없으면 빈 스타일 반환
+  if (
+    !gameState.value.settings?.timerEnabled ||
+    !gameState.value.settings?.playerTimeLimit ||
+    gameState.value.settings.playerTimeLimit <= 0
+  ) {
+    return "";
   }
 
   const time = Math.floor(
     enemyColor.value === "black"
-      ? (gameState.value.playerTimers?.black ?? (gameState.value.settings?.playerTimeLimit || 60))
-      : (gameState.value.playerTimers?.white ?? (gameState.value.settings?.playerTimeLimit || 60)),
+      ? (gameState.value.playerTimers?.black ?? gameState.value.settings.playerTimeLimit)
+      : (gameState.value.playerTimers?.white ?? gameState.value.settings.playerTimeLimit),
   );
   if (time <= 10) return "danger";
   if (time <= 30) return "warning";

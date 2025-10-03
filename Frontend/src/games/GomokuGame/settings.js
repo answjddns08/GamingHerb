@@ -16,7 +16,7 @@
  * @property {boolean} allowSpectator - 관전 허용 여부
  */
 export const gameSettings = {
-  timerEnabled: false, // 타이머 기능 비활성화
+  timerEnabled: true, // 타이머 기능 활성화
   playerTimeLimit: {
     // 플레이어당 시간 제한 (초)
     value: 60,
