@@ -7,6 +7,7 @@
 <script setup>
 import Phaser from "phaser";
 import { onMounted, ref, onUnmounted } from "vue";
+import GameScene from "@/games/testGame";
 
 const gameContainer = ref(null);
 let gameInstance = null;
@@ -14,30 +15,25 @@ let gameInstance = null;
 onMounted(() => {
   const config = {
     type: Phaser.AUTO,
-    width: 1280,
-    height: 720,
+    width: 800,
+    height: 600,
+    backgroundColor: "#B23A3A",
     parent: gameContainer.value, // Attach to the div ref
-    scene: {
-      preload: function () {
-        // Load assets here
-        this.load.image("sky", "/assets/logo.svg");
-      },
-      create: function () {
-        // Create game objects here
-        this.add.image(400, 300, "sky");
-
-        this.add.text(10, 10, "Phaser Game in Vue 3", {
-          font: "16px Arial",
-          fill: "#ffffff",
-        });
-      },
-      update: function () {
-        // Game logic per frame
+    physics: {
+      default: "arcade",
+      arcade: {
+        gravity: { y: 325 },
+        debug: false,
       },
     },
+    scene: GameScene,
   };
 
   gameInstance = new Phaser.Game(config);
+
+  if (gameInstance.sound.context.state !== "closed") {
+    gameInstance.sound.context.suspend();
+  }
 });
 
 onUnmounted(() => {
