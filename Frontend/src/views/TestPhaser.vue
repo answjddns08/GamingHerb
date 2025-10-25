@@ -5,9 +5,9 @@
 </template>
 
 <script setup>
-import Phaser from "phaser";
+import Phaser, { Scale } from "phaser";
 import { onMounted, ref, onUnmounted } from "vue";
-import GameScene from "@/games/testGame";
+import MiniGameScene from "@/games/waitingGame";
 
 const gameContainer = ref(null);
 let gameInstance = null;
@@ -15,18 +15,21 @@ let gameInstance = null;
 onMounted(() => {
   const config = {
     type: Phaser.AUTO,
-    width: 800,
-    height: 600,
-    backgroundColor: "#B23A3A",
+    width: window.innerWidth,
+    height: window.innerHeight,
+    backgroundColor: "#2BD9FA",
     parent: gameContainer.value, // Attach to the div ref
     physics: {
       default: "arcade",
       arcade: {
-        gravity: { y: 325 },
         debug: false,
       },
     },
-    scene: GameScene,
+    scene: MiniGameScene,
+    scale: {
+      mode: Scale.FIT,
+      autoCenter: Scale.CENTER_BOTH,
+    },
   };
 
   gameInstance = new Phaser.Game(config);

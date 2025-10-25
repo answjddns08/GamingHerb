@@ -5,6 +5,7 @@
       <p>Please wait for other players to get ready...</p>
       <p>Next time, this room will have the mini game soon</p>
     </div>
+    <div ref="gameContainer"></div>
   </main>
   <div class="player-card">
     <div class="flex justify-between items-end gap-4">
@@ -94,6 +95,8 @@ import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user.js";
 import { useSocketStore } from "@/stores/socket.js";
+import Phaser from "phaser";
+import MiniGameScene from "@/games/waitingGame";
 
 /**
  * @todo 대기방에서 간단한 2D 멀티플레이 게임 + 채팅창 추가
@@ -109,6 +112,9 @@ const props = defineProps({
   gameId: { type: String, required: true },
   roomId: { type: String, required: true },
 });
+
+const gameContainer = ref(null);
+let gameInstance = null;
 
 /** @type {import('vue').Ref<Object|null>} 게임 설정 객체 (최대 플레이어 수, 호스트 ID 등) */
 const gameSetting = ref(null);
@@ -410,6 +416,27 @@ onMounted(() => {
   } else {
     // 이미 연결되어 있다면 즉시 join 메시지 전송
     send("join");
+  }
+
+  const config = {
+    type: Phaser.AUTO,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    parent: gameContainer.value, // Attach to the div ref
+    physics: {
+      default: "arcade",
+      arcade: {
+        gravity: { y: 325 },
+        debug: false,
+      },
+    },
+    scene: MiniGameScene,
+  };
+
+  gameInstance = new Phaser.Game(config);
+
+  if (gameInstance.sound.context.state !== "closed") {
+    gameInstance.sound.context.suspend();
   }
 });
 

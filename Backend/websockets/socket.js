@@ -279,6 +279,7 @@ function setupWebsocket(wss) {
 								}
 							}
 						}
+					} else if (action.type === "miniGame") {
 					}
 					break;
 				}
