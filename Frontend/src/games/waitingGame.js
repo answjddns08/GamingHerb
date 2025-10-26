@@ -36,11 +36,10 @@ class MiniGameScene extends Phaser.Scene {
     // this.physics.add.collider(this.players, this.players);
 
     // 방망이(무기) 생성 - 사각형으로 단순화 (나중에 스프라이트로 교체 가능)
+    // 물리 바디는 붙이지 않습니다(시각 + 수동 판정만 사용).
     this.weapon = this.add.rectangle(0, 0, 60, 20, 0x8b4513);
-    this.physics.add.existing(this.weapon);
-    this.weapon.body.enable = false; // 평소엔 비활성화 (휘두를 경우에만 활성화)
-    this.weapon.setVisible(false);
-    this.weapon.setDepth(10);
+    this.weapon.setVisible(false); // 기본적으로는 안 보이게
+    this.weapon.setDepth(10); // 항상 최상단에 보이도록 크게 설정
 
     // 스윙 상태
     this.isSwinging = false;
@@ -215,13 +214,11 @@ class MiniGameScene extends Phaser.Scene {
 
     console.log("Swing attack!");
 
-    console.log("weapon position before swing:", this.weapon.x, this.weapon.y);
-
     this.isSwinging = true;
     this.swingCooldown = this.SWING_COOLDOWN;
 
     const dir = this.player.lastDirection;
-    const distance = 40; // 플레이어로부터의 거리
+    const distance = 60; // 플레이어로부터의 거리
 
     // 스윙 애니메이션: 플레이어를 중심으로 원호 회전
     const swingAngle = Math.atan2(dir.y, dir.x);
@@ -237,17 +234,20 @@ class MiniGameScene extends Phaser.Scene {
     this.weapon.setPosition(startX, startY);
     this.weapon.setRotation(startAngle);
 
-    // 방망이 표시 및 활성화
+    // 방망이 표시 (물리 바디 사용하지 않음)
     this.weapon.setVisible(true);
-    this.weapon.body.enable = true;
 
     // 플레이어를 중심으로 원호를 그리며 스윙
+    // onUpdate를 확실히 실행하기 위해 더미 속성(swingProgress)을 트윈
+    const swingData = { progress: 0 };
+
     this.tweens.add({
-      targets: this.weapon,
+      targets: swingData,
+      progress: 1, // 0에서 1로 진행
       duration: this.SWING_DURATION,
       ease: "Cubic.easeOut",
-      onUpdate: (tween) => {
-        const progress = tween.progress;
+      onUpdate: () => {
+        const progress = swingData.progress;
         const currentAngle = startAngle + (endAngle - startAngle) * progress;
 
         // 플레이어를 중심으로 원 궤도를 따라 이동
@@ -261,7 +261,6 @@ class MiniGameScene extends Phaser.Scene {
       onComplete: () => {
         this.isSwinging = false;
         this.weapon.setVisible(false);
-        this.weapon.body.enable = false;
       },
     });
   }
@@ -275,6 +274,7 @@ class MiniGameScene extends Phaser.Scene {
     this.players.getChildren().forEach((target) => {
       if (target === this.player) return; // 자기 자신은 제외
       if (target.hitRecently) return; // 이미 맞은 상태면 스킵 (연속 히트 방지)
+      if (target.invincible) return; // 무적 상태면 스킵
 
       const targetBounds = target.getBounds();
 
