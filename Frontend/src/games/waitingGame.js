@@ -6,25 +6,29 @@ class MiniGameScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image("sky", "assets/sky.png");
-    this.load.image("ground", "assets/platform.png");
-    this.load.image("star", "assets/star.png");
-    this.load.image("bomb", "assets/bomb.png");
-    this.load.spritesheet("dude", "assets/dude.png", {
+    this.load.image("sky", "/assets/sky.png");
+    this.load.image("ground", "/assets/platform.png");
+    this.load.image("star", "/assets/star.png");
+    this.load.image("bomb", "/assets/bomb.png");
+    this.load.spritesheet("dude", "/assets/dude.png", {
       frameWidth: 32,
       frameHeight: 48,
     });
   }
 
   create() {
+    // 화면 중앙 좌표 계산 (모든 기기에서 동일하게 작동)
+    const centerX = this.cameras.main.width / 2;
+    const centerY = this.cameras.main.height / 2;
+
     // 지역(땅) 정의: 이 영역 안이면 "서 있음", 밖이면 낭떠러지 컨셉
-    const ground = this.add.rectangle(800, 450, 500, 500, 0xff0000).setName("ground");
+    const ground = this.add.rectangle(centerX, centerY, 500, 500, 0xff0000).setName("ground");
 
     // 땅의 화면상 바운딩을 한 번 캐싱해 두고 사용(정적이면 문제 없음)
     this.groundRect = ground.getBounds();
 
     // 플레이어 생성 및 참조 저장
-    this.player = this.physics.add.sprite(800, 450, "dude").setName("player");
+    this.player = this.physics.add.sprite(centerX, centerY, "dude").setName("player");
     this.player.setCollideWorldBounds(true); // 월드 경계 밖으로 못 나가게(필요시 해제 가능)
     this.player.setDrag(200, 200); // 밀렸을 때 자연스러운 감속
     this.player.lastDirection = { x: 0, y: -1 }; // 초기 방향(위쪽)
@@ -65,7 +69,7 @@ class MiniGameScene extends Phaser.Scene {
 
     // 낙하 처리 중복 방지 플래그
     this.isFalling = false;
-    this.respawnPoint = new Phaser.Math.Vector2(800, 450);
+    this.respawnPoint = new Phaser.Math.Vector2(centerX, centerY);
 
     // 애니메이션 생성 - 나중에 key로 애니메이션 식별해서 참조
     this.anims.create({
