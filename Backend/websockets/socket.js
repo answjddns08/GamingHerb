@@ -51,6 +51,8 @@ function setupWebsocket(wss) {
 
 			switch (type) {
 				case "join": {
+					// #region Join Room
+
 					// join 메시지에 필요한 속성 검증
 					if (!gameId || !roomName || !userId || !userName) {
 						console.error("Join message missing required properties:", {
@@ -148,9 +150,13 @@ function setupWebsocket(wss) {
 						);
 					}
 					break;
+
+					// #endregion
 				}
 
 				case "waiting": {
+					// #region Waiting Room Actions
+
 					// waiting 메시지에 필요한 속성 검증
 					if (!gameId || !roomName || !userId || !action) {
 						console.error("Waiting message missing required properties:", {
@@ -282,9 +288,13 @@ function setupWebsocket(wss) {
 					} else if (action.type === "miniGame") {
 					}
 					break;
+
+					// #endregion
 				}
 
 				case "inGame": {
+					// #region In-Game Actions
+
 					// inGame 메시지에 필요한 속성 검증
 					if (!gameId || !roomName || !userId || !action) {
 						console.error("InGame message missing required properties:", {
@@ -359,9 +369,13 @@ function setupWebsocket(wss) {
 						}
 					}
 					break;
+
+					// #endregion
 				}
 
 				case "leave": {
+					// #region Leave Room
+
 					// 의도적으로 나가는 경우 - 유예 기간 없이 즉시 제거
 					const playerInfo = findPlayerByWs(ws);
 					if (playerInfo) {
@@ -423,6 +437,8 @@ function setupWebsocket(wss) {
 						);
 					}
 					break;
+
+					// #endregion
 				}
 			}
 		});
