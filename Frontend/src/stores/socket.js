@@ -3,6 +3,8 @@ import { defineStore } from "pinia";
 
 export const useSocketStore = defineStore("socket", () => {
   const socket = ref(null);
+  // 타입별로 여러 핸들러를 보관하기 위해 Set 사용
+  // 구조: { [type: string]: Set<Function> }
   const messageHandlers = ref({});
   const isReconnecting = ref(false);
   const reconnectAttempts = ref(0);
@@ -32,9 +34,26 @@ export const useSocketStore = defineStore("socket", () => {
         const data = JSON.parse(event.data);
         console.log("Received message:", data);
 
-        // Find and call the handler for the message type
-        if (data.type && messageHandlers.value[data.type]) {
-          messageHandlers.value[data.type](data.payload || data);
+        // 수신 타입에 등록된 모든 핸들러 호출
+        if (data.type) {
+          const handlers = messageHandlers.value[data.type];
+          const payload = data.payload || data;
+          // 과거 단일 핸들러 형태와의 하위 호환
+          if (typeof handlers === "function") {
+            try {
+              handlers(payload, data);
+            } catch (e) {
+              console.error(e);
+            }
+          } else if (handlers && handlers instanceof Set) {
+            for (const fn of handlers) {
+              try {
+                fn(payload, data);
+              } catch (e) {
+                console.error(e);
+              }
+            }
+          }
         }
       } catch (error) {
         console.error("Error parsing message:", error);
@@ -70,9 +89,22 @@ export const useSocketStore = defineStore("socket", () => {
       } else {
         console.error("Max reconnection attempts reached");
         isReconnecting.value = false;
-        // 에러 핸들러 호출 가능
-        if (messageHandlers.value["connectionFailed"]) {
-          messageHandlers.value["connectionFailed"]();
+        // 에러 핸들러 호출 가능 (등록된 모든 핸들러 호출)
+        const handlers = messageHandlers.value["connectionFailed"];
+        if (typeof handlers === "function") {
+          try {
+            handlers();
+          } catch (e) {
+            console.error(e);
+          }
+        } else if (handlers && handlers instanceof Set) {
+          for (const fn of handlers) {
+            try {
+              fn();
+            } catch (e) {
+              console.error(e);
+            }
+          }
         }
       }
     }, reconnectDelay);
@@ -88,11 +120,40 @@ export const useSocketStore = defineStore("socket", () => {
   }
 
   function registerHandler(type, handler) {
-    messageHandlers.value[type] = handler;
+    const current = messageHandlers.value[type];
+    if (!current) {
+      messageHandlers.value[type] = new Set([handler]);
+    } else if (current instanceof Set) {
+      current.add(handler);
+    } else if (typeof current === "function") {
+      // 과거 단일 핸들러에서 Set으로 승격
+      const s = new Set([current, handler]);
+      messageHandlers.value[type] = s;
+    } else {
+      // 예외적인 형태 방어적 처리
+      messageHandlers.value[type] = new Set([handler]);
+    }
+
+    // 편의: 해제 함수 반환
+    return () => unregisterHandler(type, handler);
   }
 
-  function unregisterHandler(type) {
-    delete messageHandlers.value[type];
+  function unregisterHandler(type, handler) {
+    const current = messageHandlers.value[type];
+    if (!current) return;
+
+    if (handler) {
+      if (current instanceof Set) {
+        current.delete(handler);
+        if (current.size === 0) delete messageHandlers.value[type];
+      } else if (typeof current === "function") {
+        // 단일 핸들러였고 동일 레퍼런스인 경우만 제거
+        if (current === handler) delete messageHandlers.value[type];
+      }
+    } else {
+      // handler 미지정 시 해당 타입 모두 제거 (하위 호환)
+      delete messageHandlers.value[type];
+    }
   }
 
   function disconnect() {
