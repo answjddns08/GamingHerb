@@ -26,8 +26,7 @@ onMounted(() => {
       },
     },
     scene: MiniGameScene,
-    scale: {
-      mode: Scale.FIT,
+    Scale: {
       autoCenter: Scale.CENTER_BOTH,
     },
   };
@@ -42,6 +41,8 @@ onMounted(() => {
 onUnmounted(() => {
   if (gameInstance) {
     gameInstance.destroy(true); // Destroy the Phaser game instance
+
+    console.log("Phaser game instance destroyed");
   }
 });
 </script>

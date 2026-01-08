@@ -8,7 +8,6 @@ import router from "./router";
 import { useUserStore } from "./stores/user";
 
 // Import mobile logger for debugging on mobile devices
-//import { mobileLogger } from "./utils/mobileLogger";
 
 import eruda from "eruda";
 
@@ -25,8 +24,6 @@ async function initializeApp() {
   await userStore.initializeUser();
 
   eruda.init();
-
-  //mobileLogger.show(); // Show the logger by default for easier access during development
 
   app.mount("#app");
 }

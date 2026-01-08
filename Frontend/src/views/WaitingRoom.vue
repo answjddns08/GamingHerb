@@ -1,10 +1,5 @@
 <template>
   <main class="waiting-room">
-    <div class="waiting-content">
-      <h1>Waiting Room</h1>
-      <p>Please wait for other players to get ready...</p>
-      <p>Next time, this room will have the mini game soon</p>
-    </div>
     <div ref="gameContainer"></div>
   </main>
   <div class="player-card">
@@ -61,6 +56,11 @@
       </button>
     </div>
   </div>
+  <div class="chat-card">
+    <form @submit.prevent="">
+      <input class="border p-2 rounded" />
+    </form>
+  </div>
   <div class="start-card" v-if="userStore.id === gameSetting?.hostId">
     <button
       @click="ReadyGame"
@@ -95,7 +95,7 @@ import { ref, onMounted, onUnmounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user.js";
 import { useSocketStore } from "@/stores/socket.js";
-import Phaser from "phaser";
+import Phaser, { Scale } from "phaser";
 import MiniGameScene from "@/games/waitingGame";
 
 /**
@@ -422,15 +422,18 @@ onMounted(() => {
     type: Phaser.AUTO,
     width: window.innerWidth,
     height: window.innerHeight,
+    backgroundColor: "#2BD9FA",
     parent: gameContainer.value, // Attach to the div ref
     physics: {
       default: "arcade",
       arcade: {
-        gravity: { y: 325 },
         debug: false,
       },
     },
     scene: MiniGameScene,
+    scale: {
+      mode: Scale.FIT,
+    },
   };
 
   gameInstance = new Phaser.Game(config);
@@ -443,6 +446,13 @@ onMounted(() => {
 onUnmounted(() => {
   cleanupSocketHandlers();
   // 의도적으로 컴포넌트를 떠날 때 (예: 뒤로가기) 소켓에 알림
+
+  if (gameInstance) {
+    gameInstance.destroy(true); // Destroy the Phaser game instance
+
+    console.log("Phaser game instance destroyed");
+  }
+
   if (isLeaving) {
     // 게임 시작으로 인한 이동이 아닌 경우에만 leave 메시지 전송
     if (router.currentRoute.value.name !== "in-game") {
@@ -462,8 +472,6 @@ onUnmounted(() => {
 
 <style scoped>
 .waiting-room {
-  padding: 20px;
-  max-width: 800px;
   margin: 0 auto;
 }
 
@@ -589,5 +597,16 @@ button {
   bottom: 20px;
   left: 20px;
   padding: 10px;
+}
+
+.chat-card {
+  position: absolute;
+  bottom: 100px;
+  left: 20px;
+  z-index: 10;
+  background-color: rgba(255, 255, 255, 0.8);
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 5px;
 }
 </style>

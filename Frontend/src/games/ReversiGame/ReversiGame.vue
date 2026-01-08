@@ -110,13 +110,21 @@
 </template>
 
 <script setup>
+/**
+ * @file ReversiGame.vue
+ * @description 리버시 게임의 전체 UI와 상호작용을 관리하는 컴포넌트입니다.
+ *              게임 보드, 점수, 채팅, 게임 종료 및 재시작 로직을 포함합니다.
+ *              WebSocket을 통해 서버와 실시간으로 게임 상태를 동기화합니다.
+ */
 import { nextTick, onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user.js";
 import { useSocketStore } from "@/stores/socket.js";
 
 const props = defineProps({
+  /** @type {String} 현재 게임의 고유 ID */
   gameId: { type: String, required: true },
+  /** @type {String} 현재 방의 고유 ID */
   roomId: { type: String, required: true },
 });
 
@@ -124,20 +132,35 @@ const userStore = useUserStore();
 const socketStore = useSocketStore();
 const router = useRouter();
 
+/** @type {import('vue').Ref<Object>} 게임의 현재 상태 (보드, 점수, 현재 플레이어 등) */
 const gameState = ref({
-  board: Array(8)
-    .fill(null)
-    .map(() => Array(8).fill(null)),
+  board: Array(8).fill(null).map(() => Array(8).fill(null)),
   currentPlayer: null,
   gameOver: true,
   winner: null,
   scores: { black: 2, white: 2 },
 });
-const messages = ref([]);
-const tempMsg = ref("");
-const chatContainer = ref(null);
-const myColor = ref(null);
 
+/** @type {import('vue').Ref<Array<Object>>} 채팅 메시지 목록 */
+const messages = ref([]);
+/** @type {import('vue').Ref<String>} 입력 중인 채팅 메시지 */
+const tempMsg = ref("");
+/** @type {import('vue').Ref<HTMLElement|null>} 채팅 영역의 DOM 엘리먼트 */
+const chatContainer = ref(null);
+/** @type {import('vue').Ref<'black'|'white'|null>} 현재 플레이어의 돌 색깔 */
+const myColor = ref(null);
+/** @type {import('vue').Ref<Boolean>} 재시작 요청 모달 표시 여부 */
+const showRestartRequestModal = ref(false);
+/** @type {import('vue').Ref<String>} 재시작을 요청한 플레이어의 이름 */
+const restartRequesterName = ref("");
+
+// --- WebSocket Actions ---
+
+/**
+ * 게임 관련 액션을 서버로 전송합니다.
+ * @param {String} type - 액션 타입 (e.g., 'game:move')
+ * @param {Object} [payload={}] - 액션에 필요한 추가 데이터
+ */
 function sendGameAction(type, payload = {}) {
   socketStore.sendMessage("inGame", {
     gameId: props.gameId,
@@ -148,23 +171,57 @@ function sendGameAction(type, payload = {}) {
   });
 }
 
+/** 돌 놓기 액션을 서버로 전송합니다. */
 const makeMove = (row, col) => sendGameAction("game:move", { row, col });
+
+/** 채팅 메시지를 서버로 전송합니다. */
 const sendMessage = () => {
-  if (!tempMsg.value) return;
+  if (!tempMsg.value.trim()) return;
   sendGameAction("chat:message", { text: tempMsg.value });
   tempMsg.value = "";
 };
-const restartGame = () => sendGameAction("game:restart");
-const surrender = () => sendGameAction("game:surrender");
-const exitGame = () => {
-  socketStore.disconnect();
-  router.push("/gamerooms");
+
+/** 재시작 요청을 서버로 전송합니다. */
+const restartGame = () => {
+  sendGameAction("game:restart:request");
+  alert("재시작 요청을 보냈습니다.");
 };
 
+/** 재시작 요청을 수락합니다. */
+const acceptRestart = () => {
+  sendGameAction("game:restart:accept");
+  showRestartRequestModal.value = false;
+};
+
+/** 재시작 요청을 거절합니다. */
+const declineRestart = () => {
+  sendGameAction("game:restart:decline");
+  showRestartRequestModal.value = false;
+};
+
+/** 기권 액션을 서버로 전송합니다. */
+const surrender = () => sendGameAction("game:surrender");
+
+/** 게임을 종료하고 방 목록으로 돌아갑니다. */
+const exitGame = () => {
+  socketStore.disconnect();
+  router.push({ name: 'game-rooms', params: { gameId: props.gameId } });
+};
+
+// --- WebSocket Handlers ---
+
+/**
+ * 서버로부터 받은 게임 상태 업데이트를 적용합니다.
+ * @param {Object} payload - 새로운 게임 상태
+ */
 const handleUpdateState = (payload) => {
   gameState.value = payload;
 };
 
+/**
+ * 서버로부터 받은 채팅 메시지를 처리합니다.
+ * @param {Object} payload - { userId, userName, text }
+ */
 const handleChatMessage = (payload) => {
   messages.value.push(payload);
   nextTick(() => {
@@ -172,19 +229,10 @@ const handleChatMessage = (payload) => {
   });
 };
 
-const showRestartRequestModal = ref(false);
-const restartRequesterName = ref("");
-
-const acceptRestart = () => {
-  sendGameAction("game:restart:accept");
-  showRestartRequestModal.value = false;
-};
-
-const declineRestart = () => {
-  sendGameAction("game:restart:decline");
-  showRestartRequestModal.value = false;
-};
-
+/**
+ * 게임 시작 시 서버로부터 받은 초기 상태를 설정합니다.
+ * @param {Object} payload - { gameState, players }
+ */
 const handleInitialState = (payload) => {
   gameState.value = payload.gameState;
   const playerIds = Object.keys(payload.players);
@@ -192,61 +240,67 @@ const handleInitialState = (payload) => {
   myColor.value = myIndex === 0 ? "black" : "white";
 };
 
+/**
+ * 상대방의 재시작 요청을 처리하여 모달을 표시합니다.
+ * @param {Object} payload - { requesterName }
+ */
 const handleRestartRequested = (payload) => {
-  restartRequesterName.value = payload.requesterName;
-  showRestartRequestModal.value = true;
-};
-
-const handleRestartAccepted = () => {
-  // 게임 상태는 updateState로 초기화됨
-  showRestartRequestModal.value = false;
-  // 필요시 사용자에게 알림
-};
-
-const handleRestartDeclined = () => {
-  showRestartRequestModal.value = false;
-  alert(`${restartRequesterName.value}님이 재시작 요청을 거절했습니다.`);
-};
-
-onMounted(() => {
-  if (!socketStore.socket || socketStore.socket.readyState !== WebSocket.OPEN) {
-    router.push("/gamerooms");
-    return;
+  if (payload.requesterId !== userStore.id) {
+    restartRequesterName.value = payload.requesterName;
+    showRestartRequestModal.value = true;
   }
+};
+
+/** 재시작이 수락되었음을 처리합니다. */
+const handleRestartAccepted = () => {
+  showRestartRequestModal.value = false;
+  messages.value = []; // 채팅 초기화
+  alert("게임이 재시작됩니다.");
+};
+
+/** 재시작이 거절되었음을 처리합니다. */
+const handleRestartDeclined = (payload) => {
+  showRestartRequestModal.value = false;
+  alert(`${payload.declinerName}님이 재시작 요청을 거절했습니다.`);
+};
+
+/**
+ * WebSocket 이벤트 핸들러들을 등록합니다.
+ */
+const setupSocketHandlers = () => {
   socketStore.registerHandler("game:initialState", handleInitialState);
   socketStore.registerHandler("game:updateState", handleUpdateState);
   socketStore.registerHandler("chat:message", handleChatMessage);
   socketStore.registerHandler("game:restart:requested", handleRestartRequested);
   socketStore.registerHandler("game:restart:accepted", handleRestartAccepted);
   socketStore.registerHandler("game:restart:declined", handleRestartDeclined);
+};
 
-  sendGameAction("player:loaded");
-});
-
-onUnmounted(() => {
-  socketStore.unregisterHandler("game:initialState");
-  socketStore.unregisterHandler("game:updateState");
+/**
+ * 등록된 WebSocket 이벤트 핸들러들을 모두 해제합니다.
+ */
+const cleanupSocketHandlers = () => {
+  Object.keys(socketStore.messageHandlers.value).forEach(type => {
+    if (type.startsWith('game:')) {
+      socketStore.unregisterHandler(type);
+    }
+  });
   socketStore.unregisterHandler("chat:message");
-  socketStore.unregisterHandler("game:restart:requested");
-  socketStore.unregisterHandler("game:restart:accepted");
-  socketStore.unregisterHandler("game:restart:declined");
-});
+};
 
+// --- Lifecycle Hooks ---
 onMounted(() => {
-  if (!socketStore.socket || socketStore.socket.readyState !== WebSocket.OPEN) {
-    router.push("/gamerooms");
+  if (!socketStore.isConnected) {
+    alert("잘못된 접근입니다. 게임 로비로 돌아갑니다.");
+    router.push({ name: 'game-rooms', params: { gameId: props.gameId } });
     return;
   }
-  socketStore.registerHandler("game:initialState", handleInitialState);
-  socketStore.registerHandler("game:updateState", handleUpdateState);
-  socketStore.registerHandler("chat:message", handleChatMessage);
+  setupSocketHandlers();
   sendGameAction("player:loaded");
 });
 
 onUnmounted(() => {
-  socketStore.unregisterHandler("game:initialState");
-  socketStore.unregisterHandler("game:updateState");
-  socketStore.unregisterHandler("chat:message");
+  cleanupSocketHandlers();
 });
 </script>
 
