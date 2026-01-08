@@ -96,7 +96,7 @@ import { useRouter } from "vue-router";
 import { useUserStore } from "@/stores/user.js";
 import { useSocketStore } from "@/stores/socket.js";
 import Phaser, { Scale } from "phaser";
-import MiniGameScene from "@/games/waitingGame";
+import MiniGameScene from "@/games/WaitingMiniGame/waitingGame";
 
 /**
  * @todo 대기방에서 간단한 2D 멀티플레이 게임 + 채팅창 추가

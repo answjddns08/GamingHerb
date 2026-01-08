@@ -7,7 +7,7 @@
 <script setup>
 import Phaser, { Scale } from "phaser";
 import { onMounted, ref, onUnmounted } from "vue";
-import MiniGameScene from "@/games/waitingGame";
+import MiniGameScene from "@/games/WaitingMiniGame/waitingGame";
 
 const gameContainer = ref(null);
 let gameInstance = null;
