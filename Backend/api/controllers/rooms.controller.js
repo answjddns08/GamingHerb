@@ -76,6 +76,7 @@ function listRooms(req, res) {
 		roomsWithSerializablePlayers[roomName] = {
 			roomName: room.roomName,
 			gameId: room.gameId,
+			host: room.host,
 			hostId: room.hostId,
 			settings: room.settings || {},
 			status: room.status,

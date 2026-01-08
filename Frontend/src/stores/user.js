@@ -202,7 +202,7 @@ export const useUserStore = defineStore("user", {
         // Note: We need to prefix our backend `/api/token` route with `/.proxy` to stay compliant with the CSP.
         // Read more about constructing a full URL and using external resources at
         // https://discord.com/developers/docs/activities/development-guides#construct-a-full-url
-        const response = await fetch(`${import.meta.env.BASE_URL}api/token`, {
+        const response = await fetch(`api/token`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

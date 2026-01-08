@@ -117,23 +117,20 @@ async function StartGame() {
   }
 
   try {
-    const response = await fetch(
-      `${import.meta.env.BASE_URL}api/rooms/create?gameId=${gameId.value}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          host: userStore.name,
-          hostId: userStore.id, // for checking host in waiting room
-          status: "Waiting for players",
-          settings: gameSetting.value.settings,
-          roomName: roomName.value,
-          maxPlayerCount: gameSetting.value.maxPlayers,
-        }),
+    const response = await fetch(`/api/rooms/create?gameId=${gameId.value}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    );
+      body: JSON.stringify({
+        host: userStore.name,
+        hostId: userStore.id, // for checking host in waiting room
+        status: "Waiting for players",
+        settings: gameSetting.value.settings,
+        roomName: roomName.value,
+        maxPlayerCount: gameSetting.value.maxPlayers,
+      }),
+    });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));

@@ -156,7 +156,7 @@ async function refreshRooms() {
       isRefreshing.value = false;
     }, COOLDOWN_DURATION);
 
-    const fetchRooms = await fetch(`${import.meta.env.BASE_URL}api/rooms/list/${props.gameId}`);
+    const fetchRooms = await fetch(`/api/rooms/list/${props.gameId}`);
 
     if (!fetchRooms.ok) {
       console.error("Error occurred", { status: fetchRooms.status });
