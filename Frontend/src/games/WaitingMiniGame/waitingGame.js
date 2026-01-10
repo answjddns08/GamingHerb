@@ -8,8 +8,6 @@ class MiniGameScene extends Phaser.Scene {
   preload() {
     this.load.image("sky", "/assets/sky.png");
     this.load.image("ground", "/assets/platform.png");
-    this.load.image("star", "/assets/star.png");
-    this.load.image("bomb", "/assets/bomb.png");
     this.load.spritesheet("dude", "/assets/dude.png", {
       frameWidth: 32,
       frameHeight: 48,
@@ -119,6 +117,51 @@ class MiniGameScene extends Phaser.Scene {
     //console.log("player falling status:", this.isFalling, this.isInsideGround(this.player));
   }
 
+  /**
+   * 플레이어 추가
+   * @param {String} id
+   * @param {Number} x
+   * @param {Number} y
+   * @returns
+   */
+  addPlayer(id, x, y) {
+    const newPlayer = this.physics.add.sprite(x, y, "dude").setName(`player_${id}`);
+    newPlayer.setCollideWorldBounds(true);
+    newPlayer.setDrag(200, 200);
+    newPlayer.lastDirection = { x: 0, y: -1 };
+    this.players.add(newPlayer);
+    return newPlayer;
+  }
+
+  /**
+   * 플레이어 삭제
+   * @param {String} id
+   */
+  deletePlayer(id) {
+    const targetPlayer = this.players.getChildren().find((p) => p.name === `player_${id}`);
+    if (targetPlayer) {
+      targetPlayer.destroy();
+    }
+  }
+
+  MoveOtherPlayer(id, x, y) {
+    const targetPlayer = this.players.getChildren().find((p) => p.name === `player_${id}`);
+
+    if (!targetPlayer) return;
+
+    const distance = Phaser.Math.Distance.Between(targetPlayer.x, targetPlayer.y, x, y);
+
+    const duration = distance * 5;
+
+    this.tweens.add({
+      targets: targetPlayer,
+      x: x,
+      y: y,
+      duration: duration,
+      ease: "Linear",
+    });
+  }
+
   playerMovement() {
     /** @type {Phaser.Physics.Arcade.Sprite} */
     const player = this.player;
@@ -195,7 +238,7 @@ class MiniGameScene extends Phaser.Scene {
       scaleX: 0.6,
       scaleY: 0.6,
       onComplete: () => {
-        console.log("Player has fallen out and will respawn.");
+        console.log("Player has fallen out and will respawn in 1 second.");
         setTimeout(() => {
           // 시간 지나고 리스폰
           player.setPosition(this.respawnPoint.x, this.respawnPoint.y);

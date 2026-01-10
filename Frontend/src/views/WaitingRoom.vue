@@ -97,11 +97,16 @@ import { useUserStore } from "@/stores/user.js";
 import { useSocketStore } from "@/stores/socket.js";
 import Phaser, { Scale } from "phaser";
 import MiniGameScene from "@/games/WaitingMiniGame/waitingGame";
+import {
+  RegisterMultiPlayerEvents,
+  CleanEvents,
+  GetGameInstance,
+} from "@/games/WaitingMiniGame/mutli.js";
 
 /**
  * @todo 대기방에서 간단한 2D 멀티플레이 게임 + 채팅창 추가
  * @todo 플레이어 참가 시 웹소켓으로 연동안되는 문제 해결
- * 나머지 웹소켓 연결도 확인해봐야 함
+ * 나머지 웹소켓 연결은 잘 됬음
  */
 
 const userStore = useUserStore();
@@ -114,6 +119,9 @@ const props = defineProps({
 });
 
 const gameContainer = ref(null);
+/**
+ * @type {Phaser.Game|null} Phaser 게임 인스턴스
+ */
 let gameInstance = null;
 
 /** @type {import('vue').Ref<Object|null>} 게임 설정 객체 (최대 플레이어 수, 호스트 ID 등) */
@@ -207,7 +215,7 @@ const goBack = () => {
  */
 const setupSocketHandlers = () => {
   /**
-   * 방 초기화 정보를 수신하여 상태를 설정합니다.
+   * 방 초기화 정보를 수신하여 상태를 설정합니다. (게임의 설정,이미 접속한 플레이어 목록 등)
    * @param {Object} data - { settings, hostId, players }
    */
   socketStore.registerHandler("initialize", (data) => {
@@ -392,6 +400,8 @@ const cleanupSocketHandlers = () => {
   waitingRoomHandlers.forEach((type) => {
     socketStore.unregisterHandler(type);
   });
+
+  CleanEvents();
 };
 
 onMounted(() => {
@@ -399,6 +409,8 @@ onMounted(() => {
 
   // 소켓 핸들러를 먼저 설정
   setupSocketHandlers();
+  RegisterMultiPlayerEvents();
+  GetGameInstance(gameInstance);
 
   // 소켓이 연결되어 있지 않으면 연결 시도
   if (!socketStore.socket || socketStore.socket.readyState !== WebSocket.OPEN) {
