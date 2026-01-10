@@ -33,7 +33,7 @@ function CleanEvents() {
 }
 
 /**
- * Phaser Game 인스턴스 설정
+ * Phaser Game 인스턴스 설정 (이벤트 기반 방식)
  * @param {Phaser.Game} instance - Phaser Game 인스턴스
  * @returns {void}
  */
@@ -45,19 +45,18 @@ function GetGameInstance(instance) {
 
   console.log("Multi-player game instance set:", instance);
 
-  // Scene이 준비될 때까지 재시도
-  const waitForScene = () => {
-    scene = instance.scene.getScene("MiniGameScene");
+  // 방법 2: 이벤트 리스닝 (Scene이 준비되면 알림받음)
+  instance.events.once("ready", () => {
+    const miniGameScene = instance.scene.getScene("MiniGameScene");
 
-    if (!scene) {
-      console.log("Scene not ready yet, retrying...");
-      setTimeout(waitForScene, 100); // 100ms 후 재시도
-    } else {
-      console.log("MiniGameScene found:", scene);
+    if (miniGameScene) {
+      // Scene의 'scene-ready' 이벤트 대기
+      miniGameScene.events.once("scene-ready", (readyScene) => {
+        scene = readyScene;
+        console.log("MiniGameScene is ready via event:", scene);
+      });
     }
-  };
-
-  waitForScene();
+  });
 }
 
 /**
