@@ -448,7 +448,7 @@ onMounted(() => {
   // Phaser 게임 인스턴스 생성 후에 설정
   setupSocketHandlers();
   RegisterMultiPlayerEvents();
-  GetGameInstance(gameInstance);
+  GetGameInstance(gameInstance, props);
 
   // 소켓이 연결되어 있지 않으면 연결 시도
   if (!socketStore.socket || socketStore.socket.readyState !== WebSocket.OPEN) {

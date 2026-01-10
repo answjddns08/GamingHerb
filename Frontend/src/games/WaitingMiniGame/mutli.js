@@ -1,4 +1,5 @@
 import { useSocketStore } from "@/stores/socket";
+import { useUserStore } from "@/stores/user";
 // eslint-disable-next-line no-unused-vars
 import MiniGameScene from "@/games/WaitingMiniGame/waitingGame";
 
@@ -8,6 +9,27 @@ const socketStore = useSocketStore();
  * @type {MiniGameScene|null}
  */
 let scene = null;
+
+/**
+ * 컴포넌트 props
+ * @type {{gameId: string, roomId: string}}
+ */
+let props = {};
+
+/**
+ * 사용자 정보 스토어
+ */
+const userStore = useUserStore();
+
+function send() {
+  socketStore.sendMessage("waiting", {
+    gameId: props.gameId,
+    roomName: props.roomId,
+    userId: userStore.id,
+    userName: userStore.name,
+    action: { type: "miniGame" },
+  });
+}
 
 /**
  * 멀티플레이어 게임 관련 소켓 이벤트 등록
@@ -35,13 +57,16 @@ function CleanEvents() {
 /**
  * Phaser Game 인스턴스 설정 (이벤트 기반 방식)
  * @param {Phaser.Game} instance - Phaser Game 인스턴스
+ * @param {{gameId: string, roomId: string}} inputProps - 컴포넌트 props
  * @returns {void}
  */
-function GetGameInstance(instance) {
-  if (!instance) {
-    console.error("Game instance is null");
+function GetGameInstance(instance, inputProps) {
+  if (!instance || !inputProps) {
+    console.error("Game instance or props is null");
     return;
   }
+
+  props = inputProps;
 
   console.log("Multi-player game instance set:", instance);
 
@@ -67,6 +92,8 @@ function GetGameInstance(instance) {
  */
 function JoinPlayer(id, x, y) {
   scene.addPlayer(id, x, y);
+
+  send();
 }
 
 /**

@@ -288,6 +288,7 @@ function setupWebsocket(wss) {
 							}
 						}
 					} else if (action.type === "miniGame") {
+						console.log(`Player ${userId} is in the mini-game waiting room.`);
 					}
 					break;
 
