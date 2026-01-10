@@ -39,10 +39,24 @@ function CleanEvents() {
   socketStore.unregisterHandler("playerAttack");
 }
 
+/**
+ * Phaser Game 인스턴스 설정
+ * @param {Phaser.Game} instance - Phaser Game 인스턴스
+ * @returns {void}
+ */
 function GetGameInstance(instance) {
-  gameInstance = instance;
+  if (!instance) {
+    console.error("Game instance is null");
+    return;
+  }
 
+  gameInstance = instance;
   scene = gameInstance.scene.getScene("MiniGameScene");
+
+  if (!scene) {
+    console.error("MiniGameScene not found");
+    return;
+  }
 
   console.log("Multi-player game instance set:", gameInstance);
 }
@@ -60,8 +74,13 @@ function JoinPlayer(id, x, y) {
 /**
  * 플레이어가 멀티플레이어 게임에서 나감
  * @param {string} id - 플레이어 ID
+ * @returns {void}
  */
 function ExitPlayer(id) {
+  if (!scene) {
+    console.warn("Scene is not initialized");
+    return;
+  }
   scene.deletePlayer(id);
 }
 

@@ -101,6 +101,8 @@ import {
   RegisterMultiPlayerEvents,
   CleanEvents,
   GetGameInstance,
+  JoinPlayer,
+  ExitPlayer,
 } from "@/games/WaitingMiniGame/mutli.js";
 
 /**
@@ -239,6 +241,13 @@ const setupSocketHandlers = () => {
       if (!players.value.has(data.player.userId)) {
         players.value.set(data.player.userId, data.player);
         console.log(`새로운 플레이어 참가: ${data.player.userName}`);
+
+        // 무작위 스폰 위치 생성 (화면 중앙 근처)
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const randomX = centerX + (Math.random() - 0.5) * 200;
+        const randomY = centerY + (Math.random() - 0.5) * 200;
+        JoinPlayer(data.player.userId, randomX, randomY);
       }
     } else {
       console.error("Invalid playerJoined data structure:", data);
@@ -255,6 +264,8 @@ const setupSocketHandlers = () => {
     if (removedPlayer) {
       console.log(`플레이어 퇴장: ${removedPlayer.userName} (${data.reason || "unknown"})`);
     }
+
+    ExitPlayer(data.playerId); // 플레이어 제거
   });
 
   /**
@@ -320,6 +331,8 @@ const setupSocketHandlers = () => {
   socketStore.registerHandler("playerKicked", (data) => {
     const kickedPlayer = players.value.get(data.playerId);
     players.value.delete(data.playerId);
+
+    ExitPlayer(data.playerId); // 플레이어 제거
 
     if (data.playerId === userStore.id) {
       isLeaving = true;
@@ -407,29 +420,7 @@ const cleanupSocketHandlers = () => {
 onMounted(() => {
   isLeaving = false;
 
-  // 소켓 핸들러를 먼저 설정
-  setupSocketHandlers();
-  RegisterMultiPlayerEvents();
-  GetGameInstance(gameInstance);
-
-  // 소켓이 연결되어 있지 않으면 연결 시도
-  if (!socketStore.socket || socketStore.socket.readyState !== WebSocket.OPEN) {
-    socketStore.connect(`wss://gamingherb.redeyes.dev/api`);
-    // 연결이 완료될 때까지 잠시 기다린 후 join 메시지 전송
-    const checkConnection = () => {
-      if (socketStore.socket && socketStore.socket.readyState === WebSocket.OPEN) {
-        console.log("소켓 연결 성공. 방에 참여합니다.");
-        send("join");
-      } else {
-        setTimeout(checkConnection, 100); // 100ms 후 다시 확인
-      }
-    };
-    checkConnection();
-  } else {
-    // 이미 연결되어 있다면 즉시 join 메시지 전송
-    send("join");
-  }
-
+  // Phaser 게임 인스턴스 먼저 생성
   const config = {
     type: Phaser.AUTO,
     width: window.innerWidth,
@@ -452,6 +443,29 @@ onMounted(() => {
 
   if (gameInstance.sound.context.state !== "closed") {
     gameInstance.sound.context.suspend();
+  }
+
+  // Phaser 게임 인스턴스 생성 후에 설정
+  setupSocketHandlers();
+  RegisterMultiPlayerEvents();
+  GetGameInstance(gameInstance);
+
+  // 소켓이 연결되어 있지 않으면 연결 시도
+  if (!socketStore.socket || socketStore.socket.readyState !== WebSocket.OPEN) {
+    socketStore.connect(`wss://gamingherb.redeyes.dev/api`);
+    // 연결이 완료될 때까지 잠시 기다린 후 join 메시지 전송
+    const checkConnection = () => {
+      if (socketStore.socket && socketStore.socket.readyState === WebSocket.OPEN) {
+        console.log("소켓 연결 성공. 방에 참여합니다.");
+        send("join");
+      } else {
+        setTimeout(checkConnection, 100); // 100ms 후 다시 확인
+      }
+    };
+    checkConnection();
+  } else {
+    // 이미 연결되어 있다면 즉시 join 메시지 전송
+    send("join");
   }
 });
 
