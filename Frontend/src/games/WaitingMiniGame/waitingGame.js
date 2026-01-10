@@ -89,6 +89,10 @@ class MiniGameScene extends Phaser.Scene {
       frameRate: 10,
       repeat: -1,
     });
+
+    // Scene이 완전히 준비되었음을 알림
+    console.log("MiniGameScene create() completed - Scene is ready");
+    this.events.emit("scene-ready", this);
   }
 
   update() {

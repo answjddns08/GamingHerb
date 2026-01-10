@@ -3,13 +3,6 @@ import { useSocketStore } from "@/stores/socket";
 import MiniGameScene from "@/games/WaitingMiniGame/waitingGame";
 
 const socketStore = useSocketStore();
-
-/**
- * 멀티플레이어 게임 인스턴스
- * @type {Phaser.Game|null}
- */
-let gameInstance = null;
-
 /**
  * 현재 씬 참조
  * @type {MiniGameScene|null}
@@ -50,15 +43,21 @@ function GetGameInstance(instance) {
     return;
   }
 
-  gameInstance = instance;
-  scene = gameInstance.scene.getScene("MiniGameScene");
+  console.log("Multi-player game instance set:", instance);
 
-  if (!scene) {
-    console.error("MiniGameScene not found");
-    return;
-  }
+  // Scene이 준비될 때까지 재시도
+  const waitForScene = () => {
+    scene = instance.scene.getScene("MiniGameScene");
 
-  console.log("Multi-player game instance set:", gameInstance);
+    if (!scene) {
+      console.log("Scene not ready yet, retrying...");
+      setTimeout(waitForScene, 100); // 100ms 후 재시도
+    } else {
+      console.log("MiniGameScene found:", scene);
+    }
+  };
+
+  waitForScene();
 }
 
 /**
