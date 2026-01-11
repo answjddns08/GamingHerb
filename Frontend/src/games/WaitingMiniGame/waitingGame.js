@@ -1,8 +1,10 @@
 import Phaser from "phaser";
+import { useUserStore } from "@/stores/user";
 
 class MiniGameScene extends Phaser.Scene {
   constructor() {
     super({ key: "MiniGameScene" });
+    this.userStore = useUserStore();
   }
 
   preload() {
@@ -22,18 +24,14 @@ class MiniGameScene extends Phaser.Scene {
     // 지역(땅) 정의: 이 영역 안이면 "서 있음", 밖이면 낭떠러지 컨셉
     const ground = this.add.rectangle(centerX, centerY, 500, 500, 0xff0000).setName("ground");
 
+    // 플레이어 생성 및 물리 설정
+    this.playerId = this.userStore.id;
+
     // 땅의 화면상 바운딩을 한 번 캐싱해 두고 사용(정적이면 문제 없음)
     this.groundRect = ground.getBounds();
 
-    // 플레이어 생성 및 참조 저장
-    this.player = this.physics.add.sprite(centerX, centerY, "dude").setName("player");
-    this.player.setCollideWorldBounds(true); // 월드 경계 밖으로 못 나가게(필요시 해제 가능)
-    this.player.setDrag(200, 200); // 밀렸을 때 자연스러운 감속
-    this.player.lastDirection = { x: 0, y: -1 }; // 초기 방향(위쪽)
-
     // 멀티플레이 확장 대비: 그룹과 충돌(서로 밀치기) 준비
     this.players = this.physics.add.group();
-    this.players.add(this.player);
     // 플레이어끼리 직접 충돌은 제거 (방망이로만 밀어냄)
     // this.physics.add.collider(this.players, this.players);
 
@@ -93,6 +91,59 @@ class MiniGameScene extends Phaser.Scene {
     // Scene이 완전히 준비되었음을 알림
     console.log("MiniGameScene create() completed - Scene is ready");
     this.events.emit("scene-ready", this);
+
+    // Scene 종료 시 키 입력 정리
+    this.events.on("shutdown", () => {
+      this.cleanup();
+    });
+
+    this.events.on("sleep", () => {
+      this.cleanup();
+    });
+  }
+
+  /**
+   * 씬 종료 시 입력 리스너 및 리소스 정리
+   */
+  cleanup() {
+    console.log("MiniGameScene cleanup starting...");
+
+    // 키보드 입력 완전 비활성화
+    if (this.input && this.input.keyboard) {
+      if (this.keys) {
+        Object.values(this.keys).forEach((key) => {
+          if (key) {
+            key.reset();
+          }
+        });
+      }
+      // 키보드 전체 비활성화
+      this.input.keyboard.enabled = false;
+    }
+
+    // 마우스 입력 이벤트 제거
+    if (this.input) {
+      this.input.off("pointerdown");
+      this.input.enabled = false;
+    }
+
+    // 모든 tweens 중지
+    if (this.tweens) {
+      this.tweens.killAll();
+    }
+
+    // 모든 타이머 제거
+    if (this.time) {
+      this.time.removeAllEvents();
+    }
+
+    // 모든 이벤트 리스너 제거
+    if (this.events) {
+      this.events.off("shutdown");
+      this.events.off("sleep");
+    }
+
+    console.log("MiniGameScene cleanup completed - All inputs removed and disabled");
   }
 
   update() {
@@ -110,8 +161,14 @@ class MiniGameScene extends Phaser.Scene {
     }
 
     // 영역 판정: 영역 밖이면 낙하 연출 후 리스폰(또는 탈락 처리로 변경 가능)
-    if (!this.isFalling && !this.isInsideGround(this.player)) {
-      this.handleFallOut(this.player);
+    if (!this.isFalling) {
+      const player = this.players.getChildren().find((p) => p.name === `player_${this.playerId}`);
+
+      if (!player) return;
+
+      if (this.isInsideGround(player)) return;
+
+      this.handleFallOut(player);
     }
 
     if (this.CurrentInvincibleTime > 0) {
@@ -129,11 +186,17 @@ class MiniGameScene extends Phaser.Scene {
    * @returns
    */
   addPlayer(id, x, y) {
-    const newPlayer = this.physics.add.sprite(x, y, "dude").setName(`player_${id}`);
+    const centerX = this.cameras.main.width / 2;
+    const centerY = this.cameras.main.height / 2;
+
+    const newPlayer = this.physics.add
+      .sprite(centerX + x, centerY + y, "dude")
+      .setName(`player_${id}`);
     newPlayer.setCollideWorldBounds(true);
     newPlayer.setDrag(200, 200);
-    newPlayer.lastDirection = { x: 0, y: -1 };
+    newPlayer.lastDirection = { x: 0, y: 1 };
     this.players.add(newPlayer);
+    console.log(`Player ${id} added at position (${x}, ${y}).`);
     return newPlayer;
   }
 
@@ -168,12 +231,14 @@ class MiniGameScene extends Phaser.Scene {
 
   playerMovement() {
     /** @type {Phaser.Physics.Arcade.Sprite} */
-    const player = this.player;
+    const player = this.players.getChildren().find((p) => p.name === `player_${this.playerId}`);
     const KeyWASD = this.keys;
 
     let moving = false;
     let dirX = 0;
     let dirY = 0;
+
+    if (!player) return;
 
     if (KeyWASD.left.isDown) {
       // Move left
@@ -268,7 +333,10 @@ class MiniGameScene extends Phaser.Scene {
     this.isSwinging = true;
     this.swingCooldown = this.SWING_COOLDOWN;
 
-    const dir = this.player.lastDirection;
+    const player = this.players.getChildren().find((p) => p.name === `player_${this.playerId}`);
+    if (!player) return;
+
+    const dir = player.lastDirection;
     const distance = 60; // 플레이어로부터의 거리
 
     // 스윙 애니메이션: 플레이어를 중심으로 원호 회전
@@ -279,8 +347,8 @@ class MiniGameScene extends Phaser.Scene {
     const endAngle = swingAngle + Math.PI / 3; // +60도
 
     // 시작 위치 설정 (플레이어 기준 원호의 시작점)
-    const startX = this.player.x + Math.cos(startAngle) * distance;
-    const startY = this.player.y + Math.sin(startAngle) * distance;
+    const startX = player.x + Math.cos(startAngle) * distance;
+    const startY = player.y + Math.sin(startAngle) * distance;
 
     this.weapon.setPosition(startX, startY);
     this.weapon.setRotation(startAngle);
@@ -303,8 +371,8 @@ class MiniGameScene extends Phaser.Scene {
 
         // 플레이어를 중심으로 원 궤도를 따라 이동
         this.weapon.setPosition(
-          this.player.x + Math.cos(currentAngle) * distance,
-          this.player.y + Math.sin(currentAngle) * distance,
+          player.x + Math.cos(currentAngle) * distance,
+          player.y + Math.sin(currentAngle) * distance,
         );
         // 방망이도 회전 (진행 방향을 향하도록)
         this.weapon.setRotation(currentAngle);
@@ -322,8 +390,11 @@ class MiniGameScene extends Phaser.Scene {
   checkWeaponHit() {
     const weaponBounds = this.weapon.getBounds();
 
+    const player = this.players.getChildren().find((p) => p.name === `player_${this.playerId}`);
+    if (!player) return;
+
     this.players.getChildren().forEach((target) => {
-      if (target === this.player) return; // 자기 자신은 제외
+      if (target === player) return; // 자기 자신은 제외
       if (target.hitRecently) return; // 이미 맞은 상태면 스킵 (연속 히트 방지)
       if (target.invincible) return; // 무적 상태면 스킵
 
@@ -340,7 +411,10 @@ class MiniGameScene extends Phaser.Scene {
    * @param {Phaser.Physics.Arcade.Sprite} target - 넉백을 받을 대상
    */
   applyKnockback(target) {
-    const dir = this.player.lastDirection;
+    const player = this.players.getChildren().find((p) => p.name === `player_${this.playerId}`);
+    if (!player) return;
+
+    const dir = player.lastDirection;
 
     // 넉백 방향으로 강한 속도 적용
     target.setVelocity(dir.x * this.KNOCKBACK_FORCE, dir.y * this.KNOCKBACK_FORCE);

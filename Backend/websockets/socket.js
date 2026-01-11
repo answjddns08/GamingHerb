@@ -18,7 +18,6 @@ import WaitingMiniGame from "../games/waitingMiniGame.js";
 const gameLogicMap = {
 	GomokuGame: GomokuGame,
 	Reversi: ReversiGame,
-	WaitingMiniGame: WaitingMiniGame,
 	// Add other games here in the future
 	// Chess: ChessGame,
 };
@@ -124,6 +123,8 @@ function setupWebsocket(wss) {
 						return;
 					}
 
+					const gamePlayers = room.miniGameInstance.GetPlayersCoordinates();
+
 					// Send initial room details to the joining/reconnecting player
 					ws.send(
 						JSON.stringify({
@@ -135,6 +136,7 @@ function setupWebsocket(wss) {
 								isReady: p.isReady,
 								disconnected: p.disconnected || false,
 							})),
+							miniGamePlayers: gamePlayers,
 							hostId: updatedRoom.hostId,
 						})
 					);
@@ -289,6 +291,8 @@ function setupWebsocket(wss) {
 						}
 					} else if (action.type === "miniGame") {
 						console.log(`Player ${userId} is in the mini-game waiting room.`);
+
+						room.miniGameInstance.handleGame(ws, action.payload);
 					}
 					break;
 

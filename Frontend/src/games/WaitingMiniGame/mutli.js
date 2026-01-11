@@ -21,13 +21,17 @@ let props = {};
  */
 const userStore = useUserStore();
 
-function send() {
+/**
+ * 소켓 메시지 전송 함수
+ * @param {Object} payload - 추가 페이로드
+ */
+function send(payload = {}) {
   socketStore.sendMessage("waiting", {
     gameId: props.gameId,
     roomName: props.roomId,
     userId: userStore.id,
     userName: userStore.name,
-    action: { type: "miniGame" },
+    action: { type: "miniGame", payload: payload },
   });
 }
 
@@ -55,6 +59,17 @@ function CleanEvents() {
 }
 
 /**
+ * 씬 정리 및 리소스 해제
+ */
+function CleanupScene() {
+  if (scene) {
+    scene.cleanup();
+    scene.events.removeAllListeners();
+    scene = null;
+  }
+}
+
+/**
  * Phaser Game 인스턴스 설정 (이벤트 기반 방식)
  * @param {Phaser.Game} instance - Phaser Game 인스턴스
  * @param {{gameId: string, roomId: string}} inputProps - 컴포넌트 props
@@ -74,14 +89,50 @@ function GetGameInstance(instance, inputProps) {
   instance.events.once("ready", () => {
     const miniGameScene = instance.scene.getScene("MiniGameScene");
 
-    if (miniGameScene) {
-      // Scene의 'scene-ready' 이벤트 대기
-      miniGameScene.events.once("scene-ready", (readyScene) => {
-        scene = readyScene;
-        console.log("MiniGameScene is ready via event:", scene);
-      });
-    }
+    if (!miniGameScene) return;
+    // Scene의 'scene-ready' 이벤트 대기
+    miniGameScene.events.once("scene-ready", (readyScene) => {
+      scene = readyScene;
+      console.log("MiniGameScene is ready via event:", scene);
+    });
   });
+}
+
+/**
+ * 플레이어 배열 받기
+ * @param {Array<{id: string, x: number, y: number}>} players - 플레이어 배열
+ */
+function InitPlayers(players) {
+  if (!scene) {
+    console.warn("Scene is not initialized");
+    return;
+  }
+
+  players.forEach((player) => {
+    scene.addPlayer(player.id, player.x, player.y);
+  });
+}
+
+/** 새로운 플레이어 추가
+ * @param {string} id - 플레이어 ID
+ */
+function NewPlayer(id) {
+  if (!scene) {
+    console.warn("Scene is not initialized");
+    return;
+  }
+
+  console.log(`Adding new player with ID: ${id}`);
+
+  const isXPlus = Math.random() < 0.5;
+  const isYPlus = Math.random() < 0.5;
+
+  const XCoords = Math.random() * 200 * (isXPlus ? 1 : -1);
+  const YCoords = Math.random() * 200 * (isYPlus ? 1 : -1);
+
+  scene.addPlayer(id, XCoords, YCoords);
+
+  send({ type: "join", id: id, x: XCoords, y: YCoords });
 }
 
 /**
@@ -92,8 +143,6 @@ function GetGameInstance(instance, inputProps) {
  */
 function JoinPlayer(id, x, y) {
   scene.addPlayer(id, x, y);
-
-  send();
 }
 
 /**
@@ -109,4 +158,13 @@ function ExitPlayer(id) {
   scene.deletePlayer(id);
 }
 
-export { RegisterMultiPlayerEvents, GetGameInstance, JoinPlayer, ExitPlayer, CleanEvents };
+export {
+  RegisterMultiPlayerEvents,
+  GetGameInstance,
+  JoinPlayer,
+  ExitPlayer,
+  NewPlayer,
+  CleanEvents,
+  InitPlayers,
+  CleanupScene,
+};

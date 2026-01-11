@@ -1,3 +1,5 @@
+import WaitingMiniGame from "../games/waitingMiniGame.js";
+
 /**
  * @typedef {Object} Room
  * @property {Object} settings - The settings for the room
@@ -5,7 +7,11 @@
  * @property {string} host - The username of the room host
  * @property {string} hostId - The ID of the user who is the host
  * @property {string} status - The current status of the room (e.g., "waiting", "active")
- *
+ * @property {Object} restartRequest - Information about restart requests in the room
+ * @property {string|null} restartRequest.requesterId - The ID of the user who requested a restart
+ * @property {string} restartRequest.status - The status of the restart request ("none", "pending", "accepted", "declined")
+ * @property {object|null} gameState - The current state of the game in the room
+ * @property {WaitingMiniGame|null} miniGameInstance - Instance of the WaitingMiniGame for this room
  */
 
 /**
@@ -27,10 +33,26 @@ const rooms = {}; // Assuming rooms is a global object to store room data
 	  "host": "user1",
 	  "hostId": "12345",
 	  "status": "waiting",
+	  "restartRequest": { requesterId: null, status: "none" },
+	  "miniGameInstance": WaitingMiniGameInstance,
+	  "gameState": { ...Game class in games directory... }
+	},
+	"roomName2": {
+	  "settings": { "maxPlayers": 2, "soloMode": false },
+	  "players": Map( [
+		["user1", { userId: "user1", username: "User One" }],
+		["user2", { userId: "user2", username: "User Two" }]
+	  ] ),
+	  "host": "user2",
+	  "hostId": "12345",
+	  "status": "waiting",
+	  "restartRequest": { requesterId: null, status: "none" },
+	  "miniGameInstance": WaitingMiniGameInstance,
+	  "gameState": { ...Game class in games directory... }
 	},
   },
   "Chess": {
-	"roomName2": {
+	"roomName3": {
 	  "settings": { "maxPlayers": 2, "soloMode": false },
 	  "players": Map([
 		["user3", { userId: "user3", username: "User Three" }],
@@ -39,6 +61,9 @@ const rooms = {}; // Assuming rooms is a global object to store room data
 	  "host": "user5",
 	  "hostId": "13579",
 	  "status": "waiting",
+	  "restartRequest": { requesterId: null, status: "none" },
+	  "miniGameInstance": WaitingMiniGameInstance,
+	  "gameState": { ...Game class in games directory... }
 	}
   }
 } */
@@ -82,6 +107,8 @@ function makeRoom(gameId, roomName, settings, host, hostId) {
 		hostId: hostId,
 		status: "waiting",
 		restartRequest: { requesterId: null, status: "none" }, // none, pending, accepted, declined
+		miniGameInstance: new WaitingMiniGame(), // WaitingMiniGame 인스턴스 저장
+		gameState: null, // 게임 상태를 저장할 속성 추가(초기값 null)
 	};
 }
 

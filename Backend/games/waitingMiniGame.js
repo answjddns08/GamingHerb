@@ -37,5 +37,31 @@ class WaitingMiniGame {
 		this.players.delete(id);
 		console.log(`Player ${id} exited the waiting mini-game.`);
 	}
+
+	handleGame(ws, action) {
+		console.log("Handling waiting mini-game action:", action);
+
+		const { id, x, y, type } = action;
+
+		switch (type) {
+			case "join":
+				console.log(`Player ${id} is joining at (${x}, ${y})`);
+				this.joinPlayer(id, x, y);
+				break;
+			case "exit":
+				this.exitPlayer(id);
+				break;
+			default:
+				console.warn(`Unknown action type: ${type}`);
+		}
+	}
+
+	GetPlayersCoordinates() {
+		return Array.from(this.players.entries()).map(([id, pos]) => ({
+			id,
+			x: pos.x,
+			y: pos.y,
+		}));
+	}
 }
 export default WaitingMiniGame;

@@ -103,6 +103,9 @@ import {
   GetGameInstance,
   JoinPlayer,
   ExitPlayer,
+  InitPlayers,
+  CleanupScene,
+  NewPlayer,
 } from "@/games/WaitingMiniGame/mutli.js";
 
 /**
@@ -226,6 +229,8 @@ const setupSocketHandlers = () => {
       gameSetting.value = { ...data.settings, hostId: data.hostId };
       const playerMap = new Map(data.players.map((p) => [p.userId, p]));
       players.value = playerMap;
+
+      InitPlayers(data.miniGamePlayers); // 기존 플레이어들 추가
     } else {
       console.error("Invalid initialize data structure:", data);
     }
@@ -437,6 +442,19 @@ onMounted(() => {
     scale: {
       mode: Scale.FIT,
     },
+    input: {
+      keyboard: {
+        // 게임 종료 후에도 키가 계속 눌리지 않도록 capture 설정
+        capture: [
+          Phaser.Input.Keyboard.KeyCodes.W,
+          Phaser.Input.Keyboard.KeyCodes.A,
+          Phaser.Input.Keyboard.KeyCodes.S,
+          Phaser.Input.Keyboard.KeyCodes.D,
+          Phaser.Input.Keyboard.KeyCodes.SPACE,
+        ],
+      },
+      preventDefault: true,
+    },
   };
 
   gameInstance = new Phaser.Game(config);
@@ -458,6 +476,7 @@ onMounted(() => {
       if (socketStore.socket && socketStore.socket.readyState === WebSocket.OPEN) {
         console.log("소켓 연결 성공. 방에 참여합니다.");
         send("join");
+        NewPlayer(userStore.id); // 자신의 플레이어 추가
       } else {
         setTimeout(checkConnection, 100); // 100ms 후 다시 확인
       }
@@ -466,6 +485,7 @@ onMounted(() => {
   } else {
     // 이미 연결되어 있다면 즉시 join 메시지 전송
     send("join");
+    NewPlayer(userStore.id); // 자신의 플레이어 추가
   }
 });
 
@@ -474,7 +494,19 @@ onUnmounted(() => {
   // 의도적으로 컴포넌트를 떠날 때 (예: 뒤로가기) 소켓에 알림
 
   if (gameInstance) {
-    gameInstance.destroy(true); // Destroy the Phaser game instance
+    // 먼저 씬을 정리
+    try {
+      const scene = gameInstance.scene.getScene("MiniGameScene");
+      if (scene && scene.isActive()) {
+        CleanupScene();
+      }
+    } catch (error) {
+      console.log("Scene cleanup error:", error);
+    }
+
+    // 그 다음 Phaser 게임 인스턴스 파괴
+    gameInstance.destroy(true);
+    gameInstance = null;
 
     console.log("Phaser game instance destroyed");
   }
