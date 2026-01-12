@@ -206,6 +206,9 @@ const kickUser = (targetUserId) => {
 const goBack = () => {
   isLeaving = true;
   // 의도적으로 나가는 경우 서버에 알림
+
+  ExitPlayer(userStore.id); // 자신의 플레이어 제거
+
   send("leave");
   // 약간의 지연 후 페이지 이동 (메시지 전송 보장)
   setTimeout(() => {
@@ -496,10 +499,9 @@ onUnmounted(() => {
   if (gameInstance) {
     // 먼저 씬을 정리
     try {
-      const scene = gameInstance.scene.getScene("MiniGameScene");
-      if (scene && scene.isActive()) {
-        CleanupScene();
-      }
+      ExitPlayer(userStore.id); // 자신의 플레이어 제거
+
+      CleanupScene();
     } catch (error) {
       console.log("Scene cleanup error:", error);
     }

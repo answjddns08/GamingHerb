@@ -33,15 +33,23 @@ function send(payload = {}) {
     userName: userStore.name,
     action: { type: "miniGame", payload: payload },
   });
+
+  console.log("Sent Game socket message with payload:", payload);
 }
 
 /**
  * 멀티플레이어 게임 관련 소켓 이벤트 등록
  */
 function RegisterMultiPlayerEvents() {
-  socketStore.registerHandler("playerMoving", (data) => {
-    console.log("Multi-player game started with data:", data);
-    // Handle the multi-player game start logic here
+  /**
+   * 다른 플레이어의 이동을 처리합니다.
+   * @param {Object} data - { userId, x, y, velocityX, velocityY }
+   */
+  socketStore.registerHandler("playerMove", (data) => {
+    if (data?.payload?.userId && data.payload.userId !== userStore.id) {
+      const { userId, x, y } = data.payload;
+      MoveOtherPlayer(userId, x, y);
+    }
   });
 
   socketStore.registerHandler("playerAttack", (data) => {
@@ -54,7 +62,7 @@ function RegisterMultiPlayerEvents() {
  * 멀티플레이어 게임 관련 소켓 이벤트 정리
  */
 function CleanEvents() {
-  socketStore.unregisterHandler("playerMoving");
+  socketStore.unregisterHandler("playerMove");
   socketStore.unregisterHandler("playerAttack");
 }
 
@@ -94,7 +102,40 @@ function GetGameInstance(instance, inputProps) {
     miniGameScene.events.once("scene-ready", (readyScene) => {
       scene = readyScene;
       console.log("MiniGameScene is ready via event:", scene);
+
+      // 이동 동기화 시작 (초당 30회)
+      StartPositionSync();
     });
+  });
+}
+
+/**
+ * 플레이어 위치를 주기적으로 서버에 동기화
+ * 약 33ms마다 실행 (약 30Hz) - 네트워크 효율과 부드러움의 균형
+ */
+function StartPositionSync() {
+  if (!scene) {
+    console.warn("Scene is not initialized");
+    return;
+  }
+
+  scene.time.addTimer({
+    delay: 33, // 약 33ms마다 실행 (초당 ~30회)
+    callback: () => {
+      const player = scene.players.getChildren().find((p) => p.name === `player_${userStore.id}`);
+
+      if (player) {
+        send({
+          type: "move",
+          id: userStore.id,
+          x: player.x,
+          y: player.y,
+          velocityX: player.body.velocity.x,
+          velocityY: player.body.velocity.y,
+        });
+      }
+    },
+    loop: true, // 계속 반복
   });
 }
 
@@ -142,7 +183,27 @@ function NewPlayer(id) {
  * @param {number} y - 플레이어 초기 Y 좌표
  */
 function JoinPlayer(id, x, y) {
+  if (!scene) {
+    console.warn("Scene is not initialized");
+    return;
+  }
+
   scene.addPlayer(id, x, y);
+}
+
+/**
+ * 다른 플레이어 이동 처리
+ * @param {string} id - 플레이어 ID
+ * @param {number} x - 목표 X 좌표
+ * @param {number} y - 목표 Y 좌표
+ */
+function MoveOtherPlayer(id, x, y) {
+  if (!scene) {
+    console.warn("Scene is not initialized");
+    return;
+  }
+
+  scene.MoveOtherPlayer(id, x, y);
 }
 
 /**
@@ -156,6 +217,7 @@ function ExitPlayer(id) {
     return;
   }
   scene.deletePlayer(id);
+  send({ type: "exit", id: id });
 }
 
 export {
@@ -167,4 +229,5 @@ export {
   CleanEvents,
   InitPlayers,
   CleanupScene,
+  StartPositionSync,
 };

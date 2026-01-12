@@ -293,6 +293,25 @@ function setupWebsocket(wss) {
 						console.log(`Player ${userId} is in the mini-game waiting room.`);
 
 						room.miniGameInstance.handleGame(ws, action.payload);
+
+						// move 액션인 경우 다른 플레이어들에게 위치 정보 브로드캐스트
+						if (action.payload?.type === "move") {
+							broadCastToRoom(
+								gameId,
+								roomName,
+								{
+									type: "playerMove",
+									payload: {
+										userId,
+										x: action.payload.x,
+										y: action.payload.y,
+										velocityX: action.payload.velocityX,
+										velocityY: action.payload.velocityY,
+									},
+								},
+								ws
+							);
+						}
 					}
 					break;
 

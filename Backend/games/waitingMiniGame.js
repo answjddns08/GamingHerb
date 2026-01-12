@@ -38,10 +38,27 @@ class WaitingMiniGame {
 		console.log(`Player ${id} exited the waiting mini-game.`);
 	}
 
+	/**
+	 * 플레이어 위치 업데이트 및 동기화
+	 * @param {String} id
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {number} velocityX
+	 * @param {number} velocityY
+	 */
+	updatePlayerPosition(id, x, y, velocityX = 0, velocityY = 0) {
+		if (!this.players.has(id)) {
+			console.warn(`Player ${id} not found for position update`);
+			return;
+		}
+
+		this.players.set(id, { x, y, velocityX, velocityY });
+	}
+
 	handleGame(ws, action) {
 		console.log("Handling waiting mini-game action:", action);
 
-		const { id, x, y, type } = action;
+		const { id, x, y, type, velocityX, velocityY } = action;
 
 		switch (type) {
 			case "join":
@@ -50,6 +67,9 @@ class WaitingMiniGame {
 				break;
 			case "exit":
 				this.exitPlayer(id);
+				break;
+			case "move":
+				this.updatePlayerPosition(id, x, y, velocityX, velocityY);
 				break;
 			default:
 				console.warn(`Unknown action type: ${type}`);
@@ -61,6 +81,8 @@ class WaitingMiniGame {
 			id,
 			x: pos.x,
 			y: pos.y,
+			velocityX: pos.velocityX || 0,
+			velocityY: pos.velocityY || 0,
 		}));
 	}
 }

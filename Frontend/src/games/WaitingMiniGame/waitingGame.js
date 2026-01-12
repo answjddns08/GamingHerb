@@ -206,9 +206,9 @@ class MiniGameScene extends Phaser.Scene {
    */
   deletePlayer(id) {
     const targetPlayer = this.players.getChildren().find((p) => p.name === `player_${id}`);
-    if (targetPlayer) {
-      targetPlayer.destroy();
-    }
+    if (!targetPlayer) return;
+
+    targetPlayer.destroy();
   }
 
   MoveOtherPlayer(id, x, y) {
