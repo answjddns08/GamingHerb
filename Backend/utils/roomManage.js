@@ -179,7 +179,7 @@ function leaveRoom(gameId, roomName, userId) {
  * @param {string} gameId - The ID of the game
  * @param {string} roomName - The name of the room to which the message will be sent
  * @param {object} message - don't need to stringify, it will be done in the function
- * @param {WebSocket} ws - The WebSocket connection of the user sending the message
+ * @param {WebSocket} ws - The WebSocket connection of the user sending the message (To exclude from broadcast)
  */
 function broadCastToRoom(gameId, roomName, message, ws = null) {
 	const room = getRoomDetails(gameId, roomName);

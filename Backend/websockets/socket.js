@@ -123,7 +123,13 @@ function setupWebsocket(wss) {
 						return;
 					}
 
-					const gamePlayers = room.miniGameInstance.GetPlayersCoordinates();
+					// 미니게임 인스턴스 초기화 (아직 초기화되지 않았다면)
+					if (!updatedRoom.miniGameInstance.gameId) {
+						updatedRoom.miniGameInstance.initialize(gameId, roomName);
+					}
+
+					const gamePlayers =
+						updatedRoom.miniGameInstance.GetPlayersCoordinates();
 
 					// Send initial room details to the joining/reconnecting player
 					ws.send(
@@ -290,28 +296,10 @@ function setupWebsocket(wss) {
 							}
 						}
 					} else if (action.type === "miniGame") {
-						console.log(`Player ${userId} is in the mini-game waiting room.`);
+						console.log(`Player ${userId} sent mini-game action.`);
 
-						room.miniGameInstance.handleGame(ws, action.payload);
-
-						// move 액션인 경우 다른 플레이어들에게 위치 정보 브로드캐스트
-						if (action.payload?.type === "move") {
-							broadCastToRoom(
-								gameId,
-								roomName,
-								{
-									type: "playerMove",
-									payload: {
-										userId,
-										x: action.payload.x,
-										y: action.payload.y,
-										velocityX: action.payload.velocityX,
-										velocityY: action.payload.velocityY,
-									},
-								},
-								ws
-							);
-						}
+						// 미니게임 인스턴스에서 모든 게임 로직과 브로드캐스팅 처리
+						room.miniGameInstance.handleGame(ws, userName, action.payload);
 					}
 					break;
 

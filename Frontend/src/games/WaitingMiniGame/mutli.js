@@ -119,7 +119,7 @@ function StartPositionSync() {
     return;
   }
 
-  scene.time.addTimer({
+  scene.time.addEvent({
     delay: 33, // 약 33ms마다 실행 (초당 ~30회)
     callback: () => {
       const player = scene.players.getChildren().find((p) => p.name === `player_${userStore.id}`);
