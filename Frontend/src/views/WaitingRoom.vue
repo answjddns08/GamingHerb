@@ -101,7 +101,6 @@ import {
   RegisterMultiPlayerEvents,
   CleanEvents,
   GetGameInstance,
-  JoinPlayer,
   ExitPlayer,
   InitPlayers,
   CleanupScene,
@@ -249,13 +248,6 @@ const setupSocketHandlers = () => {
       if (!players.value.has(data.player.userId)) {
         players.value.set(data.player.userId, data.player);
         console.log(`새로운 플레이어 참가: ${data.player.userName}`);
-
-        // 무작위 스폰 위치 생성 (화면 중앙 근처)
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
-        const randomX = centerX + (Math.random() - 0.5) * 200;
-        const randomY = centerY + (Math.random() - 0.5) * 200;
-        JoinPlayer(data.player.userId, randomX, randomY);
       }
     } else {
       console.error("Invalid playerJoined data structure:", data);
@@ -472,7 +464,7 @@ onMounted(() => {
   GetGameInstance(gameInstance, props);
 
   // 소켓이 연결되어 있지 않으면 연결 시도
-  if (!socketStore.socket || socketStore.socket.readyState !== WebSocket.OPEN) {
+  if (!socketStore.isConnected) {
     socketStore.connect(`wss://gamingherb.redeyes.dev/api`);
     // 연결이 완료될 때까지 잠시 기다린 후 join 메시지 전송
     const checkConnection = () => {

@@ -54,7 +54,6 @@ class WaitingMiniGame {
 				type: "miniGame:playerJoined",
 				payload: {
 					userId: id,
-					userName: userName,
 					x: x,
 					y: y,
 				},
@@ -140,7 +139,7 @@ class WaitingMiniGame {
 	 * @param {Object} action
 	 */
 	handleGame(ws, userName, action) {
-		console.log("Handling waiting mini-game action:", action);
+		//console.log("Handling waiting mini-game action:", action);
 
 		const { id, x, y, type, velocityX, velocityY } = action;
 

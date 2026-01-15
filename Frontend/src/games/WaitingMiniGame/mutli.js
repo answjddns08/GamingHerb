@@ -3,6 +3,22 @@ import { useUserStore } from "@/stores/user";
 // eslint-disable-next-line no-unused-vars
 import MiniGameScene from "@/games/WaitingMiniGame/waitingGame";
 
+/**
+ * 처음
+ * 플레이어가 웹사이트에 들어감
+ * 새 플레이어 생성
+ * 서버로 새 플레이어 생성을 알림
+ *
+ * 서버에선 새로 온 놈에게 기존에 있던 플레이어들의 리스트 보냄
+ * 기존 플레이어들에겐 새로 온 놈이 왔다는걸 알림
+ *
+ * 기존 플레이어들은 새로 온 놈을 자신의 씬에 추가
+ * 새로 온 놈은 기존 플레이어들을 자신의 씬에 추가
+ *
+ * 이후엔 각 플레이어가 자신의 위치를 서버에 주기적으로 알림
+ * 서버는 그 위치 정보를 다른 플레이어들에게 브로드캐스트
+ */
+
 const socketStore = useSocketStore();
 /**
  * 현재 씬 참조
@@ -34,13 +50,39 @@ function send(payload = {}) {
     action: { type: "miniGame", payload: payload },
   });
 
-  console.log("Sent Game socket message with payload:", payload);
+  //console.log("Sent Game socket message with payload:", payload);
 }
 
 /**
  * 멀티플레이어 게임 관련 소켓 이벤트 등록
  */
 function RegisterMultiPlayerEvents() {
+  /**
+   * 새 플레이어가 미니게임에 참가했을 때 (기존 플레이어들이 받음)
+   * @param {Object} data - { userId, userName, x, y }
+   */
+  socketStore.registerHandler("miniGame:playerJoined", (data) => {
+    console.log("miniGame:playerJoined event received with data:", data);
+
+    if (data?.payload?.userId && data.payload.userId !== userStore.id) {
+      const { userId, x, y } = data.payload;
+      console.log(`New player ${userId} joined mini-game at (${x}, ${y})`);
+      JoinPlayer(userId, x, y);
+    }
+  });
+
+  /**
+   * 플레이어가 미니게임에서 퇴장했을 때
+   * @param {Object} data - { userId }
+   */
+  socketStore.registerHandler("miniGame:playerLeft", (data) => {
+    if (data?.payload?.userId && data.payload.userId !== userStore.id) {
+      const { userId } = data.payload;
+      console.log(`Player ${userId} left mini-game`);
+      ExitPlayer(userId);
+    }
+  });
+
   /**
    * 다른 플레이어의 이동을 처리합니다.
    * @param {Object} data - { userId, x, y, velocityX, velocityY }
@@ -62,6 +104,8 @@ function RegisterMultiPlayerEvents() {
  * 멀티플레이어 게임 관련 소켓 이벤트 정리
  */
 function CleanEvents() {
+  socketStore.unregisterHandler("miniGame:playerJoined");
+  socketStore.unregisterHandler("miniGame:playerLeft");
   socketStore.unregisterHandler("playerMove");
   socketStore.unregisterHandler("playerAttack");
 }
@@ -154,7 +198,8 @@ function InitPlayers(players) {
   });
 }
 
-/** 새로운 플레이어 추가
+/**
+ * 새로운 플레이어 입갤
  * @param {string} id - 플레이어 ID
  */
 function NewPlayer(id) {
@@ -223,7 +268,6 @@ function ExitPlayer(id) {
 export {
   RegisterMultiPlayerEvents,
   GetGameInstance,
-  JoinPlayer,
   ExitPlayer,
   NewPlayer,
   CleanEvents,

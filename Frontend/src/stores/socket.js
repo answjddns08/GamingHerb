@@ -32,7 +32,7 @@ export const useSocketStore = defineStore("socket", () => {
     socket.value.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log("Received message:", data);
+        //console.log("Received message:", data);
 
         // 수신 타입에 등록된 모든 핸들러 호출
         if (data.type) {

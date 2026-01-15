@@ -211,21 +211,40 @@ class MiniGameScene extends Phaser.Scene {
     targetPlayer.destroy();
   }
 
+  /**
+   * 다른 플레이어 이동
+   * @param {String} id
+   * @param {Number} x
+   * @param {Number} y
+   * @returns
+   */
   MoveOtherPlayer(id, x, y) {
     const targetPlayer = this.players.getChildren().find((p) => p.name === `player_${id}`);
-
     if (!targetPlayer) return;
 
+    // 기존 Tween이 있으면 중단
+    if (targetPlayer.moveTween) {
+      targetPlayer.moveTween.stop();
+      targetPlayer.moveTween = null;
+    }
+
+    // 물리 속도 0으로 고정
+    targetPlayer.setVelocity(0, 0);
+
     const distance = Phaser.Math.Distance.Between(targetPlayer.x, targetPlayer.y, x, y);
+    const duration = Math.max(distance * 5, 50); // 최소 duration 보장
 
-    const duration = distance * 5;
-
-    this.tweens.add({
+    targetPlayer.moveTween = this.tweens.add({
       targets: targetPlayer,
       x: x,
       y: y,
       duration: duration,
       ease: "Linear",
+      onComplete: () => {
+        targetPlayer.moveTween = null;
+        targetPlayer.x = x;
+        targetPlayer.y = y;
+      },
     });
   }
 

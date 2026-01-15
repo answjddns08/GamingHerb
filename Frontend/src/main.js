@@ -9,7 +9,7 @@ import { useUserStore } from "./stores/user";
 
 // Import mobile logger for debugging on mobile devices
 
-import eruda from "eruda";
+//import eruda from "eruda";
 
 const app = createApp(App);
 const pinia = createPinia();
@@ -23,7 +23,7 @@ async function initializeApp() {
   const userStore = useUserStore();
   await userStore.initializeUser();
 
-  eruda.init();
+  //eruda.init();
 
   app.mount("#app");
 }
