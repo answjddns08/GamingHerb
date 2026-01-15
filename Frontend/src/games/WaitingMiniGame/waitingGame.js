@@ -26,6 +26,11 @@ class MiniGameScene extends Phaser.Scene {
     const centerX = WORLD_CENTER_X;
     const centerY = WORLD_CENTER_Y;
 
+    // 모든 기기에서 같은 게임 월드 영역을 보도록 카메라 고정
+    // 500x500 게임 월드의 중심을 항상 화면 중앙에 배치
+    this.cameras.main.setBounds(0, 0, 500, 500);
+    this.cameras.main.centerOn(centerX, centerY);
+
     // 지역(땅) 정의: 이 영역 안이면 "서 있음", 밖이면 낭떠러지 컨셉
     const ground = this.add.rectangle(centerX, centerY, 500, 500, 0xff0000).setName("ground");
 
@@ -252,8 +257,8 @@ class MiniGameScene extends Phaser.Scene {
    */
   lerpRemotePlayers() {
     const deltaSec = this.game.loop.delta / 1000;
-    // k 값이 클수록 빨리 따라감. 25이면 약 40ms 에 거의 다 도달
-    const k = 25;
+    // k 값이 클수록 빨리 따라감. 30이면 약 33ms 에 거의 다 도달
+    const k = 30;
     const lerpFactor = 1 - Math.exp(-k * deltaSec);
 
     const snapThreshold = 2; // px. 아주 근접하면 스냅으로 마감
