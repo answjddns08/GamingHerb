@@ -81,9 +81,22 @@ function RegisterMultiPlayerEvents() {
 
   /**
    * 다른 플레이어의 이동을 처리합니다.
-   * @param {Object} payload - { userId, x, y, velocityX, velocityY }
+   * 배열 형식: 틱 기반 배치 업데이트 (여러 플레이어)
+   * 단일 형식: 개별 플레이어 이동 (레거시 지원)
+   * @param {Object|Array} payload - { userId, x, y, velocityX, velocityY } or Array<{userId, x, y, ...}>
    */
   socketStore.registerHandler("playerMove", (payload) => {
+    // 배열 형식: 틱 기반 배치 업데이트
+    if (Array.isArray(payload)) {
+      payload.forEach((playerState) => {
+        if (playerState?.userId && playerState.userId !== userStore.id) {
+          MoveOtherPlayer(playerState.userId, playerState.x, playerState.y);
+        }
+      });
+      return;
+    }
+
+    // 단일 형식: 개별 플레이어 이동
     if (payload?.userId && payload.userId !== userStore.id) {
       const { userId, x, y } = payload;
       MoveOtherPlayer(userId, x, y);
@@ -102,6 +115,7 @@ function RegisterMultiPlayerEvents() {
 function CleanEvents() {
   socketStore.unregisterHandler("miniGame:playerJoined");
   socketStore.unregisterHandler("miniGame:playerLeft");
+  socketStore.unregisterHandler("miniGame:initializePlayers");
   socketStore.unregisterHandler("playerMove");
   socketStore.unregisterHandler("playerAttack");
 }
@@ -159,17 +173,21 @@ function StartPositionSync() {
     return;
   }
 
+  const centerX = scene.cameras.main.width / 2;
+  const centerY = scene.cameras.main.height / 2;
+
   scene.time.addEvent({
     delay: 33, // 약 33ms마다 실행 (초당 ~30회)
     callback: () => {
       const player = scene.players.getChildren().find((p) => p.name === `player_${userStore.id}`);
 
       if (player) {
+        // 상대좌표로 변환해서 전송 (centerX, centerY 기준)
         send({
           type: "move",
           id: userStore.id,
-          x: player.x,
-          y: player.y,
+          x: player.x - centerX,
+          y: player.y - centerY,
           velocityX: player.body.velocity.x,
           velocityY: player.body.velocity.y,
         });
@@ -192,7 +210,7 @@ function InitPlayers(players) {
   players.forEach((player) => {
     if (player.id === userStore.id) return; // 자기 자신은 건너뜀
 
-    scene.addPlayer(player.id, player.x, player.y); // isNew=true로 상대좌표 처리
+    scene.addPlayer(player.id, player.x, player.y, true); // 상대좌표로 처리
   });
 }
 
@@ -231,14 +249,14 @@ function JoinPlayer(id, x, y) {
     return;
   }
 
-  scene.addPlayer(id, x, y); // isNew=true로 상대좌표 처리
+  scene.addPlayer(id, x, y, true); // 상대좌표로 처리
 }
 
 /**
  * 다른 플레이어 이동 처리
  * @param {string} id - 플레이어 ID
- * @param {number} x - 목표 X 좌표
- * @param {number} y - 목표 Y 좌표
+ * @param {number} x - 목표 X 좌표 (상대좌표)
+ * @param {number} y - 목표 Y 좌표 (상대좌표)
  */
 function MoveOtherPlayer(id, x, y) {
   if (!scene) {
@@ -246,7 +264,11 @@ function MoveOtherPlayer(id, x, y) {
     return;
   }
 
-  scene.MoveOtherPlayer(id, x, y);
+  const centerX = scene.cameras.main.width / 2;
+  const centerY = scene.cameras.main.height / 2;
+
+  // 상대좌표를 절대좌표로 변환
+  scene.MoveOtherPlayer(id, centerX + x, centerY + y);
 }
 
 /**

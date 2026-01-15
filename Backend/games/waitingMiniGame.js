@@ -19,6 +19,19 @@ class WaitingMiniGame {
 		 * @type {String|null}
 		 */
 		this.roomName = null;
+
+		/**
+		 * 틱 레이트 (1초에 몇 번 업데이트할지)
+		 * @type {number}
+		 */
+		this.TICK_RATE = 30; // 30Hz
+		this.TICK_INTERVAL = 1000 / this.TICK_RATE; // 약 33ms
+
+		/**
+		 * 틱 타이머 ID
+		 * @type {NodeJS.Timeout|null}
+		 */
+		this.tickTimer = null;
 	}
 
 	/**
@@ -29,6 +42,64 @@ class WaitingMiniGame {
 	initialize(gameId, roomName) {
 		this.gameId = gameId;
 		this.roomName = roomName;
+		this.startGameTick(); // 틱 루프 시작
+	}
+
+	/**
+	 * 게임 틱 루프 시작
+	 * 일정한 간격으로 모든 플레이어 위치를 배치로 브로드캐스트
+	 */
+	startGameTick() {
+		if (this.tickTimer) {
+			clearInterval(this.tickTimer);
+		}
+
+		this.tickTimer = setInterval(() => {
+			this.broadcastAllPlayersState();
+		}, this.TICK_INTERVAL);
+
+		console.log(
+			`Game tick started at ${this.TICK_RATE}Hz for room: ${this.roomName}`
+		);
+	}
+
+	/**
+	 * 게임 틱 루프 정지
+	 */
+	stopGameTick() {
+		if (this.tickTimer) {
+			clearInterval(this.tickTimer);
+			this.tickTimer = null;
+			console.log(`Game tick stopped for room: ${this.roomName}`);
+		}
+	}
+
+	/**
+	 * 모든 플레이어의 상태를 배치로 브로드캐스트
+	 * 네트워크 효율성 개선: playerMove 타입 재사용, 배열로 통합 전송
+	 */
+	broadcastAllPlayersState() {
+		if (this.players.size === 0) return;
+
+		const playersState = Array.from(this.players.entries()).map(
+			([id, player]) => ({
+				userId: id,
+				x: player.x,
+				y: player.y,
+				velocityX: player.velocityX || 0,
+				velocityY: player.velocityY || 0,
+			})
+		);
+
+		broadCastToRoom(
+			this.gameId,
+			this.roomName,
+			{
+				type: "playerMove",
+				payload: playersState,
+			},
+			null // 모든 플레이어에게 전송
+		);
 	}
 
 	/**
@@ -103,15 +174,15 @@ class WaitingMiniGame {
 	}
 
 	/**
-	 * 플레이어 위치 업데이트 및 동기화
+	 * 플레이어 위치 업데이트 (서버 상태만 업데이트)
+	 * 실제 브로드캐스트는 tickBroadcastAllPlayersState()에서 틱마다 처리
 	 * @param {String} id
 	 * @param {number} x
 	 * @param {number} y
 	 * @param {number} velocityX
 	 * @param {number} velocityY
-	 * @param {WebSocket} ws - 요청한 플레이어의 웹소켓 (브로드캐스트 제외용)
 	 */
-	updatePlayerPosition(id, x, y, velocityX = 0, velocityY = 0, ws) {
+	updatePlayerPosition(id, x, y, velocityX = 0, velocityY = 0) {
 		if (!this.players.has(id)) {
 			console.warn(`Player ${id} not found for position update`);
 			return;
@@ -123,22 +194,7 @@ class WaitingMiniGame {
 		player.velocityX = velocityX;
 		player.velocityY = velocityY;
 
-		// 다른 플레이어들에게 위치 정보 브로드캐스트 (자신 제외)
-		broadCastToRoom(
-			this.gameId,
-			this.roomName,
-			{
-				type: "playerMove",
-				payload: {
-					userId: id,
-					x: x,
-					y: y,
-					velocityX: velocityX,
-					velocityY: velocityY,
-				},
-			},
-			ws
-		);
+		// 실제 브로드캐스트는 broadcastAllPlayersState()에서 틱마다 처리
 	}
 
 	/**
@@ -161,7 +217,8 @@ class WaitingMiniGame {
 				this.exitPlayer(id, ws);
 				break;
 			case "move":
-				this.updatePlayerPosition(id, x, y, velocityX, velocityY, ws);
+				// 위치만 업데이트 (브로드캐스트는 틱에서 처리)
+				this.updatePlayerPosition(id, x, y, velocityX, velocityY);
 				break;
 			default:
 				console.warn(`Unknown action type: ${type}`);
