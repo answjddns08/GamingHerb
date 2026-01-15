@@ -128,9 +128,6 @@ function setupWebsocket(wss) {
 						updatedRoom.miniGameInstance.initialize(gameId, roomName);
 					}
 
-					const gamePlayers =
-						updatedRoom.miniGameInstance.GetPlayersCoordinates();
-
 					// Send initial room details to the joining/reconnecting player
 					ws.send(
 						JSON.stringify({
@@ -142,7 +139,6 @@ function setupWebsocket(wss) {
 								isReady: p.isReady,
 								disconnected: p.disconnected || false,
 							})),
-							miniGamePlayers: gamePlayers,
 							hostId: updatedRoom.hostId,
 						})
 					);

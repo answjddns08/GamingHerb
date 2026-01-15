@@ -183,20 +183,22 @@ class MiniGameScene extends Phaser.Scene {
    * @param {String} id
    * @param {Number} x
    * @param {Number} y
+   * @param {Boolean} isNew - 새로 입장한 플레이어인지 여부
    * @returns
    */
-  addPlayer(id, x, y) {
+  addPlayer(id, x, y, isNew = false) {
     const centerX = this.cameras.main.width / 2;
     const centerY = this.cameras.main.height / 2;
 
-    const newPlayer = this.physics.add
-      .sprite(centerX + x, centerY + y, "dude")
-      .setName(`player_${id}`);
+    const posX = isNew ? centerX + x : x;
+    const posY = isNew ? centerY + y : y;
+
+    const newPlayer = this.physics.add.sprite(posX, posY, "dude").setName(`player_${id}`);
     newPlayer.setCollideWorldBounds(true);
     newPlayer.setDrag(200, 200);
     newPlayer.lastDirection = { x: 0, y: 1 };
     this.players.add(newPlayer);
-    console.log(`Player ${id} added at position (${x}, ${y}).`);
+    console.log(`Player ${id} added at position (${posX}, ${posY}).`);
     return newPlayer;
   }
 

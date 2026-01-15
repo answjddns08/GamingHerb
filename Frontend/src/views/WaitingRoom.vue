@@ -102,7 +102,6 @@ import {
   CleanEvents,
   GetGameInstance,
   ExitPlayer,
-  InitPlayers,
   CleanupScene,
   NewPlayer,
 } from "@/games/WaitingMiniGame/mutli.js";
@@ -231,8 +230,6 @@ const setupSocketHandlers = () => {
       gameSetting.value = { ...data.settings, hostId: data.hostId };
       const playerMap = new Map(data.players.map((p) => [p.userId, p]));
       players.value = playerMap;
-
-      InitPlayers(data.miniGamePlayers); // 기존 플레이어들 추가
     } else {
       console.error("Invalid initialize data structure:", data);
     }

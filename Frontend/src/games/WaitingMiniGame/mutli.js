@@ -3,22 +3,6 @@ import { useUserStore } from "@/stores/user";
 // eslint-disable-next-line no-unused-vars
 import MiniGameScene from "@/games/WaitingMiniGame/waitingGame";
 
-/**
- * 처음
- * 플레이어가 웹사이트에 들어감
- * 새 플레이어 생성
- * 서버로 새 플레이어 생성을 알림
- *
- * 서버에선 새로 온 놈에게 기존에 있던 플레이어들의 리스트 보냄
- * 기존 플레이어들에겐 새로 온 놈이 왔다는걸 알림
- *
- * 기존 플레이어들은 새로 온 놈을 자신의 씬에 추가
- * 새로 온 놈은 기존 플레이어들을 자신의 씬에 추가
- *
- * 이후엔 각 플레이어가 자신의 위치를 서버에 주기적으로 알림
- * 서버는 그 위치 정보를 다른 플레이어들에게 브로드캐스트
- */
-
 const socketStore = useSocketStore();
 /**
  * 현재 씬 참조
@@ -59,13 +43,13 @@ function send(payload = {}) {
 function RegisterMultiPlayerEvents() {
   /**
    * 새 플레이어가 미니게임에 참가했을 때 (기존 플레이어들이 받음)
-   * @param {Object} data - { userId, userName, x, y }
+   * @param {Object} payload - { userId, userName, x, y }
    */
-  socketStore.registerHandler("miniGame:playerJoined", (data) => {
-    console.log("miniGame:playerJoined event received with data:", data);
+  socketStore.registerHandler("miniGame:playerJoined", (payload) => {
+    console.log("miniGame:playerJoined event received with data:", payload);
 
-    if (data?.payload?.userId && data.payload.userId !== userStore.id) {
-      const { userId, x, y } = data.payload;
+    if (payload?.userId && payload.userId !== userStore.id) {
+      const { userId, x, y } = payload;
       console.log(`New player ${userId} joined mini-game at (${x}, ${y})`);
       JoinPlayer(userId, x, y);
     }
@@ -73,29 +57,41 @@ function RegisterMultiPlayerEvents() {
 
   /**
    * 플레이어가 미니게임에서 퇴장했을 때
-   * @param {Object} data - { userId }
+   * @param {Object} payload - { userId }
    */
-  socketStore.registerHandler("miniGame:playerLeft", (data) => {
-    if (data?.payload?.userId && data.payload.userId !== userStore.id) {
-      const { userId } = data.payload;
+  socketStore.registerHandler("miniGame:playerLeft", (payload) => {
+    if (payload?.userId && payload.userId !== userStore.id) {
+      const { userId } = payload;
       console.log(`Player ${userId} left mini-game`);
       ExitPlayer(userId);
     }
   });
 
   /**
-   * 다른 플레이어의 이동을 처리합니다.
-   * @param {Object} data - { userId, x, y, velocityX, velocityY }
+   * 미니게임 참가자 초기화 이벤트
+   * @param {Object} payload - { players: Array<{id, x, y}> }
    */
-  socketStore.registerHandler("playerMove", (data) => {
-    if (data?.payload?.userId && data.payload.userId !== userStore.id) {
-      const { userId, x, y } = data.payload;
+  socketStore.registerHandler("miniGame:initializePlayers", (payload) => {
+    console.log("miniGame:initializePlayers event received with data:", payload);
+
+    if (payload?.players) {
+      InitPlayers(payload.players);
+    }
+  });
+
+  /**
+   * 다른 플레이어의 이동을 처리합니다.
+   * @param {Object} payload - { userId, x, y, velocityX, velocityY }
+   */
+  socketStore.registerHandler("playerMove", (payload) => {
+    if (payload?.userId && payload.userId !== userStore.id) {
+      const { userId, x, y } = payload;
       MoveOtherPlayer(userId, x, y);
     }
   });
 
-  socketStore.registerHandler("playerAttack", (data) => {
-    console.log("Player attack event received with data:", data);
+  socketStore.registerHandler("playerAttack", (payload) => {
+    console.log("Player attack event received with data:", payload);
     // Handle the player attack logic here
   });
 }
@@ -194,7 +190,9 @@ function InitPlayers(players) {
   }
 
   players.forEach((player) => {
-    scene.addPlayer(player.id, player.x, player.y);
+    if (player.id === userStore.id) return; // 자기 자신은 건너뜀
+
+    scene.addPlayer(player.id, player.x, player.y); // isNew=true로 상대좌표 처리
   });
 }
 
@@ -216,7 +214,7 @@ function NewPlayer(id) {
   const XCoords = Math.random() * 200 * (isXPlus ? 1 : -1);
   const YCoords = Math.random() * 200 * (isYPlus ? 1 : -1);
 
-  scene.addPlayer(id, XCoords, YCoords);
+  scene.addPlayer(id, XCoords, YCoords, true);
 
   send({ type: "join", id: id, x: XCoords, y: YCoords });
 }
@@ -224,8 +222,8 @@ function NewPlayer(id) {
 /**
  * 플레이어가 멀티플레이어 게임에 참여
  * @param {string} id - 플레이어 ID
- * @param {number} x - 플레이어 초기 X 좌표
- * @param {number} y - 플레이어 초기 Y 좌표
+ * @param {number} x - 플레이어 초기 X 좌표 (상대좌표)
+ * @param {number} y - 플레이어 초기 Y 좌표 (상대좌표)
  */
 function JoinPlayer(id, x, y) {
   if (!scene) {
@@ -233,7 +231,7 @@ function JoinPlayer(id, x, y) {
     return;
   }
 
-  scene.addPlayer(id, x, y);
+  scene.addPlayer(id, x, y); // isNew=true로 상대좌표 처리
 }
 
 /**

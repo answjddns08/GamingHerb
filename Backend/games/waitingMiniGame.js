@@ -60,6 +60,15 @@ class WaitingMiniGame {
 			},
 			ws
 		);
+
+		ws.send(
+			JSON.stringify({
+				type: "miniGame:initializePlayers",
+				payload: {
+					players: this.GetPlayersCoordinates(),
+				},
+			})
+		);
 	}
 
 	/**
