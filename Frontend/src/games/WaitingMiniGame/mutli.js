@@ -3,6 +3,10 @@ import { useUserStore } from "@/stores/user";
 // eslint-disable-next-line no-unused-vars
 import MiniGameScene from "@/games/WaitingMiniGame/waitingGame";
 
+// 모든 클라이언트가 공유하는 고정된 월드 센터
+const WORLD_CENTER_X = 250;
+const WORLD_CENTER_Y = 250;
+
 const socketStore = useSocketStore();
 /**
  * 현재 씬 참조
@@ -221,21 +225,18 @@ function StartPositionSync() {
     return;
   }
 
-  const centerX = scene.cameras.main.width / 2;
-  const centerY = scene.cameras.main.height / 2;
-
   scene.time.addEvent({
     delay: 33, // 약 33ms마다 실행 (초당 ~30회)
     callback: () => {
       const player = scene.players.getChildren().find((p) => p.name === `player_${userStore.id}`);
 
       if (player) {
-        // 상대좌표로 변환해서 전송 (centerX, centerY 기준)
+        // 고정된 월드 중심을 기준으로 상대좌표 전송
         send({
           type: "move",
           id: userStore.id,
-          x: player.x - centerX,
-          y: player.y - centerY,
+          x: player.x - WORLD_CENTER_X,
+          y: player.y - WORLD_CENTER_Y,
         });
       }
     },
@@ -301,8 +302,8 @@ function NewPlayerImpl(id) {
   const isXPlus = Math.random() < 0.5;
   const isYPlus = Math.random() < 0.5;
 
-  const XCoords = Math.random() * 200 * (isXPlus ? 1 : -1);
-  const YCoords = Math.random() * 200 * (isYPlus ? 1 : -1);
+  const XCoords = Math.random() * 50 * (isXPlus ? 1 : -1);
+  const YCoords = Math.random() * 50 * (isYPlus ? 1 : -1);
 
   scene.addPlayer(id, XCoords, YCoords, true);
 
@@ -365,11 +366,8 @@ function MoveOtherPlayerImpl(id, x, y) {
     return;
   }
 
-  const centerX = scene.cameras.main.width / 2;
-  const centerY = scene.cameras.main.height / 2;
-
-  // 상대좌표를 절대좌표로 변환
-  scene.MoveOtherPlayer(id, centerX + x, centerY + y);
+  // 고정된 월드 중심을 기준으로 절대좌표로 변환
+  scene.MoveOtherPlayer(id, WORLD_CENTER_X + x, WORLD_CENTER_Y + y);
 }
 
 /**
@@ -386,6 +384,12 @@ function ExitPlayer(id) {
   send({ type: "exit", id: id });
 }
 
+function SendSwingAttack() {
+  console.log("Sending swing attack for user:", userStore.id);
+
+  send({ type: "attack", id: userStore.id });
+}
+
 export {
   RegisterMultiPlayerEvents,
   GetGameInstance,
@@ -395,4 +399,5 @@ export {
   InitPlayers,
   CleanupScene,
   StartPositionSync,
+  SendSwingAttack,
 };

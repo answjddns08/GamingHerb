@@ -1,6 +1,10 @@
 import Phaser from "phaser";
 import { useUserStore } from "@/stores/user";
 
+// 모든 클라이언트가 공유하는 고정된 월드 센터
+const WORLD_CENTER_X = 250; // 게임 월드 가로 중심 (고정값)
+const WORLD_CENTER_Y = 250; // 게임 월드 세로 중심 (고정값)
+
 class MiniGameScene extends Phaser.Scene {
   constructor() {
     super({ key: "MiniGameScene" });
@@ -18,9 +22,9 @@ class MiniGameScene extends Phaser.Scene {
   }
 
   create() {
-    // 화면 중앙 좌표 계산 (모든 기기에서 동일하게 작동)
-    const centerX = this.cameras.main.width / 2;
-    const centerY = this.cameras.main.height / 2;
+    // 고정된 월드 센터를 사용 (모든 클라이언트가 동일해야 함)
+    const centerX = WORLD_CENTER_X;
+    const centerY = WORLD_CENTER_Y;
 
     // 지역(땅) 정의: 이 영역 안이면 "서 있음", 밖이면 낭떠러지 컨셉
     const ground = this.add.rectangle(centerX, centerY, 500, 500, 0xff0000).setName("ground");
@@ -191,11 +195,10 @@ class MiniGameScene extends Phaser.Scene {
    * @returns
    */
   addPlayer(id, x, y, isNew = false) {
-    const centerX = this.cameras.main.width / 2;
-    const centerY = this.cameras.main.height / 2;
-
-    const posX = isNew ? centerX + x : x;
-    const posY = isNew ? centerY + y : y;
+    // isNew=true면 상대좌표를 절대좌표로 변환
+    // isNew=false면 이미 절대좌표
+    const posX = isNew ? WORLD_CENTER_X + x : x;
+    const posY = isNew ? WORLD_CENTER_Y + y : y;
 
     const newPlayer = this.physics.add.sprite(posX, posY, "dude").setName(`player_${id}`);
     newPlayer.setCollideWorldBounds(true);
@@ -203,8 +206,8 @@ class MiniGameScene extends Phaser.Scene {
     newPlayer.lastDirection = { x: 0, y: 1 };
     this.players.add(newPlayer);
     if (id !== this.playerId) {
-      this.targetPositions.set(id, { x: posX, y: posY });
-      newPlayer.hasInitialTarget = true;
+      // targetPositions 설정하지 않음 - 첫 MoveOtherPlayer 호출 시 설정됨
+      newPlayer.hasInitialTarget = false; // 아직 목표가 없음을 표시
     }
     console.log(`Player ${id} added at position (${posX}, ${posY}).`);
     return newPlayer;
@@ -233,15 +236,14 @@ class MiniGameScene extends Phaser.Scene {
     const targetPlayer = this.players.getChildren().find((p) => p.name === `player_${id}`);
     if (!targetPlayer) return;
 
-    const hadTarget = this.targetPositions.has(id);
-
     // 원격 플레이어 목표 위치 갱신 (프레임마다 lerp로 보간)
     this.targetPositions.set(id, { x, y });
 
-    // 첫 수신 시 튀는 것 방지: 목표가 없던 경우 즉시 위치 동기화
-    if (!hadTarget || !targetPlayer.hasInitialTarget) {
+    // 첫 수신 시 또는 hasInitialTarget이 false면 즉시 위치 동기화
+    if (!targetPlayer.hasInitialTarget) {
       targetPlayer.setPosition(x, y);
       targetPlayer.hasInitialTarget = true;
+      console.log(`Player ${id} initial position set to (${x}, ${y})`);
     }
   }
 
@@ -250,8 +252,8 @@ class MiniGameScene extends Phaser.Scene {
    */
   lerpRemotePlayers() {
     const deltaSec = this.game.loop.delta / 1000;
-    // k 값이 클수록 빨리 따라감. 20이면 약 100ms 내외 수렴.
-    const k = 20;
+    // k 값이 클수록 빨리 따라감. 25이면 약 40ms 에 거의 다 도달
+    const k = 25;
     const lerpFactor = 1 - Math.exp(-k * deltaSec);
 
     const snapThreshold = 2; // px. 아주 근접하면 스냅으로 마감
@@ -376,8 +378,6 @@ class MiniGameScene extends Phaser.Scene {
    */
   trySwing() {
     if (this.isSwinging || this.swingCooldown > 0) return;
-
-    console.log("Swing attack!");
 
     this.isSwinging = true;
     this.swingCooldown = this.SWING_COOLDOWN;
