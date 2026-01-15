@@ -233,11 +233,13 @@ class MiniGameScene extends Phaser.Scene {
     const targetPlayer = this.players.getChildren().find((p) => p.name === `player_${id}`);
     if (!targetPlayer) return;
 
-    // 원격 플레이어 목표 위치만 갱신 (프레임마다 lerp로 보간)
+    const hadTarget = this.targetPositions.has(id);
+
+    // 원격 플레이어 목표 위치 갱신 (프레임마다 lerp로 보간)
     this.targetPositions.set(id, { x, y });
 
-    // 첫 수신 시 튀는 것 방지: 목표가 없던 경우 바로 위치 맞추기
-    if (!targetPlayer.hasInitialTarget) {
+    // 첫 수신 시 튀는 것 방지: 목표가 없던 경우 즉시 위치 동기화
+    if (!hadTarget || !targetPlayer.hasInitialTarget) {
       targetPlayer.setPosition(x, y);
       targetPlayer.hasInitialTarget = true;
     }
@@ -248,9 +250,11 @@ class MiniGameScene extends Phaser.Scene {
    */
   lerpRemotePlayers() {
     const deltaSec = this.game.loop.delta / 1000;
-    // k 값이 클수록 빨리 따라감. 10이면 약 100ms 내외 수렴.
-    const k = 10;
+    // k 값이 클수록 빨리 따라감. 20이면 약 100ms 내외 수렴.
+    const k = 20;
     const lerpFactor = 1 - Math.exp(-k * deltaSec);
+
+    const snapThreshold = 2; // px. 아주 근접하면 스냅으로 마감
 
     this.players.getChildren().forEach((player) => {
       if (player.name === `player_${this.playerId}`) return;
@@ -260,9 +264,17 @@ class MiniGameScene extends Phaser.Scene {
       const nextX = Phaser.Math.Linear(player.x, target.x, lerpFactor);
       const nextY = Phaser.Math.Linear(player.y, target.y, lerpFactor);
 
+      // 근접 스냅 처리로 마감 지터 제거
+      const dx = target.x - nextX;
+      const dy = target.y - nextY;
+      if (Math.abs(dx) <= snapThreshold && Math.abs(dy) <= snapThreshold) {
+        player.setPosition(target.x, target.y);
+      } else {
+        player.setPosition(nextX, nextY);
+      }
+
       // 물리 속도는 사용하지 않으니 정지시켜 둔다
       player.setVelocity(0, 0);
-      player.setPosition(nextX, nextY);
     });
   }
 

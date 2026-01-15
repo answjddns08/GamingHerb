@@ -11,6 +11,18 @@ const socketStore = useSocketStore();
 let scene = null;
 
 /**
+ * 씬이 준비되었는지 여부
+ * @type {boolean}
+ */
+let isSceneReady = false;
+
+/**
+ * Scene 준비 전에 호출된 함수들을 저장하는 큐
+ * @type {Array<{name: string, args: any[]}>}
+ */
+let actionQueue = [];
+
+/**
  * 컴포넌트 props
  * @type {{gameId: string, roomId: string}}
  */
@@ -129,6 +141,37 @@ function CleanupScene() {
     scene.events.removeAllListeners();
     scene = null;
   }
+  isSceneReady = false; // ✅ 플래그 리셋
+  actionQueue = []; // ✅ 큐 초기화
+}
+
+/**
+ * 큐에 저장된 모든 액션을 순서대로 처리합니다.
+ */
+function ProcessActionQueue() {
+  console.log(`Processing action queue with ${actionQueue.length} items`);
+
+  while (actionQueue.length > 0) {
+    const { name, args } = actionQueue.shift();
+    console.log(`Executing queued action: ${name}`, args);
+
+    switch (name) {
+      case "NewPlayer":
+        NewPlayerImpl(...args);
+        break;
+      case "JoinPlayer":
+        JoinPlayerImpl(...args);
+        break;
+      case "InitPlayers":
+        InitPlayersImpl(...args);
+        break;
+      case "MoveOtherPlayer":
+        MoveOtherPlayerImpl(...args);
+        break;
+      default:
+        console.warn(`Unknown queued action: ${name}`);
+    }
+  }
 }
 
 /**
@@ -155,7 +198,12 @@ function GetGameInstance(instance, inputProps) {
     // Scene의 'scene-ready' 이벤트 대기
     miniGameScene.events.once("scene-ready", (readyScene) => {
       scene = readyScene;
+      isSceneReady = true; // ✅ 씬이 준비되었음을 표시
+
       console.log("MiniGameScene is ready via event:", scene);
+
+      // ✅ 큐에 저장된 액션들 처리
+      ProcessActionQueue();
 
       // 이동 동기화 시작 (초당 30회)
       StartPositionSync();
@@ -196,10 +244,23 @@ function StartPositionSync() {
 }
 
 /**
- * 플레이어 배열 받기
+ * 플레이어 배열 받기 (공개 인터페이스)
  * @param {Array<{id: string, x: number, y: number}>} players - 플레이어 배열
  */
 function InitPlayers(players) {
+  if (isSceneReady) {
+    InitPlayersImpl(players);
+  } else {
+    actionQueue.push({ name: "InitPlayers", args: [players] });
+    console.log("InitPlayers queued. Queue size:", actionQueue.length);
+  }
+}
+
+/**
+ * 플레이어 배열 받기 (내부 구현)
+ * @param {Array<{id: string, x: number, y: number}>} players - 플레이어 배열
+ */
+function InitPlayersImpl(players) {
   if (!scene) {
     console.warn("Scene is not initialized");
     return;
@@ -213,10 +274,23 @@ function InitPlayers(players) {
 }
 
 /**
- * 새로운 플레이어 입갤
+ * 새로운 플레이어 입갤 (공개 인터페이스)
  * @param {string} id - 플레이어 ID
  */
 function NewPlayer(id) {
+  if (isSceneReady) {
+    NewPlayerImpl(id);
+  } else {
+    actionQueue.push({ name: "NewPlayer", args: [id] });
+    console.log(`NewPlayer '${id}' queued. Queue size:`, actionQueue.length);
+  }
+}
+
+/**
+ * 새로운 플레이어 입갤 (내부 구현)
+ * @param {string} id - 플레이어 ID
+ */
+function NewPlayerImpl(id) {
   if (!scene) {
     console.warn("Scene is not initialized");
     return;
@@ -236,12 +310,27 @@ function NewPlayer(id) {
 }
 
 /**
- * 플레이어가 멀티플레이어 게임에 참여
+ * 플레이어가 멀티플레이어 게임에 참여 (공개 인터페이스)
  * @param {string} id - 플레이어 ID
  * @param {number} x - 플레이어 초기 X 좌표 (상대좌표)
  * @param {number} y - 플레이어 초기 Y 좌표 (상대좌표)
  */
 function JoinPlayer(id, x, y) {
+  if (isSceneReady) {
+    JoinPlayerImpl(id, x, y);
+  } else {
+    actionQueue.push({ name: "JoinPlayer", args: [id, x, y] });
+    console.log(`JoinPlayer '${id}' queued. Queue size:`, actionQueue.length);
+  }
+}
+
+/**
+ * 플레이어가 멀티플레이어 게임에 참여 (내부 구현)
+ * @param {string} id - 플레이어 ID
+ * @param {number} x - 플레이어 초기 X 좌표 (상대좌표)
+ * @param {number} y - 플레이어 초기 Y 좌표 (상대좌표)
+ */
+function JoinPlayerImpl(id, x, y) {
   if (!scene) {
     console.warn("Scene is not initialized");
     return;
@@ -251,12 +340,26 @@ function JoinPlayer(id, x, y) {
 }
 
 /**
- * 다른 플레이어 이동 처리
+ * 다른 플레이어 이동 처리 (공개 인터페이스)
  * @param {string} id - 플레이어 ID
  * @param {number} x - 목표 X 좌표 (상대좌표)
  * @param {number} y - 목표 Y 좌표 (상대좌표)
  */
 function MoveOtherPlayer(id, x, y) {
+  if (isSceneReady) {
+    MoveOtherPlayerImpl(id, x, y);
+  } else {
+    actionQueue.push({ name: "MoveOtherPlayer", args: [id, x, y] });
+  }
+}
+
+/**
+ * 다른 플레이어 이동 처리 (내부 구현)
+ * @param {string} id - 플레이어 ID
+ * @param {number} x - 목표 X 좌표 (상대좌표)
+ * @param {number} y - 목표 Y 좌표 (상대좌표)
+ */
+function MoveOtherPlayerImpl(id, x, y) {
   if (!scene) {
     console.warn("Scene is not initialized");
     return;
