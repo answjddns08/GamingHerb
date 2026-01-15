@@ -5,6 +5,7 @@ class MiniGameScene extends Phaser.Scene {
   constructor() {
     super({ key: "MiniGameScene" });
     this.userStore = useUserStore();
+    this.targetPositions = new Map(); // 원격 플레이어 목표 위치 저장
   }
 
   preload() {
@@ -155,6 +156,9 @@ class MiniGameScene extends Phaser.Scene {
     // 입력 이동 및 애니메이션
     this.playerMovement();
 
+    // 원격 플레이어 위치 보간
+    this.lerpRemotePlayers();
+
     // 스윙 중일 때 충돌 체크만 수행 (위치는 trySwing에서 한 번만 설정)
     if (this.isSwinging) {
       this.checkWeaponHit();
@@ -198,6 +202,10 @@ class MiniGameScene extends Phaser.Scene {
     newPlayer.setDrag(200, 200);
     newPlayer.lastDirection = { x: 0, y: 1 };
     this.players.add(newPlayer);
+    if (id !== this.playerId) {
+      this.targetPositions.set(id, { x: posX, y: posY });
+      newPlayer.hasInitialTarget = true;
+    }
     console.log(`Player ${id} added at position (${posX}, ${posY}).`);
     return newPlayer;
   }
@@ -210,6 +218,7 @@ class MiniGameScene extends Phaser.Scene {
     const targetPlayer = this.players.getChildren().find((p) => p.name === `player_${id}`);
     if (!targetPlayer) return;
 
+    this.targetPositions.delete(id);
     targetPlayer.destroy();
   }
 
@@ -224,31 +233,36 @@ class MiniGameScene extends Phaser.Scene {
     const targetPlayer = this.players.getChildren().find((p) => p.name === `player_${id}`);
     if (!targetPlayer) return;
 
-    // 기존 Tween이 있으면 중단
-    if (targetPlayer.moveTween) {
-      targetPlayer.moveTween.stop();
-      targetPlayer.moveTween = null;
+    // 원격 플레이어 목표 위치만 갱신 (프레임마다 lerp로 보간)
+    this.targetPositions.set(id, { x, y });
+
+    // 첫 수신 시 튀는 것 방지: 목표가 없던 경우 바로 위치 맞추기
+    if (!targetPlayer.hasInitialTarget) {
+      targetPlayer.setPosition(x, y);
+      targetPlayer.hasInitialTarget = true;
     }
+  }
 
-    // 물리 속도 0으로 고정
-    targetPlayer.setVelocity(0, 0);
+  /**
+   * 원격 플레이어를 목표 위치로 lerp 보간 이동
+   */
+  lerpRemotePlayers() {
+    const deltaSec = this.game.loop.delta / 1000;
+    // k 값이 클수록 빨리 따라감. 10이면 약 100ms 내외 수렴.
+    const k = 10;
+    const lerpFactor = 1 - Math.exp(-k * deltaSec);
 
-    const distance = Phaser.Math.Distance.Between(targetPlayer.x, targetPlayer.y, x, y);
-    // 거리 기반 duration (33ms 틱마다 1프레임 이동하도록 조정)
-    // 예: 100px = ~67ms, 200px = ~133ms
-    const duration = Math.max(distance * 0.667, 33);
+    this.players.getChildren().forEach((player) => {
+      if (player.name === `player_${this.playerId}`) return;
+      const target = this.targetPositions.get(player.name.replace("player_", ""));
+      if (!target) return;
 
-    targetPlayer.moveTween = this.tweens.add({
-      targets: targetPlayer,
-      x: x,
-      y: y,
-      duration: duration,
-      ease: "Linear",
-      onComplete: () => {
-        targetPlayer.moveTween = null;
-        targetPlayer.x = x;
-        targetPlayer.y = y;
-      },
+      const nextX = Phaser.Math.Linear(player.x, target.x, lerpFactor);
+      const nextY = Phaser.Math.Linear(player.y, target.y, lerpFactor);
+
+      // 물리 속도는 사용하지 않으니 정지시켜 둔다
+      player.setVelocity(0, 0);
+      player.setPosition(nextX, nextY);
     });
   }
 
