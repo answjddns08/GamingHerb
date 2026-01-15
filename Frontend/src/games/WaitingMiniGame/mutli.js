@@ -188,8 +188,6 @@ function StartPositionSync() {
           id: userStore.id,
           x: player.x - centerX,
           y: player.y - centerY,
-          velocityX: player.body.velocity.x,
-          velocityY: player.body.velocity.y,
         });
       }
     },

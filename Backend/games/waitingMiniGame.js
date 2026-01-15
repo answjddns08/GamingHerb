@@ -86,8 +86,6 @@ class WaitingMiniGame {
 				userId: id,
 				x: player.x,
 				y: player.y,
-				velocityX: player.velocityX || 0,
-				velocityY: player.velocityY || 0,
 			})
 		);
 
@@ -175,14 +173,12 @@ class WaitingMiniGame {
 
 	/**
 	 * 플레이어 위치 업데이트 (서버 상태만 업데이트)
-	 * 실제 브로드캐스트는 tickBroadcastAllPlayersState()에서 틱마다 처리
+	 * 실제 브로드캐스트는 broadcastAllPlayersState()에서 틱마다 처리
 	 * @param {String} id
 	 * @param {number} x
 	 * @param {number} y
-	 * @param {number} velocityX
-	 * @param {number} velocityY
 	 */
-	updatePlayerPosition(id, x, y, velocityX = 0, velocityY = 0) {
+	updatePlayerPosition(id, x, y) {
 		if (!this.players.has(id)) {
 			console.warn(`Player ${id} not found for position update`);
 			return;
@@ -191,8 +187,6 @@ class WaitingMiniGame {
 		const player = this.players.get(id);
 		player.x = x;
 		player.y = y;
-		player.velocityX = velocityX;
-		player.velocityY = velocityY;
 
 		// 실제 브로드캐스트는 broadcastAllPlayersState()에서 틱마다 처리
 	}
@@ -218,7 +212,7 @@ class WaitingMiniGame {
 				break;
 			case "move":
 				// 위치만 업데이트 (브로드캐스트는 틱에서 처리)
-				this.updatePlayerPosition(id, x, y, velocityX, velocityY);
+				this.updatePlayerPosition(id, x, y);
 				break;
 			default:
 				console.warn(`Unknown action type: ${type}`);
@@ -227,15 +221,13 @@ class WaitingMiniGame {
 
 	/**
 	 * 모든 플레이어의 좌표 가져오기
-	 * @returns {Array<{id: string, x: number, y: number, velocityX: number, velocityY: number}>}
+	 * @returns {Array<{id: string, x: number, y: number}>}
 	 */
 	GetPlayersCoordinates() {
 		return Array.from(this.players.entries()).map(([id, pos]) => ({
 			id,
 			x: pos.x,
 			y: pos.y,
-			velocityX: pos.velocityX || 0,
-			velocityY: pos.velocityY || 0,
 		}));
 	}
 }

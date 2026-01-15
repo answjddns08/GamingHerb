@@ -234,7 +234,9 @@ class MiniGameScene extends Phaser.Scene {
     targetPlayer.setVelocity(0, 0);
 
     const distance = Phaser.Math.Distance.Between(targetPlayer.x, targetPlayer.y, x, y);
-    const duration = Math.max(distance * 5, 50); // 최소 duration 보장
+    // 거리 기반 duration (33ms 틱마다 1프레임 이동하도록 조정)
+    // 예: 100px = ~67ms, 200px = ~133ms
+    const duration = Math.max(distance * 0.667, 33);
 
     targetPlayer.moveTween = this.tweens.add({
       targets: targetPlayer,
