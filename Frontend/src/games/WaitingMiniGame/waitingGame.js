@@ -1,9 +1,11 @@
 import Phaser from "phaser";
 import { useUserStore } from "@/stores/user";
 
-// 모든 클라이언트가 공유하는 고정된 월드 센터
-const WORLD_CENTER_X = 250; // 게임 월드 가로 중심 (고정값)
-const WORLD_CENTER_Y = 250; // 게임 월드 세로 중심 (고정값)
+// 모든 클라이언트가 공유하는 고정된 게임 월드 크기
+export const WORLD_WIDTH = 1600; // 게임 월드 가로 크기 (고정값, 모든 클라이언트 동일)
+export const WORLD_HEIGHT = 1200; // 게임 월드 세로 크기 (고정값, 모든 클라이언트 동일)
+export const WORLD_CENTER_X = WORLD_WIDTH / 2; // 800
+export const WORLD_CENTER_Y = WORLD_HEIGHT / 2; // 600
 
 class MiniGameScene extends Phaser.Scene {
   constructor() {
@@ -26,19 +28,27 @@ class MiniGameScene extends Phaser.Scene {
     const centerX = WORLD_CENTER_X;
     const centerY = WORLD_CENTER_Y;
 
-    // 모든 기기에서 같은 게임 월드 영역을 보도록 카메라 고정
-    // 500x500 게임 월드의 중심을 항상 화면 중앙에 배치
-    this.cameras.main.setBounds(0, 0, 500, 500);
-    this.cameras.main.centerOn(centerX, centerY);
+    // 물리 월드 경계 설정 (고정된 게임 월드 크기)
+    this.physics.world.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+
+    // 카메라 경계 설정 (고정된 게임 월드 크기)
+    this.cameras.main.setBounds(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
     // 지역(땅) 정의: 이 영역 안이면 "서 있음", 밖이면 낭떠러지 컨셉
-    const ground = this.add.rectangle(centerX, centerY, 500, 500, 0xff0000).setName("ground");
+    const groundWidth = 600;
+    const groundHeight = 600;
+    const ground = this.add
+      .rectangle(centerX, centerY, groundWidth, groundHeight, 0xff0000)
+      .setName("ground");
 
     // 플레이어 생성 및 물리 설정
     this.playerId = this.userStore.id;
 
     // 땅의 화면상 바운딩을 한 번 캐싱해 두고 사용(정적이면 문제 없음)
     this.groundRect = ground.getBounds();
+
+    // 로컬 플레이어를 추적하기 위한 참조
+    this.localPlayer = null;
 
     // 멀티플레이 확장 대비: 그룹과 충돌(서로 밀치기) 준비
     this.players = this.physics.add.group();
@@ -194,23 +204,27 @@ class MiniGameScene extends Phaser.Scene {
   /**
    * 플레이어 추가
    * @param {String} id
-   * @param {Number} x
-   * @param {Number} y
-   * @param {Boolean} isNew - 새로 입장한 플레이어인지 여부
+   * @param {Number} x - 게임 월드 절대 좌표 X (기본값: 월드 중심)
+   * @param {Number} y - 게임 월드 절대 좌표 Y (기본값: 월드 중심)
    * @returns
    */
-  addPlayer(id, x, y, isNew = false) {
-    // isNew=true면 상대좌표를 절대좌표로 변환
-    // isNew=false면 이미 절대좌표
-    const posX = isNew ? WORLD_CENTER_X + x : x;
-    const posY = isNew ? WORLD_CENTER_Y + y : y;
+  addPlayer(id, x = WORLD_CENTER_X, y = WORLD_CENTER_Y) {
+    // 모든 좌표는 게임 월드 절대 좌표 사용 (웹소켓으로 전달되는 좌표와 동일)
+    const posX = x;
+    const posY = y;
 
     const newPlayer = this.physics.add.sprite(posX, posY, "dude").setName(`player_${id}`);
     newPlayer.setCollideWorldBounds(true);
     newPlayer.setDrag(200, 200);
     newPlayer.lastDirection = { x: 0, y: 1 };
     this.players.add(newPlayer);
-    if (id !== this.playerId) {
+
+    // 로컬 플레이어 참조 저장
+    if (id === this.playerId) {
+      this.localPlayer = newPlayer;
+      // 카메라가 즉시 로컬 플레이어를 따라가도록
+      this.cameras.main.startFollow(newPlayer, true);
+    } else {
       // targetPositions 설정하지 않음 - 첫 MoveOtherPlayer 호출 시 설정됨
       newPlayer.hasInitialTarget = false; // 아직 목표가 없음을 표시
     }

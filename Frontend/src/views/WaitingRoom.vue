@@ -420,8 +420,8 @@ onMounted(() => {
   // Phaser 게임 인스턴스 먼저 생성
   const config = {
     type: Phaser.AUTO,
-    width: window.innerWidth,
-    height: window.innerHeight,
+    width: 1600, // 게임 월드 너비 (고정, 모든 클라이언트 동일)
+    height: 1200, // 게임 월드 높이 (고정, 모든 클라이언트 동일)
     backgroundColor: "#2BD9FA",
     parent: gameContainer.value, // Attach to the div ref
     physics: {
@@ -432,7 +432,10 @@ onMounted(() => {
     },
     scene: MiniGameScene,
     scale: {
-      mode: Scale.FIT,
+      mode: Scale.FIT, // 비율 유지하며 화면에 맞춤
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      width: 1600, // 게임 월드 너비
+      height: 1200, // 게임 월드 높이
     },
     input: {
       keyboard: {

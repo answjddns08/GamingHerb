@@ -1,11 +1,7 @@
 import { useSocketStore } from "@/stores/socket";
 import { useUserStore } from "@/stores/user";
 // eslint-disable-next-line no-unused-vars
-import MiniGameScene from "@/games/WaitingMiniGame/waitingGame";
-
-// 모든 클라이언트가 공유하는 고정된 월드 센터
-const WORLD_CENTER_X = 250;
-const WORLD_CENTER_Y = 250;
+import MiniGameScene, { WORLD_CENTER_X, WORLD_CENTER_Y } from "@/games/WaitingMiniGame/waitingGame";
 
 const socketStore = useSocketStore();
 /**
@@ -302,12 +298,18 @@ function NewPlayerImpl(id) {
   const isXPlus = Math.random() < 0.5;
   const isYPlus = Math.random() < 0.5;
 
-  const XCoords = Math.random() * 50 * (isXPlus ? 1 : -1);
-  const YCoords = Math.random() * 50 * (isYPlus ? 1 : -1);
+  // 상대 좌표 생성 (월드 중심 기준으로 ±50 범위)
+  const offsetX = Math.random() * 50 * (isXPlus ? 1 : -1);
+  const offsetY = Math.random() * 50 * (isYPlus ? 1 : -1);
 
-  scene.addPlayer(id, XCoords, YCoords, true);
+  // 절대 좌표로 변환하여 로컬에서 플레이어 생성
+  const absX = WORLD_CENTER_X + offsetX;
+  const absY = WORLD_CENTER_Y + offsetY;
 
-  send({ type: "join", id: id, x: XCoords, y: YCoords });
+  scene.addPlayer(id, absX, absY);
+
+  // 웹소켓으로는 상대 좌표 전송 (다른 클라이언트에서 절대 좌표로 변환)
+  send({ type: "join", id: id, x: offsetX, y: offsetY });
 }
 
 /**
