@@ -42,7 +42,7 @@ Object.entries(gamesConfig.games).forEach(([gameId, config]) => {
      * @returns {Promise<import('vue').Component>}
      */
     component: () => {
-      const path = Object.keys(componentModules).find(p => p.includes(gameId));
+      const path = Object.keys(componentModules).find((p) => p.includes(gameId));
       if (path) return componentModules[path]();
       return Promise.reject(new Error(`Component not found for ${gameId}`));
     },
@@ -52,7 +52,7 @@ Object.entries(gamesConfig.games).forEach(([gameId, config]) => {
      */
     ...(config.configPath && {
       settings: () => {
-        const path = Object.keys(settingsModules).find(p => p.includes(gameId));
+        const path = Object.keys(settingsModules).find((p) => p.includes(gameId));
         if (path) return settingsModules[path]();
         return Promise.reject(new Error(`Settings not found for ${gameId}`));
       },
@@ -63,14 +63,13 @@ Object.entries(gamesConfig.games).forEach(([gameId, config]) => {
      */
     ...(config.descriptionPath && {
       description: () => {
-        const path = Object.keys(markdownModules).find(p => p.includes(gameId));
+        const path = Object.keys(markdownModules).find((p) => p.includes(gameId));
         if (path) return markdownModules[path]();
         return Promise.resolve(`# ${config.name}\n\nDescription not available.`);
       },
     }),
   };
 });
-
 
 // --- 게임 데이터 조회 유틸리티 ---
 
@@ -96,9 +95,17 @@ export function getAllGames() {
  * @returns {Array<Object>} 각 게임의 ID와 설정이 포함된 객체의 배열
  */
 export function getAvailableGames() {
-  return Object.keys(games).map(id => ({ id, ...games[id] }));
+  return Object.keys(games).map((id) => ({ id, ...games[id] }));
 }
 
+/**
+ * 지정된 ID의 게임 정보를 가져옵니다.
+ * @param {string} gameId - 게임의 고유 ID
+ * @returns {Object|null} 해당 게임의 정보 객체 또는 null
+ */
+export function getGameById(gameId) {
+  return games[gameId] || null;
+}
 
 // --- 동적 로더 함수 ---
 

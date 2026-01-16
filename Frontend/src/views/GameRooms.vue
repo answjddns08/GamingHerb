@@ -55,11 +55,7 @@
         :key="roomName"
         class="bg-gray-300 p-4 rounded-lg shadow-md"
       >
-        <img
-          src="https://i.namu.wiki/i/Z4ZyjNsQ1Fvlz8QQHhfcrrTo4xgEyAf_D4S7J1p3LGT7wh-zIo_74MpSFAM0PUwyPOy5qpnQZGXM-bbqCKtJTA.webp"
-          alt="Placeholder Image"
-          class="w-full object-cover rounded-lg mb-2"
-        />
+        <img :src="gameThumbnail" :alt="props.gameId" class="w-full object-cover rounded-lg mb-2" />
         <h2 class="text-2xl font-semibold mb-1">{{ roomName }}</h2>
         <div>
           <p class="text-gray-500 text-sm">
@@ -113,8 +109,9 @@
  * @description 특정 게임의 방 목록을 보여주는 페이지 컴포넌트입니다.
  *              방 생성, 검색, 참여 기능을 제공합니다.
  */
-import { onMounted, ref } from "vue";
+import { onMounted, ref, computed } from "vue";
 import { RouterLink } from "vue-router";
+import { getGameById } from "@/games/index.js";
 import SettingIcon from "../components/settingIcon.vue";
 import userBoard from "../components/userBoard.vue";
 
@@ -139,6 +136,15 @@ const props = defineProps({
     default: "GomokuGame",
     required: true,
   },
+});
+
+/** @type {import('vue').ComputedRef<string>} 현재 게임의 썸네일 이미지 URL */
+const gameThumbnail = computed(() => {
+  const gameInfo = getGameById(props.gameId);
+  return (
+    gameInfo?.thumbnail ||
+    "https://i.namu.wiki/i/Z4ZyjNsQ1Fvlz8QQHhfcrrTo4xgEyAf_D4S7J1p3LGT7wh-zIo_74MpSFAM0PUwyPOy5qpnQZGXM-bbqCKtJTA.webp"
+  );
 });
 
 async function refreshRooms() {
