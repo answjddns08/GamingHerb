@@ -56,11 +56,11 @@
       </button>
     </div>
   </div>
-  <div class="chat-card">
+  <!-- <div class="chat-card">
     <form @submit.prevent="">
       <input class="border p-2 rounded" />
     </form>
-  </div>
+  </div> -->
   <div class="start-card" v-if="userStore.id === gameSetting?.hostId">
     <button
       @click="ReadyGame"
