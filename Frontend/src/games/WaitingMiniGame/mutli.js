@@ -102,7 +102,13 @@ function RegisterMultiPlayerEvents() {
     if (Array.isArray(payload)) {
       payload.forEach((playerState) => {
         if (playerState?.userId && playerState.userId !== userStore.id) {
-          MoveOtherPlayer(playerState.userId, playerState.x, playerState.y);
+          MoveOtherPlayer(
+            playerState.userId,
+            playerState.x,
+            playerState.y,
+            playerState.dirX,
+            playerState.dirY,
+          );
         }
       });
       return;
@@ -110,14 +116,41 @@ function RegisterMultiPlayerEvents() {
 
     // 단일 형식: 개별 플레이어 이동
     if (payload?.userId && payload.userId !== userStore.id) {
-      const { userId, x, y } = payload;
-      MoveOtherPlayer(userId, x, y);
+      const { userId, x, y, dirX, dirY } = payload;
+      MoveOtherPlayer(userId, x, y, dirX, dirY);
     }
   });
 
   socketStore.registerHandler("playerAttack", (payload) => {
     console.log("Player attack event received with data:", payload);
-    // Handle the player attack logic here
+    if (payload?.userId && payload.userId !== userStore.id) {
+      const { userId, dirX, dirY } = payload;
+      ShowRemotePlayerSwing(userId, dirX, dirY);
+    }
+  });
+
+  /**
+   * 넉백 이벤트 처리
+   * @param {Object} payload - { userId, knockbackX, knockbackY }
+   */
+  socketStore.registerHandler("playerKnockback", (payload) => {
+    console.log("Player knockback event received with data:", payload);
+    if (payload?.userId) {
+      const { userId, knockbackX, knockbackY } = payload;
+      ApplyRemoteKnockback(userId, knockbackX, knockbackY);
+    }
+  });
+
+  /**
+   * 부활 이벤트 처리
+   * @param {Object} payload - { userId, x, y }
+   */
+  socketStore.registerHandler("playerRespawn", (payload) => {
+    console.log("Player respawn event received with data:", payload);
+    if (payload?.userId && payload.userId !== userStore.id) {
+      const { userId, x, y } = payload;
+      ShowRemotePlayerRespawn(userId, x, y);
+    }
   });
 }
 
@@ -130,6 +163,8 @@ function CleanEvents() {
   socketStore.unregisterHandler("miniGame:initializePlayers");
   socketStore.unregisterHandler("playerMove");
   socketStore.unregisterHandler("playerAttack");
+  socketStore.unregisterHandler("playerKnockback");
+  socketStore.unregisterHandler("playerRespawn");
 }
 
 /**
@@ -207,6 +242,31 @@ function GetGameInstance(instance, inputProps) {
 
       // 이동 동기화 시작 (초당 30회)
       StartPositionSync();
+
+      // Phaser 씬에 SendSwingAttack 함수 주입
+      scene.sendSwingAttack = SendSwingAttack;
+
+      // 씬에서 발생하는 로컬 이벤트 리스닝
+      scene.events.on("local-knockback", (data) => {
+        // 넉백 이벤트를 서버로 전송
+        send({
+          type: "knockback",
+          id: userStore.id,
+          targetId: data.targetId,
+          knockbackX: data.knockbackX,
+          knockbackY: data.knockbackY,
+        });
+      });
+
+      scene.events.on("local-respawn", (data) => {
+        // 부활 이벤트를 서버로 전송
+        send({
+          type: "respawn",
+          id: userStore.id,
+          x: data.x,
+          y: data.y,
+        });
+      });
     });
   });
 }
@@ -227,13 +287,25 @@ function StartPositionSync() {
       const player = scene.players.getChildren().find((p) => p.name === `player_${userStore.id}`);
 
       if (player) {
-        // 고정된 월드 중심을 기준으로 상대좌표 전송
+        // ✅ 넉백 중에도 계속 동기화 (velocity로 이동 중이므로 위치 업데이트 필요)
+        // 원격 플레이어는 velocity 적용 중이므로 새 위치는 무시하지만,
+        // 서버의 위치는 항상 최신 상태 유지 → 다른 플레이어들이 정확한 위치 받음
+
+        const dir = player.lastDirection || { x: 0, y: 1 };
+        // 고정된 월드 중심을 기준으로 상대좌표 + 방향 전송
         send({
           type: "move",
           id: userStore.id,
           x: player.x - WORLD_CENTER_X,
           y: player.y - WORLD_CENTER_Y,
+          dirX: dir.x,
+          dirY: dir.y,
         });
+
+        // ✅ 넉백 종료 플래그 초기화
+        if (player.knockbackEnded) {
+          player.knockbackEnded = false;
+        }
       }
     },
     loop: true, // 계속 반복
@@ -347,12 +419,14 @@ function JoinPlayerImpl(id, x, y) {
  * @param {string} id - 플레이어 ID
  * @param {number} x - 목표 X 좌표 (상대좌표)
  * @param {number} y - 목표 Y 좌표 (상대좌표)
+ * @param {number} dirX - 이동 방향 X
+ * @param {number} dirY - 이동 방향 Y
  */
-function MoveOtherPlayer(id, x, y) {
+function MoveOtherPlayer(id, x, y, dirX = 0, dirY = 1) {
   if (isSceneReady) {
-    MoveOtherPlayerImpl(id, x, y);
+    MoveOtherPlayerImpl(id, x, y, dirX, dirY);
   } else {
-    actionQueue.push({ name: "MoveOtherPlayer", args: [id, x, y] });
+    actionQueue.push({ name: "MoveOtherPlayer", args: [id, x, y, dirX, dirY] });
   }
 }
 
@@ -361,15 +435,62 @@ function MoveOtherPlayer(id, x, y) {
  * @param {string} id - 플레이어 ID
  * @param {number} x - 목표 X 좌표 (상대좌표)
  * @param {number} y - 목표 Y 좌표 (상대좌표)
+ * @param {number} dirX - 이동 방향 X
+ * @param {number} dirY - 이동 방향 Y
  */
-function MoveOtherPlayerImpl(id, x, y) {
+function MoveOtherPlayerImpl(id, x, y, dirX = 0, dirY = 1) {
   if (!scene) {
     console.warn("Scene is not initialized");
     return;
   }
 
   // 고정된 월드 중심을 기준으로 절대좌표로 변환
-  scene.MoveOtherPlayer(id, WORLD_CENTER_X + x, WORLD_CENTER_Y + y);
+  scene.MoveOtherPlayer(id, WORLD_CENTER_X + x, WORLD_CENTER_Y + y, dirX, dirY);
+}
+
+/**
+ * 원격 플레이어의 방망이 휘두르기 애니메이션 표시
+ * @param {string} id - 플레이어 ID
+ * @param {number} dirX - 방향 X
+ * @param {number} dirY - 방향 Y
+ */
+function ShowRemotePlayerSwing(id, dirX, dirY) {
+  if (!scene) {
+    console.warn("Scene is not initialized");
+    return;
+  }
+  scene.ShowRemotePlayerSwing(id, dirX, dirY);
+}
+
+/**
+ * 원격 플레이어에게 넉백 적용
+ * @param {string} id - 플레이어 ID
+ * @param {number} knockbackX - 넉백 X 속도
+ * @param {number} knockbackY - 넉백 Y 속도
+ */
+function ApplyRemoteKnockback(id, knockbackX, knockbackY) {
+  if (!scene) {
+    console.warn("Scene is not initialized");
+    return;
+  }
+  scene.ApplyRemoteKnockback(id, knockbackX, knockbackY);
+}
+
+/**
+ * 원격 플레이어 부활 처리 (무적 효과 표시)
+ * @param {string} id - 플레이어 ID
+ * @param {number} x - 부활 위치 X (상대좌표)
+ * @param {number} y - 부활 위치 Y (상대좌표)
+ */
+function ShowRemotePlayerRespawn(id, x, y) {
+  if (!scene) {
+    console.warn("Scene is not initialized");
+    return;
+  }
+  // 절대좌표로 변환
+  const absX = WORLD_CENTER_X + x;
+  const absY = WORLD_CENTER_Y + y;
+  scene.ShowRemotePlayerRespawn(id, absX, absY);
 }
 
 /**
@@ -387,9 +508,22 @@ function ExitPlayer(id) {
 }
 
 function SendSwingAttack() {
-  console.log("Sending swing attack for user:", userStore.id);
+  if (!scene) {
+    console.warn("Scene is not initialized");
+    return;
+  }
 
-  send({ type: "attack", id: userStore.id });
+  const player = scene.players.getChildren().find((p) => p.name === `player_${userStore.id}`);
+  if (!player) return;
+
+  const dir = player.lastDirection;
+  console.log("Sending swing attack for user:", userStore.id, "direction:", dir);
+
+  // 로컬 스윙 애니메이션 먼저 실행
+  scene.trySwing();
+
+  // 서버로 공격 정보 전송
+  send({ type: "attack", id: userStore.id, dirX: dir.x, dirY: dir.y });
 }
 
 export {

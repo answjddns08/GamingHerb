@@ -50,6 +50,9 @@ class MiniGameScene extends Phaser.Scene {
     // 로컬 플레이어를 추적하기 위한 참조
     this.localPlayer = null;
 
+    // 원격 플레이어 무기들을 저장하는 맵
+    this.remoteWeapons = new Map();
+
     // 멀티플레이 확장 대비: 그룹과 충돌(서로 밀치기) 준비
     this.players = this.physics.add.group();
     // 플레이어끼리 직접 충돌은 제거 (방망이로만 밀어냄)
@@ -78,9 +81,14 @@ class MiniGameScene extends Phaser.Scene {
       right: Phaser.Input.Keyboard.KeyCodes.D,
     });
 
-    // 마우스 클릭으로 스윙 공격
+    // 마우스 클릭으로 스윙 공격 - sendSwingAttack은 mutli.js에서 주입됨
     this.input.on("pointerdown", () => {
-      this.trySwing();
+      // sendSwingAttack이 주입되어 있으면 사용, 아니면 로컬만
+      if (this.sendSwingAttack) {
+        this.sendSwingAttack();
+      } else {
+        this.trySwing();
+      }
     });
 
     // 낙하 처리 중복 방지 플래그
@@ -183,16 +191,17 @@ class MiniGameScene extends Phaser.Scene {
       this.checkWeaponHit();
     }
 
-    // 영역 판정: 영역 밖이면 낙하 연출 후 리스폰(또는 탈락 처리로 변경 가능)
-    if (!this.isFalling) {
-      const player = this.players.getChildren().find((p) => p.name === `player_${this.playerId}`);
+    // 영역 판정: 모든 플레이어(로컬 + 원격)에 대해 낙하 체크
+    this.players.getChildren().forEach((player) => {
+      // 이미 떨어지는 중이면 스킵
+      if (player.isFalling) return;
 
-      if (!player) return;
-
+      // 땅 안에 있으면 스킵
       if (this.isInsideGround(player)) return;
 
+      // 땅 밖이면 떨어지는 연출
       this.handleFallOut(player);
-    }
+    });
 
     if (this.CurrentInvincibleTime > 0) {
       this.CurrentInvincibleTime -= this.game.loop.delta;
@@ -206,12 +215,13 @@ class MiniGameScene extends Phaser.Scene {
    * @param {String} id
    * @param {Number} x - 게임 월드 절대 좌표 X (기본값: 월드 중심)
    * @param {Number} y - 게임 월드 절대 좌표 Y (기본값: 월드 중심)
+   * @param {Boolean} isRelativeCoord - 상대좌표 여부 (기본값: false)
    * @returns
    */
-  addPlayer(id, x = WORLD_CENTER_X, y = WORLD_CENTER_Y) {
-    // 모든 좌표는 게임 월드 절대 좌표 사용 (웹소켓으로 전달되는 좌표와 동일)
-    const posX = x;
-    const posY = y;
+  addPlayer(id, x = WORLD_CENTER_X, y = WORLD_CENTER_Y, isRelativeCoord = false) {
+    // 상대좌표면 절대좌표로 변환
+    const posX = isRelativeCoord ? WORLD_CENTER_X + x : x;
+    const posY = isRelativeCoord ? WORLD_CENTER_Y + y : y;
 
     const newPlayer = this.physics.add.sprite(posX, posY, "dude").setName(`player_${id}`);
     newPlayer.setCollideWorldBounds(true);
@@ -241,6 +251,14 @@ class MiniGameScene extends Phaser.Scene {
     if (!targetPlayer) return;
 
     this.targetPositions.delete(id);
+
+    // 원격 무기도 삭제
+    const weapon = this.remoteWeapons.get(id);
+    if (weapon) {
+      weapon.destroy();
+      this.remoteWeapons.delete(id);
+    }
+
     targetPlayer.destroy();
   }
 
@@ -249,14 +267,19 @@ class MiniGameScene extends Phaser.Scene {
    * @param {String} id
    * @param {Number} x
    * @param {Number} y
+   * @param {Number} dirX - 이동 방향 X
+   * @param {Number} dirY - 이동 방향 Y
    * @returns
    */
-  MoveOtherPlayer(id, x, y) {
+  MoveOtherPlayer(id, x, y, dirX = 0, dirY = 1) {
     const targetPlayer = this.players.getChildren().find((p) => p.name === `player_${id}`);
     if (!targetPlayer) return;
 
     // 원격 플레이어 목표 위치 갱신 (프레임마다 lerp로 보간)
     this.targetPositions.set(id, { x, y });
+
+    // 방향 정보 저장
+    targetPlayer.lastDirection = { x: dirX, y: dirY };
 
     // 첫 수신 시 또는 hasInitialTarget이 false면 즉시 위치 동기화
     if (!targetPlayer.hasInitialTarget) {
@@ -276,22 +299,71 @@ class MiniGameScene extends Phaser.Scene {
     const lerpFactor = 1 - Math.exp(-k * deltaSec);
 
     const snapThreshold = 2; // px. 아주 근접하면 스냅으로 마감
+    const movingThreshold = 5; // px. 이동 중으로 판단하는 거리
 
     this.players.getChildren().forEach((player) => {
       if (player.name === `player_${this.playerId}`) return;
+
       const target = this.targetPositions.get(player.name.replace("player_", ""));
+
+      // 넉백 상태일 때는 velocity로 처리, lerp 스킵
+      if (player.knockbackState) {
+        player.knockbackState.duration -= this.game.loop.delta;
+        if (player.knockbackState.duration <= 0) {
+          // 넉백 종료, 다시 lerp 모드로 전환
+          player.knockbackState = null;
+          player.setVelocity(0, 0);
+          // ✅ 넉백 종료 후 현재 위치를 타겟 위치로 설정 (자연스러운 전환)
+          this.targetPositions.set(player.name.replace("player_", ""), {
+            x: player.x,
+            y: player.y,
+          });
+          // ✅ 넉백 종료 표시 - 다음 동기화에서 위치를 강제 동기화하도록 함
+          player.knockbackEnded = true;
+        }
+        return; // 넉백 중에는 lerp 적용 안 함
+      }
+
       if (!target) return;
 
-      const nextX = Phaser.Math.Linear(player.x, target.x, lerpFactor);
-      const nextY = Phaser.Math.Linear(player.y, target.y, lerpFactor);
+      const dx = target.x - player.x;
+      const dy = target.y - player.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
 
-      // 근접 스냅 처리로 마감 지터 제거
-      const dx = target.x - nextX;
-      const dy = target.y - nextY;
-      if (Math.abs(dx) <= snapThreshold && Math.abs(dy) <= snapThreshold) {
+      // 거리가 아주 가까우면 스냅
+      if (distance <= snapThreshold) {
         player.setPosition(target.x, target.y);
+        // 정지 애니메이션은 거리가 충분히 작을 때만
+        player.anims.play("turn", true);
       } else {
+        // lerp로 이동
+        const nextX = Phaser.Math.Linear(player.x, target.x, lerpFactor);
+        const nextY = Phaser.Math.Linear(player.y, target.y, lerpFactor);
         player.setPosition(nextX, nextY);
+
+        // 거리가 movingThreshold보다 크면 이동 중으로 판단하여 애니메이션 적용
+        if (distance > movingThreshold) {
+          const dir = player.lastDirection || { x: 0, y: 1 };
+          if (Math.abs(dir.x) > Math.abs(dir.y)) {
+            // 좌우 이동이 더 큼
+            if (dir.x < 0) {
+              player.anims.play("left", true);
+            } else if (dir.x > 0) {
+              player.anims.play("right", true);
+            }
+          } else {
+            // 상하 이동이 더 크거나 이동하지 않음
+            // 기본적으로 좌우 방향 우선, 없으면 turn
+            if (dir.x < 0) {
+              player.anims.play("left", true);
+            } else if (dir.x > 0) {
+              player.anims.play("right", true);
+            } else {
+              player.anims.play("turn", true);
+            }
+          }
+        }
+        // distance가 movingThreshold 이하면 애니메이션을 유지 (깜빡임 방지)
       }
 
       // 물리 속도는 사용하지 않으니 정지시켜 둔다
@@ -309,6 +381,11 @@ class MiniGameScene extends Phaser.Scene {
     let dirY = 0;
 
     if (!player) return;
+
+    // 넉백 상태일 때는 입력 무시 (velocity가 덮어씌워지는 것 방지)
+    if (player.knockbackState) {
+      return;
+    }
 
     if (KeyWASD.left.isDown) {
       // Move left
@@ -364,7 +441,15 @@ class MiniGameScene extends Phaser.Scene {
    * @param {Phaser.Physics.Arcade.Sprite} player - 낙하 처리할 플레이어 스프라이트
    */
   handleFallOut(player) {
-    this.isFalling = true;
+    player.isFalling = true; // 플레이어별 낙하 플래그
+
+    // 로컬 플레이어인지 확인
+    const isLocalPlayer = player.name === `player_${this.playerId}`;
+
+    if (isLocalPlayer) {
+      // 로컬 플레이어는 전역 플래그도 설정 (호환성)
+      this.isFalling = true;
+    }
 
     player.setVelocity(0, 0);
     player.disableInteractive?.();
@@ -377,23 +462,41 @@ class MiniGameScene extends Phaser.Scene {
       scaleX: 0.6,
       scaleY: 0.6,
       onComplete: () => {
-        console.log("Player has fallen out and will respawn in 1 second.");
-        setTimeout(() => {
-          // 시간 지나고 리스폰
-          player.setPosition(this.respawnPoint.x, this.respawnPoint.y);
-          player.setVelocity(0, 0);
-          player.setAlpha(1);
-          player.setScale(1, 1);
-          this.isFalling = false;
-          console.log("Player has respawned.");
-          this.GiveInvincibility(player, 1000);
-        }, 1000);
+        if (isLocalPlayer) {
+          // 로컬 플레이어만 리스폰 처리
+          console.log("Player has fallen out and will respawn in 1 second.");
+          setTimeout(() => {
+            // 시간 지나고 리스폰
+            player.setPosition(this.respawnPoint.x, this.respawnPoint.y);
+            player.setVelocity(0, 0);
+            player.setAlpha(1);
+            player.setScale(1, 1);
+            this.isFalling = false;
+            player.isFalling = false;
+            console.log("Player has respawned.");
+            this.GiveInvincibility(player, 1000);
+
+            // ✅ 플래그 초기화 (넉백 상태 및 동기화 플래그 정리)
+            player.knockbackState = null;
+            player.knockbackEnded = true; // 다음 동기화에서 위치 강제 동기화
+
+            // 서버에 부활 이벤트 전송 (다른 클라이언트에게 무적 효과 동기화)
+            this.events.emit("local-respawn", {
+              x: 0, // 상대좌표 (월드 중심)
+              y: 0,
+            });
+          }, 1000);
+        } else {
+          // 원격 플레이어는 보이지 않게만 하고 대기 (부활 이벤트 수신 시 복원)
+          console.log(`Remote player ${player.name} has fallen out.`);
+          player.setVisible(false);
+        }
       },
     });
   }
 
   /**
-   * 스윙 공격 시도
+   * 스윙 공격 시도 (공개 메서드)
    */
   trySwing() {
     if (this.isSwinging || this.swingCooldown > 0) return;
@@ -487,6 +590,11 @@ class MiniGameScene extends Phaser.Scene {
     // 넉백 방향으로 강한 속도 적용
     target.setVelocity(dir.x * this.KNOCKBACK_FORCE, dir.y * this.KNOCKBACK_FORCE);
 
+    // 넉백 상태 설정 (500ms 동안 velocity 모드)
+    target.knockbackState = {
+      duration: 500, // 500ms 동안 넉백 상태 유지
+    };
+
     // 짧은 시간 동안 다시 맞지 않도록 플래그 설정
     target.hitRecently = true;
     this.time.delayedCall(300, () => {
@@ -494,6 +602,15 @@ class MiniGameScene extends Phaser.Scene {
     });
 
     console.log("Player hit! Knockback applied.");
+
+    // 서버에 넉백 이벤트 전송 (다른 클라이언트들도 볼 수 있도록)
+    // mutli.js에서 처리할 수 있도록 이벤트 발생
+    const targetId = target.name.replace("player_", "");
+    this.events.emit("local-knockback", {
+      targetId: targetId,
+      knockbackX: dir.x * this.KNOCKBACK_FORCE,
+      knockbackY: dir.y * this.KNOCKBACK_FORCE,
+    });
   }
 
   /**
@@ -519,6 +636,116 @@ class MiniGameScene extends Phaser.Scene {
       blinkTween.stop();
       target.setAlpha(1); // 완전 불투명으로 복원
     });
+  }
+
+  /**
+   * 원격 플레이어의 방망이 휘두르기 표시
+   * @param {string} id - 플레이어 ID
+   * @param {number} dirX - 방향 X
+   * @param {number} dirY - 방향 Y
+   */
+  ShowRemotePlayerSwing(id, dirX, dirY) {
+    const player = this.players.getChildren().find((p) => p.name === `player_${id}`);
+    if (!player) {
+      console.warn(`Player ${id} not found for swing animation`);
+      return;
+    }
+
+    // 해당 플레이어의 무기 가져오기 또는 생성
+    let weapon = this.remoteWeapons.get(id);
+    if (!weapon) {
+      weapon = this.add.rectangle(0, 0, 60, 20, 0x8b4513);
+      weapon.setDepth(10);
+      this.remoteWeapons.set(id, weapon);
+    }
+
+    const distance = 60;
+    const swingAngle = Math.atan2(dirY, dirX);
+    const startAngle = swingAngle - Math.PI / 3;
+    const endAngle = swingAngle + Math.PI / 3;
+
+    const startX = player.x + Math.cos(startAngle) * distance;
+    const startY = player.y + Math.sin(startAngle) * distance;
+
+    weapon.setPosition(startX, startY);
+    weapon.setRotation(startAngle);
+    weapon.setVisible(true);
+
+    const swingData = { progress: 0 };
+
+    this.tweens.add({
+      targets: swingData,
+      progress: 1,
+      duration: this.SWING_DURATION, // 로컬 스윙시간과 동일
+      ease: "Cubic.easeOut",
+      onUpdate: () => {
+        // 플레이어 위치가 업데이트될 수 있으므로 매 프레임 다시 가져오기
+        const currentPlayer = this.players.getChildren().find((p) => p.name === `player_${id}`);
+        if (!currentPlayer) return;
+
+        const progress = swingData.progress;
+        const currentAngle = startAngle + (endAngle - startAngle) * progress;
+
+        weapon.setPosition(
+          currentPlayer.x + Math.cos(currentAngle) * distance,
+          currentPlayer.y + Math.sin(currentAngle) * distance,
+        );
+        weapon.setRotation(currentAngle);
+      },
+      onComplete: () => {
+        weapon.setVisible(false);
+      },
+    });
+  }
+
+  /**
+   * 원격 플레이어에게 넉백 적용
+   * @param {string} id - 플레이어 ID
+   * @param {number} knockbackX - 넉백 X 속도
+   * @param {number} knockbackY - 넉백 Y 속도
+   */
+  ApplyRemoteKnockback(id, knockbackX, knockbackY) {
+    const player = this.players.getChildren().find((p) => p.name === `player_${id}`);
+    if (!player) {
+      console.warn(`Player ${id} not found for knockback`);
+      return;
+    }
+
+    // 넉백 속도 적용
+    player.setVelocity(knockbackX, knockbackY);
+
+    // 넉백 상태 설정 (500ms 동안 velocity 모드, lerp 비활성화)
+    player.knockbackState = {
+      duration: 500,
+    };
+
+    console.log(`Applied knockback to player ${id}`);
+  }
+
+  /**
+   * 원격 플레이어 부활 처리 (무적 효과 표시)
+   * @param {string} id - 플레이어 ID
+   * @param {number} x - 부활 위치 X (절대좌표)
+   * @param {number} y - 부활 위치 Y (절대좌표)
+   */
+  ShowRemotePlayerRespawn(id, x, y) {
+    const player = this.players.getChildren().find((p) => p.name === `player_${id}`);
+    if (!player) {
+      console.warn(`Player ${id} not found for respawn`);
+      return;
+    }
+
+    // 위치 업데이트
+    player.setPosition(x, y);
+    player.setAlpha(1);
+    player.setScale(1, 1);
+    player.setVisible(true); // 떨어져서 숨겨진 경우 다시 표시
+    player.isFalling = false; // 낙하 플래그 해제
+
+    // 무적 효과 적용
+    this.GiveInvincibility(player, 1000);
+
+    console.log(`Player ${id} respawned with invincibility`);
   }
 }
 

@@ -4,7 +4,7 @@ class WaitingMiniGame {
 	constructor() {
 		/**
 		 * 대기 미니게임에 참여한 플레이어들
-		 * @type {Map<id: String, {x: number, y: number}>}
+		 * @type {Map<id: String, {x: number, y: number, dirX: number, dirY: number}>}
 		 */
 		this.players = new Map();
 
@@ -86,6 +86,8 @@ class WaitingMiniGame {
 				userId: id,
 				x: player.x,
 				y: player.y,
+				dirX: player.dirX || 0,
+				dirY: player.dirY || 1,
 			})
 		);
 
@@ -113,7 +115,7 @@ class WaitingMiniGame {
 			`Player ${id} joined the waiting mini-game at position (${x}, ${y}).`
 		);
 
-		this.players.set(id, { x, y, userName });
+		this.players.set(id, { x, y, userName, dirX: 0, dirY: 1 });
 
 		// 다른 플레이어들에게 새 플레이어 참가 알림 (자신 제외)
 		broadCastToRoom(
@@ -172,13 +174,15 @@ class WaitingMiniGame {
 	}
 
 	/**
-	 * 플레이어 위치 업데이트 (서버 상태만 업데이트)
+	 * 플레이어 위치 및 방향 업데이트 (서버 상태만 업데이트)
 	 * 실제 브로드캐스트는 broadcastAllPlayersState()에서 틱마다 처리
 	 * @param {String} id
 	 * @param {number} x
 	 * @param {number} y
+	 * @param {number} dirX
+	 * @param {number} dirY
 	 */
-	updatePlayerPosition(id, x, y) {
+	updatePlayerPosition(id, x, y, dirX = 0, dirY = 1) {
 		if (!this.players.has(id)) {
 			console.warn(`Player ${id} not found for position update`);
 			return;
@@ -187,6 +191,8 @@ class WaitingMiniGame {
 		const player = this.players.get(id);
 		player.x = x;
 		player.y = y;
+		player.dirX = dirX;
+		player.dirY = dirY;
 
 		// 실제 브로드캐스트는 broadcastAllPlayersState()에서 틱마다 처리
 	}
@@ -200,7 +206,19 @@ class WaitingMiniGame {
 	handleGame(ws, userName, action) {
 		//console.log("Handling waiting mini-game action:", action);
 
-		const { id, x, y, type, velocityX, velocityY } = action;
+		const {
+			id,
+			x,
+			y,
+			type,
+			velocityX,
+			velocityY,
+			dirX,
+			dirY,
+			targetId,
+			knockbackX,
+			knockbackY,
+		} = action;
 
 		switch (type) {
 			case "join":
@@ -211,8 +229,56 @@ class WaitingMiniGame {
 				this.exitPlayer(id, ws);
 				break;
 			case "move":
-				// 위치만 업데이트 (브로드캐스트는 틱에서 처리)
-				this.updatePlayerPosition(id, x, y);
+				// 위치와 방향 업데이트 (브로드캐스트는 틱에서 처리)
+				this.updatePlayerPosition(id, x, y, dirX, dirY);
+				break;
+			case "attack":
+				// 방망이 휘두르기 브로드캐스트 (자신 제외)
+				broadCastToRoom(
+					this.gameId,
+					this.roomName,
+					{
+						type: "playerAttack",
+						payload: {
+							userId: id,
+							dirX: dirX,
+							dirY: dirY,
+						},
+					},
+					ws
+				);
+				break;
+			case "knockback":
+				// 넉백 효과 브로드캐스트 (자신 제외)
+				broadCastToRoom(
+					this.gameId,
+					this.roomName,
+					{
+						type: "playerKnockback",
+						payload: {
+							userId: targetId,
+							knockbackX: knockbackX,
+							knockbackY: knockbackY,
+						},
+					},
+					ws
+				);
+				break;
+			case "respawn":
+				// 부활 시 무적 효과 브로드캐스트 (자신 제외)
+				broadCastToRoom(
+					this.gameId,
+					this.roomName,
+					{
+						type: "playerRespawn",
+						payload: {
+							userId: id,
+							x: x,
+							y: y,
+						},
+					},
+					ws
+				);
 				break;
 			default:
 				console.warn(`Unknown action type: ${type}`);
