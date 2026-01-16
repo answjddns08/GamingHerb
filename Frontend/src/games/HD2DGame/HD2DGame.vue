@@ -380,7 +380,9 @@ const renderCharacters = async () => {
 
 // 스킬 선택
 const selectSkill = (skill) => {
-  if (!selectedCharacter.value || !skill.canUse()) return;
+  if (!selectedCharacter.value) return;
+  // skill.canUse는 함수가 아니므로 remainingCooldown으로 체크
+  if (skill.remainingCooldown && skill.remainingCooldown > 0) return;
   selectedSkill.value = skill;
 };
 
@@ -388,12 +390,17 @@ const selectSkill = (skill) => {
 const submitAction = () => {
   if (!selectedCharacter.value || !selectedSkill.value) return;
 
-  socketStore.send({
-    type: "game:action",
-    payload: {
-      characterId: selectedCharacter.value.id,
-      skillId: selectedSkill.value.id,
-      targetId: null, // 타겟 선택 시 업데이트 필요
+  socketStore.sendMessage("inGame", {
+    gameId: route.params.gameId,
+    roomName: route.params.roomName,
+    userId: userStore.userId,
+    action: {
+      type: "game:setAction",
+      payload: {
+        characterId: selectedCharacter.value.id,
+        skillId: selectedSkill.value.id,
+        targetId: null, // 타겟 선택 시 업데이트 필요
+      },
     },
   });
 
@@ -404,42 +411,81 @@ const submitAction = () => {
 
 // 전투 준비 완료
 const readyBattle = () => {
-  socketStore.send({
-    type: "game:ready",
-    payload: {},
+  socketStore.sendMessage("inGame", {
+    gameId: route.params.gameId,
+    roomName: route.params.roomName,
+    userId: userStore.userId,
+    action: {
+      type: "game:ready",
+      payload: {},
+    },
   });
 };
 
 // WebSocket 메시지 핸들러
-const handleGameState = (data) => {
-  gameState.value = data.gameState;
-  renderCharacters();
+const handleGameState = (payload, data) => {
+  if (data.payload?.gameState) {
+    gameState.value = data.payload.gameState;
+    renderCharacters();
+  }
 };
 
-const handleTurnUpdate = (data) => {
-  gameState.value.currentTurn = data.currentTurn;
-  gameState.value.battlePhase = data.phase;
+const handleInitialState = (payload, data) => {
+  if (data.payload?.gameState) {
+    gameState.value = data.payload.gameState;
+    renderCharacters();
+  }
 };
+
+const handleTurnUpdate = (payload, data) => {
+  if (data.payload) {
+    gameState.value.currentTurn = data.payload.currentTurn;
+    gameState.value.battlePhase = data.payload.phase;
+  }
+};
+
+const handleTurnExecuted = (payload, data) => {
+  if (data.payload?.gameState) {
+    gameState.value = data.payload.gameState;
+    renderCharacters();
+  }
+};
+
+// 핸들러 해제 함수들
+let unregisterGameState = null;
+let unregisterInitialState = null;
+let unregisterTurnUpdate = null;
+let unregisterTurnExecuted = null;
 
 onMounted(async () => {
   await setupGame();
 
   // WebSocket 핸들러 등록
-  socketStore.on("game:updateState", handleGameState);
-  socketStore.on("game:turnUpdate", handleTurnUpdate);
+  unregisterGameState = socketStore.registerHandler("game:updateState", handleGameState);
+  unregisterInitialState = socketStore.registerHandler("game:initialState", handleInitialState);
+  unregisterTurnUpdate = socketStore.registerHandler("game:turnUpdate", handleTurnUpdate);
+  unregisterTurnExecuted = socketStore.registerHandler("game:turnExecuted", handleTurnExecuted);
 
   // 게임 상태 요청
-  socketStore.send({
-    type: "player:loaded",
-    payload: {},
+  socketStore.sendMessage("inGame", {
+    gameId: route.params.gameId,
+    roomName: route.params.roomName,
+    userId: userStore.userId,
+    action: {
+      type: "player:loaded",
+      payload: {},
+    },
   });
 });
 
 onUnmounted(() => {
   window.removeEventListener("resize", onResize);
 
-  socketStore.off("game:updateState", handleGameState);
-  socketStore.off("game:turnUpdate", handleTurnUpdate);
+  // WebSocket 핸들러 해제
+  if (unregisterGameState) unregisterGameState();
+  if (unregisterInitialState) unregisterInitialState();
+  if (unregisterTurnUpdate) unregisterTurnUpdate();
+  if (unregisterTurnExecuted) unregisterTurnExecuted();
 
   if (renderer) {
     renderer.dispose();
@@ -488,7 +534,7 @@ onUnmounted(() => {
             class="skill-card"
             :class="{
               'skill-card-selected': selectedSkill === skill,
-              'skill-card-disabled': !skill.canUse(),
+              'skill-card-disabled': skill.remainingCooldown > 0,
               [skill.type]: true,
             }"
             @click="selectSkill(skill)"
@@ -501,6 +547,9 @@ onUnmounted(() => {
               <p class="skill-description">{{ skill.description }}</p>
               <div class="skill-stats">
                 <span class="skill-type-badge">{{ skill.type }}</span>
+                <span v-if="skill.remainingCooldown > 0" class="cooldown-badge"
+                  >쿨타임: {{ skill.remainingCooldown }}</span
+                >
               </div>
             </div>
           </div>
@@ -689,6 +738,15 @@ canvas {
   font-size: 0.75rem;
   font-weight: bold;
   text-transform: uppercase;
+}
+
+.cooldown-badge {
+  background: rgba(255, 77, 77, 0.6);
+  color: #fff;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
 }
 
 .ready-button-container {

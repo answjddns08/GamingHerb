@@ -441,4 +441,4 @@ class HD2DGame {
 	}
 }
 
-module.exports = HD2DGame;
+export default HD2DGame;

@@ -29,6 +29,3 @@ coverage
 .env
 
 *.tsbuildinfo
-
-HD2D/
-/HD2D/*
