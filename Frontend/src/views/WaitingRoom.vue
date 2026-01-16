@@ -461,7 +461,14 @@ onMounted(() => {
   // Phaser 게임 인스턴스 생성 후에 설정
   setupSocketHandlers();
   RegisterMultiPlayerEvents();
-  GetGameInstance(gameInstance, props);
+
+  // 플레이어 이름 조회 함수 생성
+  const getPlayerName = (userId) => {
+    const player = players.value.get(userId);
+    return player ? player.userName : "Player";
+  };
+
+  GetGameInstance(gameInstance, props, getPlayerName);
 
   // 소켓이 연결되어 있지 않으면 연결 시도
   if (!socketStore.isConnected) {

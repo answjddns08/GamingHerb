@@ -61,9 +61,9 @@ function RegisterMultiPlayerEvents() {
     console.log("miniGame:playerJoined event received with data:", payload);
 
     if (payload?.userId && payload.userId !== userStore.id) {
-      const { userId, x, y } = payload;
-      console.log(`New player ${userId} joined mini-game at (${x}, ${y})`);
-      JoinPlayer(userId, x, y);
+      const { userId, userName, x, y } = payload;
+      console.log(`New player ${userId} (${userName}) joined mini-game at (${x}, ${y})`);
+      JoinPlayer(userId, x, y, userName);
     }
   });
 
@@ -210,18 +210,26 @@ function ProcessActionQueue() {
 }
 
 /**
+ * 플레이어 이름 조회 함수
+ * @type {Function|null}
+ */
+let getPlayerNameFunc = null;
+
+/**
  * Phaser Game 인스턴스 설정 (이벤트 기반 방식)
  * @param {Phaser.Game} instance - Phaser Game 인스턴스
  * @param {{gameId: string, roomId: string}} inputProps - 컴포넌트 props
+ * @param {Function} getPlayerName - 플레이어 이름 조회 함수
  * @returns {void}
  */
-function GetGameInstance(instance, inputProps) {
+function GetGameInstance(instance, inputProps, getPlayerName) {
   if (!instance || !inputProps) {
     console.error("Game instance or props is null");
     return;
   }
 
   props = inputProps;
+  getPlayerNameFunc = getPlayerName;
 
   console.log("Multi-player game instance set:", instance);
 
@@ -327,7 +335,7 @@ function InitPlayers(players) {
 
 /**
  * 플레이어 배열 받기 (내부 구현)
- * @param {Array<{id: string, x: number, y: number}>} players - 플레이어 배열
+ * @param {Array<{id: string, x: number, y: number, userName: string}>} players - 플레이어 배열
  */
 function InitPlayersImpl(players) {
   if (!scene) {
@@ -338,7 +346,11 @@ function InitPlayersImpl(players) {
   players.forEach((player) => {
     if (player.id === userStore.id) return; // 자기 자신은 건너뜀
 
-    scene.addPlayer(player.id, player.x, player.y, true); // 상대좌표로 처리
+    // 서버에서 온 userName 우선 사용, 없으면 로컬 Map에서 조회
+    const playerName =
+      player.userName || (getPlayerNameFunc ? getPlayerNameFunc(player.id) : "Player");
+    scene.addPlayer(player.id, player.x, player.y, true, playerName); // 상대좌표로 처리
+    console.log(`InitPlayers: Added player ${player.id} with name ${playerName}`);
   });
 }
 
@@ -378,7 +390,7 @@ function NewPlayerImpl(id) {
   const absX = WORLD_CENTER_X + offsetX;
   const absY = WORLD_CENTER_Y + offsetY;
 
-  scene.addPlayer(id, absX, absY);
+  scene.addPlayer(id, absX, absY, false, userStore.name);
 
   // 웹소켓으로는 상대 좌표 전송 (다른 클라이언트에서 절대 좌표로 변환)
   send({ type: "join", id: id, x: offsetX, y: offsetY });
@@ -389,12 +401,13 @@ function NewPlayerImpl(id) {
  * @param {string} id - 플레이어 ID
  * @param {number} x - 플레이어 초기 X 좌표 (상대좌표)
  * @param {number} y - 플레이어 초기 Y 좌표 (상대좌표)
+ * @param {string} userName - 플레이어 닉네임
  */
-function JoinPlayer(id, x, y) {
+function JoinPlayer(id, x, y, userName) {
   if (isSceneReady) {
-    JoinPlayerImpl(id, x, y);
+    JoinPlayerImpl(id, x, y, userName);
   } else {
-    actionQueue.push({ name: "JoinPlayer", args: [id, x, y] });
+    actionQueue.push({ name: "JoinPlayer", args: [id, x, y, userName] });
     console.log(`JoinPlayer '${id}' queued. Queue size:`, actionQueue.length);
   }
 }
@@ -404,14 +417,18 @@ function JoinPlayer(id, x, y) {
  * @param {string} id - 플레이어 ID
  * @param {number} x - 플레이어 초기 X 좌표 (상대좌표)
  * @param {number} y - 플레이어 초기 Y 좌표 (상대좌표)
+ * @param {string} userName - 플레이어 닉네임
  */
-function JoinPlayerImpl(id, x, y) {
+function JoinPlayerImpl(id, x, y, userName) {
   if (!scene) {
     console.warn("Scene is not initialized");
     return;
   }
 
-  scene.addPlayer(id, x, y, true); // 상대좌표로 처리
+  // 서버에서 온 userName 우선 사용, 없으면 로컬 Map에서 조회
+  const playerName = userName || (getPlayerNameFunc ? getPlayerNameFunc(id) : "Player");
+  scene.addPlayer(id, x, y, true, playerName); // 상대좌표로 처리
+  console.log(`JoinPlayer: Added player ${id} with name ${playerName}`);
 }
 
 /**

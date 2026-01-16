@@ -203,6 +203,13 @@ class MiniGameScene extends Phaser.Scene {
       this.handleFallOut(player);
     });
 
+    // 모든 플레이어의 닉네임 위치 업데이트
+    this.players.getChildren().forEach((player) => {
+      if (player.nameText) {
+        player.nameText.setPosition(player.x, player.y - 40);
+      }
+    });
+
     if (this.CurrentInvincibleTime > 0) {
       this.CurrentInvincibleTime -= this.game.loop.delta;
     }
@@ -216,9 +223,16 @@ class MiniGameScene extends Phaser.Scene {
    * @param {Number} x - 게임 월드 절대 좌표 X (기본값: 월드 중심)
    * @param {Number} y - 게임 월드 절대 좌표 Y (기본값: 월드 중심)
    * @param {Boolean} isRelativeCoord - 상대좌표 여부 (기본값: false)
+   * @param {String} userName - 플레이어 닉네임 (기본값: 'Player')
    * @returns
    */
-  addPlayer(id, x = WORLD_CENTER_X, y = WORLD_CENTER_Y, isRelativeCoord = false) {
+  addPlayer(
+    id,
+    x = WORLD_CENTER_X,
+    y = WORLD_CENTER_Y,
+    isRelativeCoord = false,
+    userName = "Player",
+  ) {
     // 상대좌표면 절대좌표로 변환
     const posX = isRelativeCoord ? WORLD_CENTER_X + x : x;
     const posY = isRelativeCoord ? WORLD_CENTER_Y + y : y;
@@ -227,6 +241,18 @@ class MiniGameScene extends Phaser.Scene {
     newPlayer.setCollideWorldBounds(true);
     newPlayer.setDrag(200, 200);
     newPlayer.lastDirection = { x: 0, y: 1 };
+
+    // 플레이어 닉네임 텍스트 생성
+    const nameText = this.add.text(posX, posY - 40, userName, {
+      fontSize: "16px",
+      fill: "#ffffff",
+      stroke: "#000000",
+      strokeThickness: 3,
+      align: "center",
+    });
+    nameText.setOrigin(0.5, 0.5); // 텍스트 중앙 정렬
+    newPlayer.nameText = nameText; // 플레이어 객체에 텍스트 참조 저장
+
     this.players.add(newPlayer);
 
     // 로컬 플레이어 참조 저장
@@ -238,7 +264,7 @@ class MiniGameScene extends Phaser.Scene {
       // targetPositions 설정하지 않음 - 첫 MoveOtherPlayer 호출 시 설정됨
       newPlayer.hasInitialTarget = false; // 아직 목표가 없음을 표시
     }
-    console.log(`Player ${id} added at position (${posX}, ${posY}).`);
+    console.log(`Player ${id} (${userName}) added at position (${posX}, ${posY}).`);
     return newPlayer;
   }
 
@@ -257,6 +283,11 @@ class MiniGameScene extends Phaser.Scene {
     if (weapon) {
       weapon.destroy();
       this.remoteWeapons.delete(id);
+    }
+
+    // 닉네임 텍스트 제거
+    if (targetPlayer.nameText) {
+      targetPlayer.nameText.destroy();
     }
 
     targetPlayer.destroy();
@@ -461,6 +492,12 @@ class MiniGameScene extends Phaser.Scene {
       alpha: 0,
       scaleX: 0.6,
       scaleY: 0.6,
+      onStart: () => {
+        // 닉네임 텍스트도 숨김
+        if (player.nameText) {
+          player.nameText.setVisible(false);
+        }
+      },
       onComplete: () => {
         if (isLocalPlayer) {
           // 로컬 플레이어만 리스폰 처리
@@ -479,6 +516,11 @@ class MiniGameScene extends Phaser.Scene {
             // ✅ 플래그 초기화 (넉백 상태 및 동기화 플래그 정리)
             player.knockbackState = null;
             player.knockbackEnded = true; // 다음 동기화에서 위치 강제 동기화
+
+            // 닉네임 텍스트 다시 표시
+            if (player.nameText) {
+              player.nameText.setVisible(true);
+            }
 
             // 서버에 부활 이벤트 전송 (다른 클라이언트에게 무적 효과 동기화)
             this.events.emit("local-respawn", {
@@ -741,6 +783,11 @@ class MiniGameScene extends Phaser.Scene {
     player.setScale(1, 1);
     player.setVisible(true); // 떨어져서 숨겨진 경우 다시 표시
     player.isFalling = false; // 낙하 플래그 해제
+
+    // 닉네임 텍스트도 다시 표시
+    if (player.nameText) {
+      player.nameText.setVisible(true);
+    }
 
     // 무적 효과 적용
     this.GiveInvincibility(player, 1000);
