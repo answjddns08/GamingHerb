@@ -25,6 +25,32 @@
 				"keyboard": false,
 				"touch": true
 			}
+		},
+		"HD2DGame": {
+			"id": "HD2DGame",
+			"name": "HD2D 턴제 전략",
+			"summary": "2.5D 그래픽의 턴제 전략 RPG 게임",
+			"icon": "⚔️",
+			"componentPath": "@/games/HD2DGame/HD2DGame.vue",
+			"configPath": "@/games/HD2DGame/settings.js",
+			"descriptionPath": "@/games/HD2DGame/Description.md",
+			"minPlayers": 2,
+			"maxPlayers": 2,
+			"category": ["전략", "RPG", "턴제"],
+			"platform": ["web(PC)"],
+			"difficulty": "Medium",
+			"estimatedTime": "10-15분",
+			"version": "1.0.0",
+			"author": "Redeyes",
+			"features": {
+				"chat": true,
+				"timer": false
+			},
+			"controls": {
+				"mouse": true,
+				"keyboard": false,
+				"touch": false
+			}
 		}
 	}
 }

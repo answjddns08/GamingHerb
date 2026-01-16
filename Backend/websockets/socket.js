@@ -10,6 +10,7 @@ import {
 } from "../utils/roomManage.js";
 import GomokuGame from "../games/gomoku.js";
 import ReversiGame from "../games/reversi.js";
+import HD2DGame from "../games/hd2d.js";
 import WaitingMiniGame from "../games/waitingMiniGame.js";
 
 /** @typedef {import('../utils/roomManage.js').Room} Room */
@@ -18,6 +19,7 @@ import WaitingMiniGame from "../games/waitingMiniGame.js";
 const gameLogicMap = {
 	GomokuGame: GomokuGame,
 	Reversi: ReversiGame,
+	HD2DGame: HD2DGame,
 	// Add other games here in the future
 	// Chess: ChessGame,
 };
