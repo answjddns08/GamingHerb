@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-backdrop" @click.self="handleClose">
+  <div class="modal-backdrop">
     <div class="modal-card">
       <h2 class="modal-title">종족 선택</h2>
       <p class="modal-subtitle">사용할 집단을 고르세요.</p>
@@ -13,9 +13,6 @@
           <span class="option-title">{{ option.label }}</span>
           <span class="option-desc">{{ option.description }}</span>
         </button>
-      </div>
-      <div class="modal-actions">
-        <button class="ghost-button" @click="handleClose">닫기</button>
       </div>
     </div>
   </div>

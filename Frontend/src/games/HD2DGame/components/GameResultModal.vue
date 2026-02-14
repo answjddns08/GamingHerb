@@ -1,5 +1,5 @@
 <template>
-  <div class="modal-backdrop" @click.self="handleClose">
+  <div class="modal-backdrop">
     <div class="modal-card">
       <header class="modal-header">
         <div>
