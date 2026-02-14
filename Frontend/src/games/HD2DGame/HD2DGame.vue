@@ -1,10 +1,15 @@
 <script setup>
 import GameScene from "./components/GameScene.vue";
+
+const props = defineProps({
+  gameId: { type: String, required: true },
+  roomId: { type: String, required: true },
+});
 </script>
 
 <template>
   <div class="hd2d-root">
-    <GameScene />
+    <GameScene :roomName="props.roomId" :game-id="gameId" />
   </div>
 </template>
 

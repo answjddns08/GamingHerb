@@ -16,7 +16,7 @@ function useMulti() {
   /**
    * @type {String|null} 방 ID
    */
-  let roomId = null;
+  let roomName = null;
 
   /**
    * @type {Function|null} 팀 선택 후 실행할 콜백 함수
@@ -31,8 +31,8 @@ function useMulti() {
    */
   function getIDs(game, room) {
     gameId = game;
-    roomId = room;
-    console.log("게임 ID:", gameId, "방 ID:", roomId);
+    roomName = room;
+    console.log("게임 ID:", gameId, "방 ID:", roomName);
   }
 
   function registerHandlers() {
@@ -51,7 +51,7 @@ function useMulti() {
   function SendGameAction(type, payload = {}) {
     socketStore.sendMessage("inGame", {
       gameId: gameId,
-      roomName: roomId,
+      roomName: roomName,
       userId: userStore.id,
       userName: userStore.name,
       action: { type, payload },

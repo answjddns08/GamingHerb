@@ -22,6 +22,21 @@ class HD2DGame {
 		this.turnCount = 0;
 	}
 
+	getState() {
+		return {
+			players: Array.from(this.players.entries()).map(([userId, info]) => ({
+				userId,
+				team: info.team,
+			})),
+			characters: this.characters,
+			currentTurn: this.turnOrder[this.currentTurnIndex] || null,
+			turnActions: this.turnActions,
+			gameOver: this.gameOver,
+			winner: this.winner,
+			turnCount: this.turnCount,
+		};
+	}
+
 	/**
 	 * 게임 액션을 처리하는 중앙 메서드
 	 * @param {Object} action - 클라이언트로부터 받은 액션 객체
