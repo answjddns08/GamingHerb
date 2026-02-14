@@ -13,7 +13,6 @@
  * @property {number} turnTimeLimit.step - 시간 조절 단위
  * @property {string} turnTimeLimit.unit - 시간 단위 표시
  * @property {boolean} allowSpectator - 관전 허용 여부
- * @property {string} teamMode - 팀 모드 ('1v1', '2v2')
  */
 export const gameSettings = {
   timerEnabled: false, // 타이머 기능 비활성화 (추후 구현)
@@ -26,7 +25,6 @@ export const gameSettings = {
     unit: "초",
   },
   allowSpectator: true, // 관전자 모드 활성화
-  teamMode: "1v1", // 1대1 모드 (추후 2v2 추가 가능)
 };
 
 /**
