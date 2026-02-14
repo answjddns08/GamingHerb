@@ -32,7 +32,7 @@ export const gameSettings = {
 /**
  * @type {number} HD2D 게임의 최대 플레이어 수
  */
-export const maxPlayers = 2;
+export const maxPlayers = 1;
 
 // 호환성을 위한 default export
 export default {

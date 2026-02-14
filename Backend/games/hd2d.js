@@ -24,6 +24,9 @@ class HD2DGame {
 
 	// 플레이어 추가 및 초기 캐릭터 생성
 	addPlayer(userId, username, team) {
+		console.log(
+			`[HD2D] addPlayer 호출: userId=${userId}, username=${username}, team=${team}`
+		);
 		this.players.set(userId, { username, team });
 
 		// 팀별 캐릭터 생성 (병사 2명)
@@ -118,15 +121,21 @@ class HD2DGame {
 		};
 
 		this.characters.push(char1, char2);
+		console.log(
+			`[HD2D] 캐릭터 추가 완료. 현재 캐릭터 수: ${this.characters.length}`
+		);
 	}
 
 	// 전투 시작 (턴 순서 결정)
 	startBattle() {
+		console.log(
+			`[HD2D] startBattle 호출. 캐릭터 수: ${this.characters.length}`
+		);
 		this.turnOrder = [...this.characters].sort((a, b) => b.speed - a.speed);
 		this.battlePhase = "planning";
 		this.currentTurnIndex = 0;
 		console.log(
-			"턴 순서:",
+			"[HD2D] 턴 순서:",
 			this.turnOrder.map((c) => `${c.name}(속도:${c.speed})`).join(" → ")
 		);
 	}
@@ -313,6 +322,9 @@ class HD2DGame {
 
 	// 현재 게임 상태 반환
 	getState() {
+		console.log(
+			`[HD2D] getState 호출. 캐릭터 수: ${this.characters.length}, battlePhase: ${this.battlePhase}`
+		);
 		return {
 			players: Object.fromEntries(this.players),
 			characters: this.characters,
@@ -423,12 +435,34 @@ class HD2DGame {
 			}
 
 			case "player:loaded": {
+				console.log(`[HD2D] player:loaded 액션 받음. userId: ${userId}`);
+				// 플레이어가 아직 게임에 추가되지 않았다면 자동으로 추가
+				if (!this.players.has(userId)) {
+					console.log(`[HD2D] 플레이어 ${userId}가 게임에 없음. 추가 중...`);
+					const username = room.players.get(userId)?.username || "Unknown";
+					const team = this.players.size === 0 ? "team1" : "team2";
+					this.addPlayer(userId, username, team);
+
+					// 모든 플레이어가 추가되었으면 전투 시작
+					if (this.players.size === 2) {
+						console.log(`[HD2D] 플레이어 2명 모두 추가됨. 전투 시작`);
+						this.startBattle();
+					}
+				} else {
+					console.log(`[HD2D] 플레이어 ${userId}는 이미 게임에 있음`);
+				}
+
+				const state = this.getState();
+				console.log(
+					`[HD2D] 초기 상태 전송. characters 길이: ${state.characters.length}`
+				);
+
 				return {
 					success: true,
 					response: {
 						type: "game:initialState",
 						payload: {
-							gameState: this.getState(),
+							gameState: state,
 						},
 					},
 					shouldBroadcast: false,
