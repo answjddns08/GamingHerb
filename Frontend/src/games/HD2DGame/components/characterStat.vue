@@ -117,7 +117,7 @@ picture::after {
 
 	inset: 0;
 
-	background-image: url("/skillCards/buff.png");
+  background-image: url("/hd2d/skillCards/buff.png");
 
 	background-size: 50%;
 

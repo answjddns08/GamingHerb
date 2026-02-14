@@ -3,37 +3,37 @@ import { Vector2, Vector3 } from "three";
 // 스프라이트 시트 경로
 export const SPRITE_PATHS = {
   // Soldier
-  soldierPicture: "/characters/soldier/Soldier.webp",
-  soldierIdle: "/characters/soldier/Soldier-idle.webp",
-  soldierWalk: "/characters/soldier/Soldier-walk.webp",
-  soldierAttack1: "/characters/soldier/Soldier-attack1.webp",
-  soldierAttack2: "/characters/soldier/Soldier-attack2.webp",
-  soldierDeath: "/characters/soldier/Soldier-death.webp",
-  soldierHurt: "/characters/soldier/Soldier-hurt.webp",
+  soldierPicture: "/hd2d/characters/soldier/Soldier.webp",
+  soldierIdle: "/hd2d/characters/soldier/Soldier-idle.webp",
+  soldierWalk: "/hd2d/characters/soldier/Soldier-walk.webp",
+  soldierAttack1: "/hd2d/characters/soldier/Soldier-attack1.webp",
+  soldierAttack2: "/hd2d/characters/soldier/Soldier-attack2.webp",
+  soldierDeath: "/hd2d/characters/soldier/Soldier-death.webp",
+  soldierHurt: "/hd2d/characters/soldier/Soldier-hurt.webp",
 
   // Orc
-  orcPicture: "/characters/orc/Orc.webp",
-  orcIdle: "/characters/orc/Orc-idle.webp",
-  orcWalk: "/characters/orc/Orc-walk.webp",
-  orcAttack1: "/characters/orc/Orc-attack1.webp",
-  orcAttack2: "/characters/orc/Orc-attack2.webp",
-  orcDeath: "/characters/orc/Orc-death.webp",
-  orcHurt: "/characters/orc/Orc-hurt.webp",
+  orcPicture: "/hd2d/characters/orc/Orc.webp",
+  orcIdle: "/hd2d/characters/orc/Orc-idle.webp",
+  orcWalk: "/hd2d/characters/orc/Orc-walk.webp",
+  orcAttack1: "/hd2d/characters/orc/Orc-attack1.webp",
+  orcAttack2: "/hd2d/characters/orc/Orc-attack2.webp",
+  orcDeath: "/hd2d/characters/orc/Orc-death.webp",
+  orcHurt: "/hd2d/characters/orc/Orc-hurt.webp",
 
   // Trees
-  treeSize2: "/Pixel Crawler - Free Pack/Environment/Props/Static/Trees/Model_01/Size_02.png",
-  treeSize3: "/Pixel Crawler - Free Pack/Environment/Props/Static/Trees/Model_01/Size_03.png",
-  treeSize4: "/Pixel Crawler - Free Pack/Environment/Props/Static/Trees/Model_01/Size_04.png",
-  treeSize5: "/Pixel Crawler - Free Pack/Environment/Props/Static/Trees/Model_01/Size_05.png",
+  treeSize2: "/hd2d/Pixel Crawler - Free Pack/Environment/Props/Static/Trees/Model_01/Size_02.png",
+  treeSize3: "/hd2d/Pixel Crawler - Free Pack/Environment/Props/Static/Trees/Model_01/Size_03.png",
+  treeSize4: "/hd2d/Pixel Crawler - Free Pack/Environment/Props/Static/Trees/Model_01/Size_04.png",
+  treeSize5: "/hd2d/Pixel Crawler - Free Pack/Environment/Props/Static/Trees/Model_01/Size_05.png",
 
   //skybox
-  upAndDown: "skybox/top.png",
-  leftHalf: "skybox/lt1.png",
-  rightHalf: "skybox/rt1.png",
+  upAndDown: "/hd2d/skybox/top.png",
+  leftHalf: "/hd2d/skybox/lt1.png",
+  rightHalf: "/hd2d/skybox/rt1.png",
 
   //VFX
-  fxTest: "/VFX/fx-test.png",
-  heal: "/VFX/heal.png",
+  fxTest: "/hd2d/VFX/fx-test.png",
+  heal: "/hd2d/VFX/heal.png",
 };
 
 export const VFX_CONFIGS = {

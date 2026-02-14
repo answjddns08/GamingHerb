@@ -152,7 +152,7 @@ h2 {
 
   inset: 0;
 
-  background-image: url("/skillCards/sword.png");
+  background-image: url("/hd2d/skillCards/sword.png");
 
   background-size: 35%;
 
@@ -172,7 +172,7 @@ h2 {
 
   inset: 0;
 
-  background-image: url("/skillCards/heal.png");
+  background-image: url("/hd2d/skillCards/heal.png");
 
   background-size: 50%;
 
@@ -188,7 +188,7 @@ h2 {
 
   inset: 0;
 
-  background-image: url("/skillCards/buff.png");
+  background-image: url("/hd2d/skillCards/buff.png");
 
   background-size: 75%;
 

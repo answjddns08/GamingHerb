@@ -330,7 +330,7 @@ const setThree = async () => {
 
     // 나무 배경 로드
     const testLoadScene = new GLTFLoader();
-    testLoadScene.load("/HD2DGuSang.glb", (gltf) => {
+    testLoadScene.load("/hd2d/HD2DGuSang.glb", (gltf) => {
       const model = gltf.scene;
       model.scale.set(0.35, 0.35, 0.35);
       model.position.set(0, -0.35, 0);
