@@ -1,10 +1,35 @@
 import { ref, computed } from "vue";
 import { defineStore } from "pinia";
 
+/**
+ * @typedef {object} socketMessage
+ * @property {messageType} type - 메시지 타입
+ * @property {string} gameId - 게임 ID
+ * @property {string} roomName - 방 이름
+ * @property {string} userId - 사용자 ID
+ * @property {string} userName - 사용자 이름
+ * @property {object} action - 행동 정보 (예: 캐릭터, 스킬, 타겟 등)
+ * @property {object} [payload] - 추가 데이터 (선택적)
+ */
+
+/**
+ * @typedef {string} messageType
+ * @property {"join"} join - 방 참가 메시지
+ * @property {"waiting"} waiting - 대기실 상태 메시지
+ * @property {"ingame"} ingame - 게임 진행 메시지
+ * @property {"leave"} leave - 방 퇴장 메시지
+ * @property {"error"} error - 에러 메시지
+ */
+
 export const useSocketStore = defineStore("socket", () => {
+  /**
+   * @type {import("vue").Ref<WebSocket | null>} WebSocket 인스턴스 참조
+   */
   const socket = ref(null);
   // 타입별로 여러 핸들러를 보관하기 위해 Set 사용
-  // 구조: { [type: string]: Set<Function> }
+  /**
+   * @type {import("vue").Ref<{ [type: string]: Set<Function> | Function }>}
+   */
   const messageHandlers = ref({});
   const isReconnecting = ref(false);
   const reconnectAttempts = ref(0);
@@ -28,9 +53,11 @@ export const useSocketStore = defineStore("socket", () => {
       reconnectAttempts.value = 0; // 연결 성공 시 재시도 카운트 리셋
       isReconnecting.value = false;
     };
-
     socket.value.onmessage = (event) => {
       try {
+        /**
+         * @type {socketMessage}
+         */
         const data = JSON.parse(event.data);
         //console.log("Received message:", data);
 

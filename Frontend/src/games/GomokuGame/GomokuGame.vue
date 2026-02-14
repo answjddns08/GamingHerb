@@ -270,9 +270,7 @@ import { useUserStore } from "@/stores/user.js";
 import { useSocketStore } from "@/stores/socket.js";
 
 const props = defineProps({
-  /** @type {String} 현재 게임의 고유 ID */
   gameId: { type: String, required: true },
-  /** @type {String} 현재 방의 고유 ID */
   roomId: { type: String, required: true },
 });
 

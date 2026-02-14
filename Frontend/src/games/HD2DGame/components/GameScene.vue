@@ -35,6 +35,8 @@ import { useCharacterSelection } from "../composables/useCharacterSelection.js";
 import { useBattleActions } from "../composables/useBattleActions.js";
 import { useTargeting } from "../composables/useTargeting.js";
 
+import useMulti from "../multi.js";
+
 // Renderer & Post-processing
 import {
   initScene,
@@ -120,6 +122,13 @@ const {
   focusOnTarget,
   unfocus,
   selectedCharacter,
+});
+
+const multi = useMulti();
+
+const props = defineProps({
+  gameId: { type: String, required: true },
+  roomId: { type: String, required: true },
 });
 
 // Game Manager
@@ -585,6 +594,10 @@ function handleCanvasClick(intersectedObject) {
 onMounted(() => {
   removeMouseEvent();
 
+  multi.getIDs(props.gameId, props.roomId);
+
+  multi.registerHandlers();
+
   setThree();
 });
 
@@ -596,6 +609,8 @@ onUnmounted(() => {
       window.removeEventListener("resize", onResizeHandler);
     }
   }
+
+  multi.unregisterHandlers();
 });
 </script>
 
