@@ -5,13 +5,14 @@
       <p class="modal-subtitle">사용할 집단을 고르세요.</p>
       <div class="option-grid">
         <button
-          v-for="option in options"
-          :key="option.key"
+          v-for="team in Teams"
+          :key="team.name"
           class="option-button"
-          @click="handleSelect(option)"
+          :class="{ disabled: team.name === selectedTeam }"
+          @click="handleSelect(team.name)"
         >
-          <span class="option-title">{{ option.label }}</span>
-          <span class="option-desc">{{ option.description }}</span>
+          <span class="option-title">{{ team.name }}</span>
+          <span class="option-desc">{{ team.description }}</span>
         </button>
       </div>
     </div>
@@ -19,37 +20,23 @@
 </template>
 
 <script setup>
-const props = defineProps({
-  options: {
-    type: Array,
-    default: () => [
-      {
-        key: "orc",
-        label: "오크 무리",
-        description: "거친 돌격과 강력한 타격",
-      },
-      {
-        key: "knight",
-        label: "기사단",
-        description: "균형 잡힌 방어와 회복",
-      },
-      {
-        key: "wizard",
-        label: "마법사 길드",
-        description: "원거리 광역 마법의 폭발력",
-      },
-    ],
-  },
-});
+import { Teams } from "../constants/characterTeams";
 
 const emit = defineEmits(["select", "close"]);
 
-function handleSelect(option) {
-  emit("select", option.key);
-}
+const props = defineProps({
+  selectedTeam: {
+    type: String,
+    default: null,
+  },
+});
 
-function handleClose() {
-  emit("close");
+/**
+ * @param {string} teamName
+ * @description 종족 선택 시 부모 컴포넌트로 선택된 팀 이름을 전달하는 함수
+ */
+function handleSelect(teamName) {
+  emit("select", teamName);
 }
 </script>
 
@@ -114,6 +101,14 @@ function handleClose() {
 .option-button:hover {
   transform: translate(-2px, -2px) rotate(-0.5deg);
   box-shadow: 4px 4px 0 rgba(74, 43, 20, 0.7);
+}
+
+.option-button.disabled {
+  background: #e0c9a8;
+  border-color: #a67c4f;
+  color: rgba(43, 27, 15, 0.5);
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .option-title {

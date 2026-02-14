@@ -143,10 +143,6 @@ const rendererInstance = ref(null);
  * @type {EffectComposer || null}
  */
 let composer = null;
-/**
- * @type {BokehPass || null}
- */
-let bokehPass = null;
 let onResizeHandler = null;
 
 const isSelectedSomething = ref(false);
@@ -225,14 +221,19 @@ function buildBattleResult() {
   return { winner, loser, characters };
 }
 
-function handleRaceSelect(raceKey) {
-  console.log("선택한 종족:", raceKey);
-  showRaceSelection.value = false;
-}
+/**
+ * 상대가 선택한 종족
+ * @type {import("vue").Ref<string|null>}
+ */
+const enemySelectedTeam = ref(null);
 
-function handleRaceClose() {
-  console.log("종족 선택 닫기");
-  showRaceSelection.value = false;
+/**
+ * 적 행동 할당 및 턴 실행
+ * @param {string} teamName
+ */
+function handleRaceSelect(teamName) {
+  console.log("선택한 종족:", teamName);
+  multi.SendGameAction("game:selectTeam", { team: teamName });
 }
 
 function handleResultClose() {
@@ -322,7 +323,6 @@ const setThree = async () => {
     // Post-processing 설정
     const ppConfig = setupPostProcessing(renderer, scene, camera);
     composer = ppConfig.composer;
-    bokehPass = ppConfig.bokehPass;
 
     // 라이팅
     setupLighting(scene);
@@ -540,13 +540,6 @@ const setThree = async () => {
   }
 };
 
-function consoleCameraPosition() {
-  if (cameraRef.value) {
-    console.log("Camera Position:", cameraRef.value.position);
-    console.log("Camera Target:", controlsRef.value.target);
-  }
-}
-
 /**
  * 캔버스 클릭 핸들러
  * @param {THREE.Object3D} intersectedObject
@@ -598,6 +591,10 @@ onMounted(() => {
 
   multi.registerHandlers();
 
+  multi.setTeamSelectedCallback((teamName) => {
+    enemySelectedTeam.value = teamName;
+  });
+
   setThree();
 });
 
@@ -618,7 +615,7 @@ onUnmounted(() => {
   <RaceSelectionModal
     v-if="showRaceSelection"
     @select="handleRaceSelect"
-    @close="handleRaceClose"
+    :selected-team="selectedTeam"
   />
   <GameResultModal
     v-if="showResultModal"

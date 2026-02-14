@@ -25,6 +25,16 @@ const gameLogicMap = {
 };
 
 /**
+ * @typedef {Object} GameActionResult
+ * @property {boolean} success - 액션 처리 성공 여부
+ * @property {boolean} shouldBroadcast - 모든 플레이어에게 브로드캐스트 여부
+ * @property {Object|null} response - 단일 응답 객체
+ * @property {Array|null} responses - 여러 응답이 필요한 경우 응답 객체 배열
+ * @property {Room|null} shouldUpdateRoomStatus - 방 상태 업데이트가 필요한 경우 업데이트할 상태, 필요 없는 경우 null
+ * @property {Object|null} targetPlayer - 특정 플레이어에게만 전송할 경우 해당 플레이어 정보, 그렇지 않으면 null
+ */
+
+/**
  * WebSocket server setup for handling game rooms and in-game actions.
  * @param {import("ws").Server} wss
  */
@@ -68,7 +78,7 @@ function setupWebsocket(wss) {
 							JSON.stringify({
 								type: "error",
 								message: "Join message missing required properties",
-							})
+							}),
 						);
 						return;
 					}
@@ -101,7 +111,7 @@ function setupWebsocket(wss) {
 								playerId: userId,
 								playerName: userName,
 							},
-							ws
+							ws,
 						);
 					} else {
 						// 새로운 연결
@@ -111,7 +121,7 @@ function setupWebsocket(wss) {
 								JSON.stringify({
 									type: "error",
 									message: "Failed to join room",
-								})
+								}),
 							);
 							return;
 						}
@@ -120,7 +130,7 @@ function setupWebsocket(wss) {
 					const updatedRoom = getRoomDetails(gameId, roomName);
 					if (!updatedRoom) {
 						ws.send(
-							JSON.stringify({ type: "error", message: "Room not found" })
+							JSON.stringify({ type: "error", message: "Room not found" }),
 						);
 						return;
 					}
@@ -142,7 +152,7 @@ function setupWebsocket(wss) {
 								disconnected: p.disconnected || false,
 							})),
 							hostId: updatedRoom.hostId,
-						})
+						}),
 					);
 
 					// 새 연결인 경우에만 다른 플레이어들에게 알림
@@ -154,7 +164,7 @@ function setupWebsocket(wss) {
 								type: "playerJoined",
 								player: { userId: userId, userName: userName, isReady: false },
 							},
-							ws
+							ws,
 						);
 					}
 					break;
@@ -205,7 +215,7 @@ function setupWebsocket(wss) {
 										timestamp: Date.now(),
 									},
 								},
-								ws
+								ws,
 							);
 						}
 					} else if (action.type === "kickUser") {
@@ -221,7 +231,7 @@ function setupWebsocket(wss) {
 										JSON.stringify({
 											type: "playerKicked",
 											playerId: targetUserId,
-										})
+										}),
 									);
 								} catch (error) {
 									console.error("Failed to notify kicked player:", error);
@@ -237,7 +247,7 @@ function setupWebsocket(wss) {
 								});
 
 								console.log(
-									`Player ${targetUserId} was kicked from room ${roomName} by host ${userId}`
+									`Player ${targetUserId} was kicked from room ${roomName} by host ${userId}`,
 								);
 							}
 						}
@@ -245,7 +255,7 @@ function setupWebsocket(wss) {
 						// 호스트만 게임 시작 가능
 						if (userId === room.hostId) {
 							const nonHostPlayers = Array.from(room.players.values()).filter(
-								(p) => p.userId !== userId
+								(p) => p.userId !== userId,
 							);
 							const allNonHostReady = nonHostPlayers.every((p) => p.isReady);
 
@@ -277,7 +287,7 @@ function setupWebsocket(wss) {
 													payload: timeoutData,
 												});
 												updateRoomStatus(gameId, roomName, "waiting");
-											}
+											},
 										);
 										room.gameTimerActive = true;
 									} else {
@@ -337,13 +347,16 @@ function setupWebsocket(wss) {
 										timestamp: Date.now(),
 									},
 								},
-								ws
+								ws,
 							);
 						}
 						break;
 					}
 
-					// 게임 클래스의 handleAction 메서드를 호출
+					/**
+					 * 게임 액션 처리
+					 * @type {GameActionResult} result - 게임 액션 처리 결과
+					 */
 					const result = game.handleAction(action, userId, room);
 
 					if (result.success) {
@@ -359,7 +372,7 @@ function setupWebsocket(wss) {
 							} catch (error) {
 								console.error(
 									"Failed to send message to target player:",
-									error
+									error,
 								);
 							}
 						}
@@ -440,12 +453,12 @@ function setupWebsocket(wss) {
 							}
 							deleteRoom(playerGameId, playerRoomName);
 							console.log(
-								`Room ${playerRoomName} deleted - host left intentionally`
+								`Room ${playerRoomName} deleted - host left intentionally`,
 							);
 						}
 
 						console.log(
-							`Player ${userId} left room ${playerRoomName} intentionally`
+							`Player ${userId} left room ${playerRoomName} intentionally`,
 						);
 					}
 					break;
@@ -488,7 +501,7 @@ function handlePlayerDisconnectWithGrace(ws) {
 			player.ws = null; // WebSocket 참조 제거
 
 			console.log(
-				`Player ${userId} marked as disconnected from room ${roomName}`
+				`Player ${userId} marked as disconnected from room ${roomName}`,
 			);
 
 			// 다른 플레이어들에게 연결 해제 알림
@@ -514,7 +527,7 @@ function handlePlayerDisconnectWithGrace(ws) {
 			// 30초 후 완전 제거 타이머 설정
 			player.disconnectTimer = setTimeout(() => {
 				console.log(
-					`Grace period expired for player ${userId}, removing permanently`
+					`Grace period expired for player ${userId}, removing permanently`,
 				);
 
 				// 플레이어 완전 제거
