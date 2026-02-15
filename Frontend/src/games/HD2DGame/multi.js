@@ -19,8 +19,7 @@ function useMulti() {
   let roomName = null;
 
   /**
-   * @type {Function|null} 팀 선택 후 실행할 콜백 함수
-   * @param {string} teamName - 선택된 팀 이름
+   * @type {(teamName: string, done: boolean)|null} 팀 선택 후 실행할 콜백 함수
    */
   let teamSelectedCallback = null; // 팀 선택 후 실행할 콜백 함수
 
@@ -62,14 +61,15 @@ function useMulti() {
    *  상대 팀이 선택되었을 때 호출되는 핸들러
    * @param {object} payload
    * @param {string} payload.selectedTeams - 상대가 선택한 팀 이름
+   * @param {boolean} [payload.done=false] - 팀 선택이 완료되었는지 여부
    */
   function oppositeTeamSelected(payload) {
-    teamSelectedCallback && teamSelectedCallback(payload.selectedTeams);
+    teamSelectedCallback && teamSelectedCallback(payload.selectedTeams, payload.done);
   }
 
   /**
    *
-   * @param {Function<string>} callback - 팀 선택 후 실행할 콜백 함수
+   * @param {(teamName: string, done: boolean) => void} callback - 팀 선택 후 실행할 콜백 함수
    */
   function setTeamSelectedCallback(callback) {
     teamSelectedCallback = callback;

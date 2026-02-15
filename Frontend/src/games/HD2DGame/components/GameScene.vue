@@ -591,8 +591,13 @@ onMounted(() => {
 
   multi.registerHandlers();
 
-  multi.setTeamSelectedCallback((teamName) => {
+  multi.SendGameAction("");
+
+  multi.setTeamSelectedCallback((teamName, done) => {
     enemySelectedTeam.value = teamName;
+    if (done) {
+      showRaceSelection.value = false;
+    }
   });
 
   setThree();
@@ -615,7 +620,7 @@ onUnmounted(() => {
   <RaceSelectionModal
     v-if="showRaceSelection"
     @select="handleRaceSelect"
-    :selected-team="selectedTeam"
+    :selected-team="enemySelectedTeam"
   />
   <GameResultModal
     v-if="showResultModal"

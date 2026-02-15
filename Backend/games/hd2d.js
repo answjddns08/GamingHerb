@@ -52,6 +52,14 @@ class HD2DGame {
 	 */
 	handleAction(action, userId, room) {
 		switch (action.type) {
+			case "game:join": {
+				this.players.set(userId, { team: null });
+
+				return {
+					// 일단은 참가성공했을 경우 따로 메세지는 보내지 않음, 나중에 성공적으로 되었는지 확인하기 위해서 메세지 보내도록 수정할 수도 있을 것 같음
+					success: true,
+				};
+			}
 			case "game:selectTeam": {
 				const { team } = action.payload;
 
@@ -72,6 +80,20 @@ class HD2DGame {
 
 				// 플레이어 정보 추가 or 업데이트
 				this.players.set(userId, { team: team });
+
+				if (this.players.size === 2) {
+					return {
+						success: true,
+						response: {
+							type: "game:selectTeam",
+							payload: {
+								selectedTeams: team,
+								done: true,
+							},
+						},
+						shouldBroadcast: true,
+					};
+				}
 
 				return {
 					success: true,
