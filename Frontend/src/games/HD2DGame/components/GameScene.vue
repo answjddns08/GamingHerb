@@ -591,7 +591,7 @@ onMounted(() => {
 
   multi.registerHandlers();
 
-  multi.SendGameAction("");
+  multi.SendGameAction("game:join");
 
   multi.setTeamSelectedCallback((teamName, done) => {
     enemySelectedTeam.value = teamName;
