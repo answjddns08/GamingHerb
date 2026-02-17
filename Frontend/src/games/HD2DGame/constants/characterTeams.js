@@ -1,6 +1,6 @@
 import { Vector3 } from "three";
 import { SPRITE_PATHS } from "./gameConfig";
-import { createSkills, Skill } from "../utils/skills";
+import { createSkills } from "../utils/skills";
 import { getOrcAnimations, getSoldierAnimations } from "../utils/characterFactory";
 
 // 위치는 캐릭터가 생성될 때 조정할 수 있습니다. (자기 팀 캐릭터들은 x값이 - 쪽에 배치되고 적 팀 캐릭터들은 + 쪽에 배치됩니다.)
@@ -14,7 +14,7 @@ import { getOrcAnimations, getSoldierAnimations } from "../utils/characterFactor
  * @property {number} speed - 캐릭터 속도
  * @property {string} spritePath - 캐릭터 스프라이트 이미지 경로
  * @property {Object} animation - 캐릭터 애니메이션 설정 객체 (idle, walk, attack 등)
- * @property {Array<Function>} skills - 캐릭터가 사용할 수 있는 스킬들의 배열 (스킬 생성 함수들)
+ * @property {Array<Function>} skills - 캐릭터가 사용할 수 있는 스킬 생성 함수 배열
  * @property {Vector3} position - 캐릭터의 초기 위치 (x, y, z)
  * @property {Vector3} scale - 캐릭터의 크기 조정 (x, y, z)
  */
@@ -43,7 +43,7 @@ export const Teams = {
         speed: 18,
         spritePath: SPRITE_PATHS.orcPicture,
         animation: getOrcAnimations(),
-        skills: [createSkills.orcBasicAttack(), createSkills.orcHeavySmash()],
+        skills: [createSkills.orcBasicAttack, createSkills.orcHeavySmash],
         position: new Vector3(2, 0, -1),
         scale: new Vector3(5, 5, 5),
       },
@@ -55,7 +55,7 @@ export const Teams = {
         speed: 19,
         spritePath: SPRITE_PATHS.orcPicture,
         animation: getOrcAnimations(),
-        skills: [createSkills.orcBasicAttack(), createSkills.orcHeavySmash()],
+        skills: [createSkills.orcBasicAttack, createSkills.orcHeavySmash],
         position: new Vector3(2, 0, 1),
         scale: new Vector3(5, 5, 5),
       },
@@ -67,7 +67,7 @@ export const Teams = {
         speed: 16,
         spritePath: SPRITE_PATHS.orcPicture,
         animation: getOrcAnimations(),
-        skills: [createSkills.orcBasicAttack(), createSkills.orcHeavySmash()],
+        skills: [createSkills.orcBasicAttack, createSkills.orcHeavySmash],
         position: new Vector3(3.5, 0.15, 0),
         scale: new Vector3(7, 7, 7),
       },
@@ -85,7 +85,7 @@ export const Teams = {
         speed: 20,
         spritePath: SPRITE_PATHS.soldierPicture,
         animation: getSoldierAnimations(),
-        skills: [createSkills.soldierBasicAttack(), createSkills.soldierPowerAttack()],
+        skills: [createSkills.soldierBasicAttack, createSkills.soldierPowerAttack],
         position: new Vector3(-2, 0, -1),
         scale: new Vector3(5, 5, 5),
       },
@@ -97,7 +97,7 @@ export const Teams = {
         speed: 15,
         spritePath: SPRITE_PATHS.soldierPicture,
         animation: getSoldierAnimations(),
-        skills: [createSkills.soldierBasicAttack(), createSkills.soldierHeal()],
+        skills: [createSkills.soldierBasicAttack, createSkills.soldierHeal],
         position: new Vector3(-2, 0, 1),
         scale: new Vector3(5, 5, 5),
       },
@@ -109,7 +109,7 @@ export const Teams = {
         speed: 10,
         spritePath: SPRITE_PATHS.soldierPicture,
         animation: getSoldierAnimations(),
-        skills: [createSkills.soldierBasicAttack(), createSkills.soldierPowerAttack()],
+        skills: [createSkills.soldierBasicAttack, createSkills.soldierPowerAttack],
         position: new Vector3(-2, 0, 1),
         scale: new Vector3(5, 5, 5),
       },

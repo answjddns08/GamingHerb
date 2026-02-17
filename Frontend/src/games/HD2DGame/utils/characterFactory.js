@@ -36,8 +36,8 @@ export function makeTeams(friendlyTeam, enemyTeam, scene, manager) {
       char.spritePath,
     );
 
-    char.skills.forEach((skill) => {
-      characterData.addSkill(skill(scene));
+    char.skills.forEach((skillFactory) => {
+      characterData.addSkill(skillFactory(scene));
     });
 
     manager.addCharacter(characterData, true);
@@ -66,8 +66,8 @@ export function makeTeams(friendlyTeam, enemyTeam, scene, manager) {
       char.spritePath,
     );
 
-    char.skills.forEach((skill) => {
-      characterData.addSkill(skill(scene));
+    char.skills.forEach((skillFactory) => {
+      characterData.addSkill(skillFactory(scene));
     });
 
     manager.addCharacter(characterData, false);

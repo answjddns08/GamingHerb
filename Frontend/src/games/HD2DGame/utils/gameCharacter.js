@@ -11,6 +11,7 @@ import {
   DoubleSide,
 } from "three";
 import { HEALTH_BAR_CONFIG } from "../constants/gameConfig.js";
+import { Skill } from "./skills";
 
 /**
  * 체력바 클래스
@@ -288,6 +289,10 @@ export class GameCharacter {
     this.healthBar.removeFromScene(scene);
   }
 
+  /**
+   *
+   * @param {Skill} skill
+   */
   addSkill(skill) {
     this.skills.push(skill);
   }
