@@ -87,26 +87,8 @@ export function useBattleActions() {
           // 모든 행동 완료
           setTimeout(() => {
             console.log("\n=== 턴 종료 ===");
-            // 쿨다운 업데이트
-            gameManager.turnOrder.forEach((char) => char.updateCoolDowns());
-            // 버프 업데이트
-            gameManager.turnOrder.forEach((char) => char.updateBuffs());
-            // 행동 목록 초기화
             clearActions();
-
-            // 전투 종료 조건 체크
-            const allFriendlyDead = gameManager.friendly.every((c) => !c.isAlive());
-            const allEnemyDead = gameManager.enemy.every((c) => !c.isAlive());
-
-            if (allFriendlyDead) {
-              console.log("\n💀 패배! 모든 아군이 전멸했습니다!");
-              resolve("defeat");
-            } else if (allEnemyDead) {
-              console.log("\n🎉 승리! 모든 적을 물리쳤습니다!");
-              resolve("victory");
-            } else {
-              resolve("continue");
-            }
+            resolve("done");
           }, 1000);
           return;
         }
@@ -127,6 +109,12 @@ export function useBattleActions() {
 
         const target = action.target;
         const wasAlive = target.isAlive();
+
+        if (action.result?.type === "damage") {
+          target.setNextDamageOverride(action.result.amount ?? 0);
+        } else if (action.result?.type === "heal") {
+          target.setNextHealOverride(action.result.amount ?? 0);
+        }
 
         action.character.useSkill(action.skill.name, target);
 

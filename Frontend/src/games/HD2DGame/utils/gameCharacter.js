@@ -253,6 +253,8 @@ export class GameCharacter {
 
     this.mesh.userData.character = this;
     this._hitShakeId = 0;
+    this._pendingServerDamage = null;
+    this._pendingServerHeal = null;
   }
 
   get animationController() {
@@ -377,7 +379,11 @@ export class GameCharacter {
   }
 
   takeDamage(damage) {
-    const actualDamage = Math.max(0, damage - this.defense);
+    const hasOverride = this._pendingServerDamage !== null;
+    const actualDamage = hasOverride
+      ? Math.max(0, this._pendingServerDamage)
+      : Math.max(0, damage - this.defense);
+    this._pendingServerDamage = null;
     this.health = Math.max(0, this.health - actualDamage);
 
     this.healthBar.update(this.health, this.maxHealth);
@@ -399,11 +405,23 @@ export class GameCharacter {
   }
 
   heal(amount) {
-    const actualHeal = Math.min(amount, this.maxHealth - this.health);
-    this.health = Math.min(this.maxHealth, this.health + amount);
+    const hasOverride = this._pendingServerHeal !== null;
+    const actualHeal = hasOverride
+      ? Math.min(this._pendingServerHeal, this.maxHealth - this.health)
+      : Math.min(amount, this.maxHealth - this.health);
+    this._pendingServerHeal = null;
+    this.health = Math.min(this.maxHealth, this.health + actualHeal);
 
     this.healthBar.update(this.health, this.maxHealth);
 
     return actualHeal;
+  }
+
+  setNextDamageOverride(amount) {
+    this._pendingServerDamage = amount;
+  }
+
+  setNextHealOverride(amount) {
+    this._pendingServerHeal = amount;
   }
 }

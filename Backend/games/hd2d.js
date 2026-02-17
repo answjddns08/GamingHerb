@@ -23,6 +23,165 @@ class HD2DGame {
 		this.turnId = 0;
 		this.pendingTurnActions = new Map();
 		this.pendingTurnCharacters = new Map();
+		this.charactersByName = new Map();
+	}
+
+	initializeCharactersIfNeeded(characterLists) {
+		if (this.charactersByName.size > 0) return;
+		characterLists.forEach((list) => {
+			list.forEach((character) => {
+				if (!character?.name) return;
+				const baseDamage = character.baseDamage ?? character.damage ?? 0;
+				const baseDefense = character.baseDefense ?? character.defense ?? 0;
+				this.charactersByName.set(character.name, {
+					name: character.name,
+					team: character.team,
+					health: character.health ?? character.maxHealth ?? 0,
+					maxHealth: character.maxHealth ?? character.health ?? 0,
+					damage: character.damage ?? 0,
+					defense: character.defense ?? 0,
+					speed: character.speed ?? 0,
+					baseDamage,
+					baseDefense,
+					activeBuffs: [],
+					damageDealt: 0,
+					damageTaken: 0,
+				});
+			});
+		});
+	}
+
+	applyBuff(target, buffType, amount, duration) {
+		if (!target || !buffType || !amount || !duration) return;
+		const buff = { type: buffType, amount, duration };
+		target.activeBuffs.push(buff);
+
+		if (buffType === "damage") {
+			target.damage += amount;
+		} else if (buffType === "defense") {
+			target.defense += amount;
+		} else if (buffType === "health") {
+			target.maxHealth += amount;
+			target.health += amount;
+		}
+	}
+
+	updateBuffs() {
+		this.charactersByName.forEach((character) => {
+			character.activeBuffs = character.activeBuffs.filter((buff) => {
+				buff.duration -= 1;
+				if (buff.duration > 0) return true;
+
+				if (buff.type === "damage") {
+					character.damage = Math.max(
+						character.baseDamage,
+						character.damage - buff.amount,
+					);
+				} else if (buff.type === "defense") {
+					character.defense = Math.max(
+						character.baseDefense,
+						character.defense - buff.amount,
+					);
+				} else if (buff.type === "health") {
+					character.maxHealth = Math.max(character.maxHealth - buff.amount, 1);
+					character.health = Math.min(character.health, character.maxHealth);
+				}
+
+				return false;
+			});
+		});
+	}
+
+	resolveAction(actionItem) {
+		const actor = this.charactersByName.get(actionItem.actorName);
+		const target = this.charactersByName.get(actionItem.targetName);
+		if (!actor || !target || actor.health <= 0 || target.health <= 0) {
+			return { type: "skipped" };
+		}
+
+		if (actionItem.skillType === "heal") {
+			const healAmount = Math.max(0, actionItem.skillPower ?? 0);
+			const actualHeal = Math.min(healAmount, target.maxHealth - target.health);
+			target.health = Math.min(target.maxHealth, target.health + actualHeal);
+			return {
+				type: "heal",
+				amount: actualHeal,
+				targetHealth: target.health,
+				targetMaxHealth: target.maxHealth,
+			};
+		}
+
+		if (actionItem.skillType === "buff") {
+			const buffType = actionItem.buffType || "damage";
+			const amount = Math.max(0, actionItem.skillPower ?? 0);
+			const duration = Math.max(1, actionItem.buffDuration ?? 2);
+			this.applyBuff(target, buffType, amount, duration);
+			return {
+				type: "buff",
+				buffType,
+				amount,
+				duration,
+			};
+		}
+
+		const baseDamage = Math.max(0, actionItem.skillPower ?? 0);
+		const actualDamage = Math.max(0, baseDamage - target.defense);
+		target.health = Math.max(0, target.health - actualDamage);
+		actor.damageDealt += actualDamage;
+		target.damageTaken += actualDamage;
+
+		return {
+			type: "damage",
+			amount: actualDamage,
+			targetHealth: target.health,
+			targetMaxHealth: target.maxHealth,
+			targetDied: target.health <= 0,
+		};
+	}
+
+	buildSnapshot() {
+		const characters = Array.from(this.charactersByName.values()).map(
+			(character) => ({
+				name: character.name,
+				team: character.team,
+				health: character.health,
+				maxHealth: character.maxHealth,
+				damage: character.damage,
+				defense: character.defense,
+				speed: character.speed,
+				damageDealt: character.damageDealt,
+				damageTaken: character.damageTaken,
+			}),
+		);
+
+		return { characters };
+	}
+
+	getGameOverState() {
+		const teamCounts = new Map();
+		this.charactersByName.forEach((character) => {
+			const isAlive = character.health > 0;
+			const count = teamCounts.get(character.team) || { alive: 0, total: 0 };
+			count.total += 1;
+			if (isAlive) count.alive += 1;
+			teamCounts.set(character.team, count);
+		});
+
+		if (teamCounts.size === 0) {
+			return { gameOver: false, winner: "", loser: "" };
+		}
+
+		const teams = Array.from(teamCounts.entries());
+		const aliveTeams = teams.filter(([, info]) => info.alive > 0);
+		if (aliveTeams.length === 1 && teams.length > 1) {
+			const winner = aliveTeams[0][0];
+			const loser = teams.find(([team]) => team !== winner)?.[0] || "";
+			return { gameOver: true, winner, loser };
+		}
+		if (aliveTeams.length === 0) {
+			return { gameOver: true, winner: "draw", loser: "" };
+		}
+		return { gameOver: false, winner: "", loser: "" };
 	}
 
 	getState() {
@@ -142,20 +301,16 @@ class HD2DGame {
 					return { success: true };
 				}
 
-				const charactersByName = new Map();
-				for (const characterList of this.pendingTurnCharacters.values()) {
-					characterList.forEach((character) => {
-						if (!character?.name) return;
-						charactersByName.set(character.name, character);
-					});
-				}
+				this.initializeCharactersIfNeeded(
+					Array.from(this.pendingTurnCharacters.values()),
+				);
 
 				const mergedActions = Array.from(
 					this.pendingTurnActions.values(),
 				).flat();
 				const orderedActions = mergedActions
 					.map((actionItem, index) => {
-						const actor = charactersByName.get(actionItem.actorName);
+						const actor = this.charactersByName.get(actionItem.actorName);
 						return {
 							...actionItem,
 							speed: actor?.speed ?? 0,
@@ -171,6 +326,17 @@ class HD2DGame {
 				this.pendingTurnActions.clear();
 				this.pendingTurnCharacters.clear();
 				this.turnId += 1;
+				this.turnCount += 1;
+
+				const resolvedActions = orderedActions.map((actionItem) => ({
+					...actionItem,
+					result: this.resolveAction(actionItem),
+				}));
+
+				this.updateBuffs();
+				const snapshot = this.buildSnapshot();
+				this.characters = snapshot.characters;
+				const gameOverState = this.getGameOverState();
 
 				return {
 					success: true,
@@ -178,7 +344,11 @@ class HD2DGame {
 						type: "game:turnResolved",
 						payload: {
 							turnId: this.turnId,
-							actions: orderedActions,
+							actions: resolvedActions,
+							snapshot,
+							gameOver: gameOverState.gameOver,
+							winner: gameOverState.winner,
+							loser: gameOverState.loser,
 						},
 					},
 					shouldBroadcast: true,

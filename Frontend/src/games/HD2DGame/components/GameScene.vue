@@ -163,16 +163,27 @@ const battleResult = ref({
   characters: [],
 });
 
-function buildBattleResult() {
-  let winner = "";
-  let loser = "";
-  const characters = [...gameManager.friendly, ...gameManager.enemy].map((character) => ({
+const BUFF_SKILL_META = {
+  분노: { buffType: "damage", duration: 2 },
+  "방어 태세": { buffType: "defense", duration: 2 },
+};
+
+function buildBattleResult(snapshot = null, winner = "", loser = "") {
+  const fallbackCharacters = [...gameManager.friendly, ...gameManager.enemy].map((character) => ({
     name: character.name,
     team: character.isFriendly ? "friendly" : "enemy",
-    hp: character.hp,
-    maxHp: character.maxHp,
-    sprite: character.sprite.material.map,
+    damageDealt: character.damageDealt ?? 0,
+    damageTaken: character.damageTaken ?? 0,
   }));
+
+  const characters = snapshot?.characters?.length
+    ? snapshot.characters.map((character) => ({
+        name: character.name,
+        team: character.team,
+        damageDealt: character.damageDealt ?? 0,
+        damageTaken: character.damageTaken ?? 0,
+      }))
+    : fallbackCharacters;
 
   return { winner, loser, characters };
 }
@@ -232,15 +243,52 @@ function buildTurnSubmission() {
       actorName: action.character.name,
       skillName: action.skill.name,
       targetName: action.target.name,
+      skillType: action.skill.type,
+      skillPower: action.skill.power,
+      buffType: BUFF_SKILL_META[action.skill.name]?.buffType,
+      buffDuration: BUFF_SKILL_META[action.skill.name]?.duration,
     }));
 
   const characters = gameManager.friendly.map((character) => ({
     name: character.name,
+    team: mySelectedTeam.value,
+    health: character.health,
+    maxHealth: character.maxHealth,
+    damage: character.damage,
+    defense: character.defense,
     speed: character.speed,
-    team: "friendly",
+    baseDamage: character.baseDamage ?? character.damage,
+    baseDefense: character.baseDefense ?? character.defense,
   }));
 
   return { actions, characters };
+}
+
+function applySnapshot(snapshot) {
+  if (!snapshot?.characters?.length) return;
+
+  snapshot.characters.forEach((state) => {
+    const character = getCharacterByName(state.name);
+    if (!character) return;
+
+    character.health = state.health;
+    character.maxHealth = state.maxHealth;
+    character.damage = state.damage;
+    character.defense = state.defense;
+    character.speed = state.speed;
+    character.damageDealt = state.damageDealt ?? 0;
+    character.damageTaken = state.damageTaken ?? 0;
+
+    character.healthBar.update(character.health, character.maxHealth);
+
+    if (character.health <= 0) {
+      character.removeHealthBarFromScene(sceneRef.value);
+      if (character.sprite?.parent) {
+        character.sprite.parent.remove(character.sprite);
+      }
+      gameManager.removeCharacter(character);
+    }
+  });
 }
 
 async function handleStartBattle() {
@@ -487,7 +535,7 @@ onMounted(() => {
         const skill = actor.skills.find((s) => s.name === action.skillName);
         if (!skill) return null;
 
-        return { character: actor, skill, target };
+        return { character: actor, skill, target, result: action.result };
       })
       .filter(Boolean);
 
@@ -496,11 +544,10 @@ onMounted(() => {
 
     await executeActionsSequentially(gameManager, sceneRef.value);
 
-    if (!getAliveCharacters(gameManager.friendly).length) {
-      battleResult.value = buildBattleResult();
-      showResultModal.value = true;
-    } else if (!getAliveCharacters(gameManager.enemy).length) {
-      battleResult.value = buildBattleResult();
+    applySnapshot(payload.snapshot);
+
+    if (payload.gameOver) {
+      battleResult.value = buildBattleResult(payload.snapshot, payload.winner, payload.loser);
       showResultModal.value = true;
     }
 
