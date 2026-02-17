@@ -54,6 +54,7 @@ import {
   createCharacter,
   getSoldierAnimations,
   getOrcAnimations,
+  makeTeams,
 } from "../utils/characterFactory.js";
 import { createSkills } from "../utils/skills.js";
 import { createTree } from "../utils/trees.js";
@@ -226,6 +227,11 @@ function buildBattleResult() {
  * @type {import("vue").Ref<string|null>}
  */
 const enemySelectedTeam = ref(null);
+/**
+ * 종족 선택 및 게임 시작
+ * @type {import("vue").Ref<string|null>}
+ */
+const mySelectedTeam = ref(null);
 
 /**
  * 적 행동 할당 및 턴 실행
@@ -233,6 +239,7 @@ const enemySelectedTeam = ref(null);
  */
 function handleRaceSelect(teamName) {
   console.log("선택한 종족:", teamName);
+  mySelectedTeam.value = teamName;
   multi.SendGameAction("game:selectTeam", { team: teamName });
 }
 
@@ -516,6 +523,7 @@ onMounted(() => {
   multi.setTeamSelectedCallback((teamName, done) => {
     enemySelectedTeam.value = teamName;
     if (done) {
+      makeTeams(mySelectedTeam.value, enemySelectedTeam.value, sceneRef.value, gameManager);
       showRaceSelection.value = false;
     }
   });

@@ -16,6 +16,7 @@ export function makeTeams(friendlyTeam, enemyTeam, scene, manager) {
   const friendGroup = new Group();
   const enemyGroup = new Group();
 
+  // friendlyTeam
   Teams[friendlyTeam].characters.forEach(async (char) => {
     const characterMesh = await createCharacter(char.animation, 64, 64, "idle");
 
@@ -41,6 +42,7 @@ export function makeTeams(friendlyTeam, enemyTeam, scene, manager) {
     manager.addCharacter(characterData, true);
   });
 
+  // enemyTeam
   Teams[enemyTeam].characters.forEach(async (char) => {
     const characterMesh = await createCharacter(char.animation, 64, 64, "idle");
 
