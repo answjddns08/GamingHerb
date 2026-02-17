@@ -4,6 +4,11 @@ import { createParticles } from "./particleManager.js";
 import { GameCharacter } from "./gameCharacter";
 import { TARGET_SELECTION_CONFIG } from "../constants/gameConfig.js";
 
+export const BUFF_SKILL_META = {
+  분노: { buffType: "damage", duration: 2 },
+  "방어 태세": { buffType: "defense", duration: 2 },
+};
+
 /**
  * 지연 함수
  * @param {number} ms

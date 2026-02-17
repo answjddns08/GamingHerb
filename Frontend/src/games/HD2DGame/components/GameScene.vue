@@ -56,7 +56,7 @@ import {
   getOrcAnimations,
   makeTeams,
 } from "../utils/characterFactory.js";
-import { createSkills } from "../utils/skills.js";
+import { createSkills, BUFF_SKILL_META } from "../utils/skills.js";
 import { createTree } from "../utils/trees.js";
 import { updateVFXs } from "../utils/vfxManager.js";
 import { updateParticles } from "../utils/particleManager.js";
@@ -162,11 +162,6 @@ const battleResult = ref({
   loser: "",
   characters: [],
 });
-
-const BUFF_SKILL_META = {
-  분노: { buffType: "damage", duration: 2 },
-  "방어 태세": { buffType: "defense", duration: 2 },
-};
 
 function buildBattleResult(snapshot = null, winner = "", loser = "") {
   const fallbackCharacters = [...gameManager.friendly, ...gameManager.enemy].map((character) => ({
