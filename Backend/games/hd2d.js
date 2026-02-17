@@ -20,6 +20,9 @@ class HD2DGame {
 		this.gameOver = false;
 		this.winner = null;
 		this.turnCount = 0;
+		this.turnId = 0;
+		this.pendingTurnActions = new Map();
+		this.pendingTurnCharacters = new Map();
 	}
 
 	getState() {
@@ -101,6 +104,81 @@ class HD2DGame {
 						type: "game:selectTeam",
 						payload: {
 							selectedTeams: team,
+						},
+					},
+					shouldBroadcast: true,
+				};
+			}
+
+			case "game:submitTurn": {
+				if (!this.players.has(userId)) {
+					return { success: false };
+				}
+
+				if (!Array.isArray(action.payload?.actions)) {
+					return {
+						success: false,
+						response: {
+							type: "game:error",
+							payload: { message: "Invalid actions payload." },
+						},
+					};
+				}
+
+				if (!Array.isArray(action.payload?.characters)) {
+					return {
+						success: false,
+						response: {
+							type: "game:error",
+							payload: { message: "Invalid characters payload." },
+						},
+					};
+				}
+
+				this.pendingTurnActions.set(userId, action.payload.actions);
+				this.pendingTurnCharacters.set(userId, action.payload.characters);
+
+				if (this.pendingTurnActions.size < this.players.size) {
+					return { success: true };
+				}
+
+				const charactersByName = new Map();
+				for (const characterList of this.pendingTurnCharacters.values()) {
+					characterList.forEach((character) => {
+						if (!character?.name) return;
+						charactersByName.set(character.name, character);
+					});
+				}
+
+				const mergedActions = Array.from(
+					this.pendingTurnActions.values(),
+				).flat();
+				const orderedActions = mergedActions
+					.map((actionItem, index) => {
+						const actor = charactersByName.get(actionItem.actorName);
+						return {
+							...actionItem,
+							speed: actor?.speed ?? 0,
+							_order: index,
+						};
+					})
+					.sort((a, b) => {
+						if (b.speed !== a.speed) return b.speed - a.speed;
+						return a._order - b._order;
+					})
+					.map(({ _order, speed, ...rest }) => rest);
+
+				this.pendingTurnActions.clear();
+				this.pendingTurnCharacters.clear();
+				this.turnId += 1;
+
+				return {
+					success: true,
+					response: {
+						type: "game:turnResolved",
+						payload: {
+							turnId: this.turnId,
+							actions: orderedActions,
 						},
 					},
 					shouldBroadcast: true,

@@ -24,6 +24,11 @@ function useMulti() {
   let teamSelectedCallback = null; // 팀 선택 후 실행할 콜백 함수
 
   /**
+   * @type {(payload: object) => void | null} 턴 해석 결과 콜백
+   */
+  let turnResolvedCallback = null;
+
+  /**
    * get game and room IDs from URL(w. props)
    * @param {string} game
    * @param {string} room
@@ -36,10 +41,12 @@ function useMulti() {
 
   function registerHandlers() {
     socketStore.registerHandler("game:selectTeam", oppositeTeamSelected);
+    socketStore.registerHandler("game:turnResolved", handleTurnResolved);
   }
 
   function unregisterHandlers() {
     socketStore.unregisterHandler("game:selectTeam", oppositeTeamSelected);
+    socketStore.unregisterHandler("game:turnResolved", handleTurnResolved);
   }
 
   /**
@@ -67,6 +74,11 @@ function useMulti() {
     teamSelectedCallback && teamSelectedCallback(payload.selectedTeams, payload.done);
   }
 
+  function handleTurnResolved(payload) {
+    if (!turnResolvedCallback) return;
+    turnResolvedCallback(payload);
+  }
+
   /**
    *
    * @param {(teamName: string, done: boolean) => void} callback - 팀 선택 후 실행할 콜백 함수
@@ -75,12 +87,20 @@ function useMulti() {
     teamSelectedCallback = callback;
   }
 
+  /**
+   * @param {(payload: object) => void} callback
+   */
+  function setTurnResolvedCallback(callback) {
+    turnResolvedCallback = callback;
+  }
+
   return {
     registerHandlers,
     unregisterHandlers,
     SendGameAction,
     getIDs,
     setTeamSelectedCallback,
+    setTurnResolvedCallback,
   };
 }
 

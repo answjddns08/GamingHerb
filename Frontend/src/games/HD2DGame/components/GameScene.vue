@@ -103,8 +103,14 @@ const {
   updateEmissivePulse,
 } = useCharacterSelection();
 
-const { registerAction, turnActions, isBattleReady, friendlyCount, executeActionsSequentially } =
-  useBattleActions();
+const {
+  registerAction,
+  turnActions,
+  isBattleReady,
+  friendlyCount,
+  executeActionsSequentially,
+  setActions,
+} = useBattleActions();
 
 const {
   isTargeting,
@@ -157,66 +163,15 @@ const battleResult = ref({
   characters: [],
 });
 
-function getAliveCharacters(list) {
-  return list.filter((character) => character.isAlive());
-}
-
-function pickRandom(list) {
-  if (!list.length) return null;
-  const index = Math.floor(Math.random() * list.length);
-  return list[index];
-}
-
-function pickLowestHealth(list) {
-  if (!list.length) return null;
-  return [...list].sort((a, b) => a.health - b.health)[0];
-}
-
-function selectEnemySkill(character) {
-  const usableSkills = character.skills.filter((skill) => skill.canUse());
-  return pickRandom(usableSkills.length ? usableSkills : character.skills);
-}
-
-function selectTargetForEnemy(skill, enemy) {
-  if (!skill) return null;
-
-  if (skill.type === "heal") {
-    const allies = getAliveCharacters(gameManager.enemy).filter((c) => c.health < c.maxHealth);
-    return pickLowestHealth(allies) || enemy;
-  }
-
-  if (skill.type === "buff") {
-    return enemy;
-  }
-
-  const targets = getAliveCharacters(gameManager.friendly);
-  return pickLowestHealth(targets) || pickRandom(targets);
-}
-
 function buildBattleResult() {
-  const friendlyAlive = getAliveCharacters(gameManager.friendly);
-  const enemyAlive = getAliveCharacters(gameManager.enemy);
-  const friendlyWon = friendlyAlive.length > 0 && enemyAlive.length === 0;
-  const enemyWon = enemyAlive.length > 0 && friendlyAlive.length === 0;
-
   let winner = "";
   let loser = "";
-  if (friendlyWon) {
-    winner = "기사 집단";
-    loser = "오크 집단";
-  } else if (enemyWon) {
-    winner = "오크 집단";
-    loser = "기사 집단";
-  } else {
-    winner = "무승부";
-    loser = "-";
-  }
-
   const characters = [...gameManager.friendly, ...gameManager.enemy].map((character) => ({
     name: character.name,
-    team: character.isFriendly ? "기사" : "오크",
-    damageDealt: 0,
-    damageTaken: Math.max(0, character.maxHealth - character.health),
+    team: character.isFriendly ? "friendly" : "enemy",
+    hp: character.hp,
+    maxHp: character.maxHp,
+    sprite: character.sprite.material.map,
   }));
 
   return { winner, loser, characters };
@@ -264,17 +219,28 @@ function handleOpenResultModal() {
   showResultModal.value = true;
 }
 
-function assignEnemyActions() {
-  const enemies = getAliveCharacters(gameManager.enemy);
+function getCharacterByName(name) {
+  return [...gameManager.friendly, ...gameManager.enemy].find(
+    (character) => character.name === name,
+  );
+}
 
-  enemies.forEach((enemy) => {
-    const skill = selectEnemySkill(enemy);
-    const target = selectTargetForEnemy(skill, enemy);
+function buildTurnSubmission() {
+  const actions = turnActions.value
+    .filter((action) => action.character.isFriendly)
+    .map((action) => ({
+      actorName: action.character.name,
+      skillName: action.skill.name,
+      targetName: action.target.name,
+    }));
 
-    if (skill && target) {
-      registerAction(enemy, skill, target);
-    }
-  });
+  const characters = gameManager.friendly.map((character) => ({
+    name: character.name,
+    speed: character.speed,
+    team: "friendly",
+  }));
+
+  return { actions, characters };
 }
 
 async function handleStartBattle() {
@@ -287,27 +253,8 @@ async function handleStartBattle() {
   selectedCharacter.value = null;
   unfocus();
 
-  // 적 행동 할당 전 딜레이 (UI 전환 텀)
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  gameManager.startBattle();
-
-  assignEnemyActions();
-
-  // 전투 실행 전 딜레이 (배틀 순서 확인 텀)
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  await executeActionsSequentially(gameManager, sceneRef.value);
-
-  if (!getAliveCharacters(gameManager.friendly).length) {
-    battleResult.value = buildBattleResult();
-    showResultModal.value = true;
-  } else if (!getAliveCharacters(gameManager.enemy).length) {
-    battleResult.value = buildBattleResult();
-    showResultModal.value = true;
-  }
-
-  isExecutingTurn.value = false;
+  const submission = buildTurnSubmission();
+  multi.SendGameAction("game:submitTurn", submission);
 }
 
 /**
@@ -526,6 +473,38 @@ onMounted(() => {
       makeTeams(mySelectedTeam.value, enemySelectedTeam.value, sceneRef.value, gameManager);
       showRaceSelection.value = false;
     }
+  });
+
+  multi.setTurnResolvedCallback(async (payload) => {
+    if (!payload?.actions || !sceneRef.value) return;
+
+    const resolvedActions = payload.actions
+      .map((action) => {
+        const actor = getCharacterByName(action.actorName);
+        const target = getCharacterByName(action.targetName);
+        if (!actor || !target) return null;
+
+        const skill = actor.skills.find((s) => s.name === action.skillName);
+        if (!skill) return null;
+
+        return { character: actor, skill, target };
+      })
+      .filter(Boolean);
+
+    setActions(resolvedActions);
+    gameManager.startBattle();
+
+    await executeActionsSequentially(gameManager, sceneRef.value);
+
+    if (!getAliveCharacters(gameManager.friendly).length) {
+      battleResult.value = buildBattleResult();
+      showResultModal.value = true;
+    } else if (!getAliveCharacters(gameManager.enemy).length) {
+      battleResult.value = buildBattleResult();
+      showResultModal.value = true;
+    }
+
+    isExecutingTurn.value = false;
   });
 
   setThree();

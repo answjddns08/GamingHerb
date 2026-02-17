@@ -6,7 +6,7 @@ import { Skill } from "../utils/skills.js";
 export function useBattleActions() {
   /**
    * 턴별 행동 목록
-   * @type {Array<{character: GameCharacter, skill: Skill, target: GameCharacter}>} - 행동 객체 배열
+   * @type {import("vue").Ref<Array<{character: GameCharacter, skill: Skill, target: GameCharacter}>>} - 행동 객체 배열
    */
   const turnActions = ref([]);
   const totalCharacters = ref(0);
@@ -51,6 +51,14 @@ export function useBattleActions() {
    */
   function clearActions() {
     turnActions.value = [];
+  }
+
+  /**
+   * 서버에서 받은 행동 목록으로 교체
+   * @param {Array<{character: GameCharacter, skill: Skill, target: GameCharacter}>} actions
+   */
+  function setActions(actions) {
+    turnActions.value = [...actions];
   }
 
   /**
@@ -164,6 +172,7 @@ export function useBattleActions() {
     isBattleReady,
     registerAction,
     clearActions,
+    setActions,
     sortActionsBySpeed,
     executeActionsSequentially,
     updateCharacterCounts,
