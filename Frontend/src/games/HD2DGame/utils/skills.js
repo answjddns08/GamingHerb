@@ -216,8 +216,16 @@ export class Skill {
 
 /**
  * 스킬 생성 헬퍼
+ * @typedef {(scene?: Scene) => Skill} SkillFactory
+ * @typedef {Object<string, SkillFactory>} SkillsMap
+ * @type {SkillsMap}
  */
 export const createSkills = {
+  /**
+   * 병사 기본 공격 스킬 생성
+   * @param {Scene} [scene]
+   * @returns {Skill}
+   */
   soldierBasicAttack: () =>
     new Skill(
       "기본 공격",
@@ -243,8 +251,9 @@ export const createSkills = {
     ),
 
   /**
+   * 병사 강공 스킬 생성
    * @param {Scene} scene
-   * @returns
+   * @returns {Skill}
    */
   soldierPowerAttack: (scene) =>
     new Skill(
@@ -286,6 +295,7 @@ export const createSkills = {
     ),
 
   /**
+   * 병사 치료 스킬 생성
    * @param {Scene} scene
    * @returns {Skill}
    */
@@ -327,6 +337,11 @@ export const createSkills = {
       },
     ),
 
+  /**
+   * 오크 기본 공격 스킬 생성
+   * @param {Scene} [scene]
+   * @returns {Skill}
+   */
   orcBasicAttack: () =>
     new Skill(
       "기본 공격",
@@ -350,6 +365,11 @@ export const createSkills = {
       },
     ),
 
+  /**
+   * 오크 강타 스킬 생성
+   * @param {Scene} [scene]
+   * @returns {Skill}
+   */
   orcHeavySmash: () =>
     new Skill(
       "강타",
@@ -373,6 +393,11 @@ export const createSkills = {
       },
     ),
 
+  /**
+   * 오크 분노 버프 스킬 생성
+   * @param {Scene} [scene]
+   * @returns {Skill}
+   */
   orcRage: () =>
     new Skill(
       "분노",
@@ -390,6 +415,11 @@ export const createSkills = {
       },
     ),
 
+  /**
+   * 오크 방어 태세 버프 스킬 생성
+   * @param {Scene} [scene]
+   * @returns {Skill}
+   */
   orcDefensiveStance: () =>
     new Skill(
       "방어 태세",

@@ -20,6 +20,11 @@ export class GameManager {
     this.currentTurnIndex = 0;
   }
 
+  /**
+   *
+   * @param {GameCharacter} character - 추가할 캐릭터 객체
+   * @param {boolean} isFriendly - 아군인지 적군인지 여부 (true: 아군, false: 적군)
+   */
   addCharacter(character, isFriendly) {
     if (isFriendly) this.friendly.push(character);
     else this.enemy.push(character);
