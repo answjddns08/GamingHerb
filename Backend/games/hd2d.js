@@ -24,6 +24,8 @@ class HD2DGame {
 		this.pendingTurnActions = new Map();
 		this.pendingTurnCharacters = new Map();
 		this.charactersByName = new Map();
+		this.restartRequests = new Set();
+		this.leftPlayers = new Set();
 	}
 
 	initializeCharactersIfNeeded(characterLists) {
@@ -350,6 +352,51 @@ class HD2DGame {
 							winner: gameOverState.winner,
 							loser: gameOverState.loser,
 						},
+					},
+					shouldBroadcast: true,
+				};
+			}
+
+			case "game:restartRequest": {
+				if (!this.players.has(userId) || this.leftPlayers.has(userId)) {
+					return { success: false };
+				}
+
+				this.restartRequests.add(userId);
+				const allRequested = this.restartRequests.size === this.players.size;
+
+				if (allRequested) {
+					return {
+						success: true,
+						response: {
+							type: "game:restartConfirmed",
+							payload: {},
+						},
+						shouldBroadcast: true,
+					};
+				}
+
+				return {
+					success: true,
+					response: {
+						type: "game:restartRequested",
+						payload: { userId },
+					},
+					shouldBroadcast: true,
+				};
+			}
+
+			case "game:leaveMatch": {
+				if (!this.players.has(userId)) {
+					return { success: false };
+				}
+
+				this.leftPlayers.add(userId);
+				return {
+					success: true,
+					response: {
+						type: "game:opponentLeft",
+						payload: { userId },
 					},
 					shouldBroadcast: true,
 				};

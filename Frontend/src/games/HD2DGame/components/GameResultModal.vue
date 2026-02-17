@@ -35,7 +35,14 @@
       </section>
 
       <footer class="modal-actions">
-        <button class="primary-button" @click="handleRestart">재시작</button>
+        <button
+          class="primary-button"
+          :class="{ disabled: restartDisabled }"
+          :disabled="restartDisabled"
+          @click="handleRestart"
+        >
+          재시작
+        </button>
         <button class="ghost-button" @click="handleClose">나가기</button>
       </footer>
     </div>
@@ -52,6 +59,10 @@ const props = defineProps({
       characters: [],
     }),
   },
+  restartDisabled: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["close", "restart"]);
@@ -61,6 +72,7 @@ function handleClose() {
 }
 
 function handleRestart() {
+  if (props.restartDisabled) return;
   emit("restart");
 }
 </script>
@@ -197,5 +209,12 @@ function handleRestart() {
 .ghost-button:hover {
   transform: translate(-1px, -1px);
   box-shadow: 4px 4px 0 rgba(74, 43, 20, 0.7);
+}
+
+.primary-button.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 </style>

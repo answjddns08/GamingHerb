@@ -162,6 +162,9 @@ const battleResult = ref({
   loser: "",
   characters: [],
 });
+const restartNotice = ref("");
+const restartDisabled = ref(false);
+const restartRequested = ref(false);
 
 function buildBattleResult(snapshot = null, winner = "", loser = "") {
   const fallbackCharacters = [...gameManager.friendly, ...gameManager.enemy].map((character) => ({
@@ -207,15 +210,18 @@ function handleRaceSelect(teamName) {
 function handleResultClose() {
   console.log("결과 모달 닫기");
   showResultModal.value = false;
+  multi.SendGameAction("game:leaveMatch");
 }
 
 function handleResultRestart() {
   console.log("재시작 선택");
-  showResultModal.value = false;
+  if (restartDisabled.value || restartRequested.value) return;
+  restartRequested.value = true;
+  restartNotice.value = "재시작 요청을 보냈습니다.";
+  multi.SendGameAction("game:restartRequest");
 }
 
 function handleOpenRaceModal() {
-  console.log("종족 선택 모달 열기");
   showRaceSelection.value = true;
 }
 
@@ -501,15 +507,22 @@ function handleCanvasClick(intersectedObject) {
   isSelectedSomething.value = true;
 }
 
-onMounted(() => {
+onMounted(async () => {
   removeMouseEvent();
 
   multi.getIDs(props.gameId, props.roomName);
 
   multi.registerHandlers();
 
+  await multi.ensureConnected();
+
   multi.SendGameAction("game:join");
 
+  /**
+   * @param {string} teamName
+   * @param {boolean} done - 상대방도 종족을 선택했는지 여부
+   * @returns {void}
+   */
   multi.setTeamSelectedCallback((teamName, done) => {
     enemySelectedTeam.value = teamName;
     if (done) {
@@ -518,6 +531,15 @@ onMounted(() => {
     }
   });
 
+  /**
+   * @param {Object} payload
+   * @param {Array} payload.actions - 서버에서 처리된 행동 목록
+   * @param {Object} payload.snapshot - 행동 처리 후 게임 상태 스냅샷
+   * @param {boolean} payload.gameOver - 게임 종료 여부
+   * @param {string} payload.winner - 승자 팀 이름
+   * @param {string} payload.loser - 패자 팀 이름
+   * @returns {Promise<void>}
+   */
   multi.setTurnResolvedCallback(async (payload) => {
     if (!payload?.actions || !sceneRef.value) return;
 
@@ -549,6 +571,23 @@ onMounted(() => {
     isExecutingTurn.value = false;
   });
 
+  multi.setRestartRequestedCallback((payload) => {
+    if (payload?.userId) {
+      restartNotice.value = "상대방이 재시작을 요청했습니다.";
+    }
+  });
+
+  multi.setRestartConfirmedCallback(() => {
+    window.location.reload();
+  });
+
+  multi.setOpponentLeftCallback(() => {
+    restartDisabled.value = true;
+    restartNotice.value = "상대방이 나갔습니다. 재시작할 수 없습니다.";
+  });
+
+  handleOpenRaceModal();
+
   setThree();
 });
 
@@ -566,6 +605,9 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <div v-if="restartNotice" class="restart-banner">
+    {{ restartNotice }}
+  </div>
   <RaceSelectionModal
     v-if="showRaceSelection"
     @select="handleRaceSelect"
@@ -574,6 +616,7 @@ onUnmounted(() => {
   <GameResultModal
     v-if="showResultModal"
     :result="battleResult"
+    :restart-disabled="restartDisabled || restartRequested"
     @close="handleResultClose"
     @restart="handleResultRestart"
   />
@@ -903,5 +946,19 @@ canvas {
   background-color: #3e2723;
 
   border-radius: 0 0 0.25rem 0.25rem;
+}
+
+.restart-banner {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 60;
+  background: #fff2d9;
+  color: #2b1b0f;
+  border: 2px solid #4a2b14;
+  border-radius: 12px;
+  padding: 0.6rem 0.9rem;
+  box-shadow: 3px 3px 0 rgba(74, 43, 20, 0.7);
+  pointer-events: auto;
 }
 </style>

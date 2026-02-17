@@ -9,6 +9,7 @@ import { useUserStore } from "@/stores/user.js";
 function useMulti() {
   const socketStore = useSocketStore();
   const userStore = useUserStore();
+  const DEFAULT_WS_URL = "wss://gamingherb.redeyes.dev/api";
   /**
    * @type {String|null} 현재 게임 ID
    */
@@ -29,6 +30,21 @@ function useMulti() {
   let turnResolvedCallback = null;
 
   /**
+   * @type {(payload: object) => void | null} 재시작 요청 콜백
+   */
+  let restartRequestedCallback = null;
+
+  /**
+   * @type {(() => void) | null} 재시작 확정 콜백
+   */
+  let restartConfirmedCallback = null;
+
+  /**
+   * @type {(payload: object) => void | null} 상대방 나감 콜백
+   */
+  let opponentLeftCallback = null;
+
+  /**
    * get game and room IDs from URL(w. props)
    * @param {string} game
    * @param {string} room
@@ -39,14 +55,45 @@ function useMulti() {
     console.log("게임 ID:", gameId, "방 ID:", roomName);
   }
 
+  function ensureConnected(url = DEFAULT_WS_URL) {
+    if (socketStore.isConnected) return Promise.resolve(true);
+
+    socketStore.connect(url);
+
+    return new Promise((resolve) => {
+      let attempts = 0;
+      const maxAttempts = 50;
+      const checkConnection = () => {
+        if (socketStore.isConnected) {
+          resolve(true);
+          return;
+        }
+        attempts += 1;
+        if (attempts >= maxAttempts) {
+          resolve(false);
+          return;
+        }
+        setTimeout(checkConnection, 100);
+      };
+
+      checkConnection();
+    });
+  }
+
   function registerHandlers() {
     socketStore.registerHandler("game:selectTeam", oppositeTeamSelected);
     socketStore.registerHandler("game:turnResolved", handleTurnResolved);
+    socketStore.registerHandler("game:restartRequested", handleRestartRequested);
+    socketStore.registerHandler("game:restartConfirmed", handleRestartConfirmed);
+    socketStore.registerHandler("game:opponentLeft", handleOpponentLeft);
   }
 
   function unregisterHandlers() {
     socketStore.unregisterHandler("game:selectTeam", oppositeTeamSelected);
     socketStore.unregisterHandler("game:turnResolved", handleTurnResolved);
+    socketStore.unregisterHandler("game:restartRequested", handleRestartRequested);
+    socketStore.unregisterHandler("game:restartConfirmed", handleRestartConfirmed);
+    socketStore.unregisterHandler("game:opponentLeft", handleOpponentLeft);
   }
 
   /**
@@ -79,6 +126,21 @@ function useMulti() {
     turnResolvedCallback(payload);
   }
 
+  function handleRestartRequested(payload) {
+    if (!restartRequestedCallback) return;
+    restartRequestedCallback(payload);
+  }
+
+  function handleRestartConfirmed() {
+    if (!restartConfirmedCallback) return;
+    restartConfirmedCallback();
+  }
+
+  function handleOpponentLeft(payload) {
+    if (!opponentLeftCallback) return;
+    opponentLeftCallback(payload);
+  }
+
   /**
    *
    * @param {(teamName: string, done: boolean) => void} callback - 팀 선택 후 실행할 콜백 함수
@@ -94,13 +156,38 @@ function useMulti() {
     turnResolvedCallback = callback;
   }
 
+  /**
+   * @param {(payload: object) => void} callback
+   */
+  function setRestartRequestedCallback(callback) {
+    restartRequestedCallback = callback;
+  }
+
+  /**
+   * @param {() => void} callback
+   */
+  function setRestartConfirmedCallback(callback) {
+    restartConfirmedCallback = callback;
+  }
+
+  /**
+   * @param {(payload: object) => void} callback
+   */
+  function setOpponentLeftCallback(callback) {
+    opponentLeftCallback = callback;
+  }
+
   return {
     registerHandlers,
     unregisterHandlers,
     SendGameAction,
     getIDs,
+    ensureConnected,
     setTeamSelectedCallback,
     setTurnResolvedCallback,
+    setRestartRequestedCallback,
+    setRestartConfirmedCallback,
+    setOpponentLeftCallback,
   };
 }
 
