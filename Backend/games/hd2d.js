@@ -245,7 +245,11 @@ class HD2DGame {
 				// 플레이어 정보 추가 or 업데이트
 				this.players.set(userId, { team: team });
 
-				if (this.players.size === 2) {
+				const isAllSelected = Array.from(this.players.values()).every(
+					(player) => player.team !== null,
+				);
+
+				if (isAllSelected) {
 					return {
 						success: true,
 						response: {
