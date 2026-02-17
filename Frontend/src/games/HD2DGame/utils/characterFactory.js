@@ -31,8 +31,9 @@ export function makeTeams(friendlyTeam, enemyTeam, scene, manager) {
       char.defense,
       char.damage,
       char.speed,
-      char.skills,
       characterMesh,
+      true, // isFriendly
+      char.spritePath,
     );
 
     char.skills.forEach((skill) => {
@@ -60,8 +61,9 @@ export function makeTeams(friendlyTeam, enemyTeam, scene, manager) {
       char.defense,
       char.damage,
       char.speed,
-      char.skills,
       characterMesh,
+      false, // isFriendly
+      char.spritePath,
     );
 
     char.skills.forEach((skill) => {
