@@ -5,11 +5,11 @@
       <p class="modal-subtitle">사용할 집단을 고르세요.</p>
       <div class="option-grid">
         <button
-          v-for="team in Teams"
-          :key="team.name"
+          v-for="(team, teamKey) in Teams"
+          :key="teamKey"
           class="option-button"
-          :class="{ disabled: team.name === selectedTeam }"
-          @click="handleSelect(team.name)"
+          :class="{ disabled: teamKey === selectedTeam }"
+          @click="handleSelect(teamKey)"
         >
           <span class="option-title">{{ team.name }}</span>
           <span class="option-desc">{{ team.description }}</span>
