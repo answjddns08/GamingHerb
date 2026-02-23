@@ -208,11 +208,8 @@ class HD2DGame {
 	 * @param {Object} action.payload - 액션에 필요한 추가 데이터
 	 * @param {String} action.payload.team - 선택된 팀 이름 (예: 'soldier' 또는 'orc')
 	 * @param {String} userId - 액션을 보낸 플레이어의 ID
-	 * @param {String} room - 액션이 발생한 방 이름
-	 * @returns {Object} 처리 결과 (success, response, shouldBroadcast)
-	 *  - success: 액션 처리 성공 여부
-	 *  - response: 클라이언트에 보낼 응답 메시지 (type, payload)
-	 *  - shouldBroadcast: 다른 플레이어에게도 이 액션을 전파할지 여부
+	 * @param {Object} room - 액션이 발생한 방 정보 객체
+	 * @returns {import('../websockets/socket.js').GameActionResult} 게임 액션 처리 결과
 	 */
 	handleAction(action, userId, room) {
 		switch (action.type) {
@@ -250,12 +247,18 @@ class HD2DGame {
 				);
 
 				if (isAllSelected) {
+					// 모두 선택 완료: 전체 팀 매핑 정보 전송
+					const teams = {};
+					this.players.forEach((player, playerId) => {
+						teams[playerId] = player.team;
+					});
+
 					return {
 						success: true,
 						response: {
 							type: "game:selectTeam",
 							payload: {
-								selectedTeams: team,
+								teams: teams,
 								done: true,
 							},
 						},
@@ -263,15 +266,18 @@ class HD2DGame {
 					};
 				}
 
+				// 한 명만 선택: 상대방에게만 알림
 				return {
 					success: true,
 					response: {
 						type: "game:selectTeam",
 						payload: {
-							selectedTeams: team,
+							team: team,
+							done: false,
 						},
 					},
 					shouldBroadcast: true,
+					excludeSender: true,
 				};
 			}
 
@@ -362,10 +368,6 @@ class HD2DGame {
 			}
 
 			case "game:restartRequest": {
-				if (!this.players.has(userId) || this.leftPlayers.has(userId)) {
-					return { success: false };
-				}
-
 				this.restartRequests.add(userId);
 				const allRequested = this.restartRequests.size === this.players.size;
 

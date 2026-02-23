@@ -149,7 +149,7 @@ class ReversiGame {
 	 * @param {Object} action - 액션 객체 { type, payload }
 	 * @param {string} userId - 액션을 수행하는 사용자 ID
 	 * @param {Object} room - 방 정보 (플레이어 목록 등)
-	 * @returns {Object} - { success: boolean, response?: Object, shouldBroadcast?: boolean }
+	 * @returns {import('../websockets/socket.js').GameActionResult} 게임 액션 처리 결과
 	 */
 	handleAction(action, userId, room) {
 		const playerIds = Array.from(room.players.keys());
@@ -195,7 +195,7 @@ class ReversiGame {
 
 				// 상대방 찾기
 				const opponentPlayer = Array.from(room.players.values()).find(
-					(p) => p.userId !== userId
+					(p) => p.userId !== userId,
 				);
 
 				return {

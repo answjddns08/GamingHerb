@@ -20,9 +20,9 @@ function useMulti() {
   let roomName = null;
 
   /**
-   * @type {(teamName: string, done: boolean)|null} 팀 선택 후 실행할 콜백 함수
+   * @type {(myTeam: string|null, opponentTeam: string|null, done: boolean) => void | null}
    */
-  let teamSelectedCallback = null; // 팀 선택 후 실행할 콜백 함수
+  let teamSelectedCallback = null;
 
   /**
    * @type {(payload: object) => void | null} 턴 해석 결과 콜백
@@ -112,13 +112,25 @@ function useMulti() {
   }
 
   /**
-   *  상대 팀이 선택되었을 때 호출되는 핸들러
+   *  팀 선택 핸들러
    * @param {object} payload
-   * @param {string} payload.selectedTeams - 상대가 선택한 팀 이름
-   * @param {boolean} [payload.done=false] - 팀 선택이 완료되었는지 여부
+   * @param {string} [payload.team] - 상대가 선택한 팀 (done=false일 때)
+   * @param {Object<string, string>} [payload.teams] - 모든 플레이어의 팀 매핑 (done=true일 때)
+   * @param {boolean} payload.done - 팀 선택이 완료되었는지 여부
    */
   function oppositeTeamSelected(payload) {
-    teamSelectedCallback && teamSelectedCallback(payload.selectedTeams, payload.done);
+    if (!teamSelectedCallback) return;
+
+    if (payload.done) {
+      // 모두 선택 완료: teams 객체에서 자신과 상대 팀 찾기
+      const myTeam = payload.teams[userStore.id];
+      const opponentTeam = Object.entries(payload.teams).find(([id]) => id !== userStore.id)?.[1];
+
+      teamSelectedCallback(myTeam, opponentTeam, true);
+    } else {
+      // 상대만 선택: 상대 팀만 전달
+      teamSelectedCallback(null, payload.team, false);
+    }
   }
 
   function handleTurnResolved(payload) {
@@ -142,8 +154,11 @@ function useMulti() {
   }
 
   /**
-   *
-   * @param {(teamName: string, done: boolean) => void} callback - 팀 선택 후 실행할 콜백 함수
+   * 팀 선택 콜백 등록
+   * @param {(myTeam: string|null, opponentTeam: string|null, done: boolean) => void} callback
+   * - myTeam: 내 팀 (done=true일 때만 유효)
+   * - opponentTeam: 상대 팀
+   * - done: 모두 선택 완료 여부
    */
   function setTeamSelectedCallback(callback) {
     teamSelectedCallback = callback;

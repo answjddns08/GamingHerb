@@ -519,15 +519,24 @@ onMounted(async () => {
   multi.SendGameAction("game:join");
 
   /**
-   * @param {string} teamName
-   * @param {boolean} done - 상대방도 종족을 선택했는지 여부
+   * 팀 선택 콜백
+   * @param {string|null} myTeam - 내가 선택한 팀 (done=true일 때만)
+   * @param {string|null} opponentTeam - 상대가 선택한 팀
+   * @param {boolean} done - 모두 선택 완료 여부
    * @returns {void}
    */
-  multi.setTeamSelectedCallback((teamName, done) => {
-    enemySelectedTeam.value = teamName;
+  multi.setTeamSelectedCallback(async (myTeam, opponentTeam, done) => {
+    console.log("내 팀:", myTeam, "상대 팀:", opponentTeam, "모두 선택 완료:", done);
+
     if (done) {
-      makeTeams(mySelectedTeam.value, enemySelectedTeam.value, sceneRef.value, gameManager);
+      // 모두 선택 완료: 서버에서 받은 정보로 팀 설정
+      mySelectedTeam.value = myTeam;
+      enemySelectedTeam.value = opponentTeam;
+      await makeTeams(mySelectedTeam.value, enemySelectedTeam.value, sceneRef.value, gameManager);
       showRaceSelection.value = false;
+    } else {
+      // 상대만 선택: UI에 표시만
+      enemySelectedTeam.value = opponentTeam;
     }
   });
 
@@ -611,7 +620,7 @@ onUnmounted(() => {
   <RaceSelectionModal
     v-if="showRaceSelection"
     @select="handleRaceSelect"
-    :selected-team="enemySelectedTeam"
+    :selected-team="enemySelectedTeam || mySelectedTeam"
   />
   <GameResultModal
     v-if="showResultModal"

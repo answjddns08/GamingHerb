@@ -27,11 +27,12 @@ const gameLogicMap = {
 /**
  * @typedef {Object} GameActionResult
  * @property {boolean} success - 액션 처리 성공 여부
- * @property {boolean} shouldBroadcast - 모든 플레이어에게 브로드캐스트 여부
- * @property {Object|null} response - 단일 응답 객체
- * @property {Array|null} responses - 여러 응답이 필요한 경우 응답 객체 배열
- * @property {Room|null} shouldUpdateRoomStatus - 방 상태 업데이트가 필요한 경우 업데이트할 상태, 필요 없는 경우 null
- * @property {Object|null} targetPlayer - 특정 플레이어에게만 전송할 경우 해당 플레이어 정보, 그렇지 않으면 null
+ * @property {boolean} [shouldBroadcast] - 모든 플레이어에게 브로드캐스트 여부
+ * @property {boolean} [excludeSender] - 브로드캐스트 시 요청한 플레이어를 제외할지 여부 (기본값: false)
+ * @property {Object|null} [response] - 단일 응답 객체
+ * @property {Array|null} [responses] - 여러 응답이 필요한 경우 응답 객체 배열
+ * @property {string|null} [shouldUpdateRoomStatus] - 방 상태 업데이트가 필요한 경우 업데이트할 상태, 필요 없는 경우 null
+ * @property {Object|null} [targetPlayer] - 특정 플레이어에게만 전송할 경우 해당 플레이어 정보, 그렇지 않으면 null
  */
 
 /**
@@ -164,7 +165,7 @@ function setupWebsocket(wss) {
 								type: "playerJoined",
 								player: { userId: userId, userName: userName, isReady: false },
 							},
-							ws,
+							{ excludeWs: ws },
 						);
 					}
 					break;
@@ -215,7 +216,7 @@ function setupWebsocket(wss) {
 										timestamp: Date.now(),
 									},
 								},
-								ws,
+								{ excludeWs: ws },
 							);
 						}
 					} else if (action.type === "kickUser") {
@@ -347,7 +348,7 @@ function setupWebsocket(wss) {
 										timestamp: Date.now(),
 									},
 								},
-								ws,
+								{ excludeWs: ws },
 							);
 						}
 						break;
@@ -382,14 +383,22 @@ function setupWebsocket(wss) {
 						}
 						// 모든 플레이어에게 브로드캐스트하는 경우
 						else if (result.shouldBroadcast) {
+							const broadcastOptions = result.excludeSender
+								? { excludeWs: ws }
+								: {};
 							if (result.responses) {
 								// 여러 응답이 있는 경우
 								result.responses.forEach((response) => {
-									broadCastToRoom(gameId, roomName, response);
+									broadCastToRoom(gameId, roomName, response, broadcastOptions);
 								});
 							} else if (result.response) {
 								// 단일 응답인 경우
-								broadCastToRoom(gameId, roomName, result.response);
+								broadCastToRoom(
+									gameId,
+									roomName,
+									result.response,
+									broadcastOptions,
+								);
 							}
 						}
 					}
@@ -436,20 +445,30 @@ function setupWebsocket(wss) {
 						room.players.delete(userId);
 
 						// 다른 플레이어들에게 알림
-						broadCastToRoom(playerGameId, playerRoomName, {
-							type: "playerLeft",
-							playerId: userId,
-							playerName: player?.username || "Unknown",
-							reason: "intentional",
-						});
+						broadCastToRoom(
+							playerGameId,
+							playerRoomName,
+							{
+								type: "playerLeft",
+								playerId: userId,
+								playerName: player?.username || "Unknown",
+								reason: "intentional",
+							},
+							{ excludeWs: ws },
+						);
 
 						// 방이 비었거나 호스트가 나간 경우 방 삭제
 						if (room.players.size === 0 || room.hostId === userId) {
 							if (room.players.size > 0) {
-								broadCastToRoom(playerGameId, playerRoomName, {
-									type: "roomDeleted",
-									reason: "Host left",
-								});
+								broadCastToRoom(
+									playerGameId,
+									playerRoomName,
+									{
+										type: "roomDeleted",
+										reason: "Host left",
+									},
+									{ excludeWs: ws },
+								);
 							}
 							deleteRoom(playerGameId, playerRoomName);
 							console.log(
@@ -544,10 +563,15 @@ function handlePlayerDisconnectWithGrace(ws) {
 				// 방이 비었거나 호스트가 나간 경우 방 삭제
 				if (room.players.size === 0 || room.hostId === userId) {
 					if (room.players.size > 0) {
-						broadCastToRoom(gameId, roomName, {
-							type: "roomDeleted",
-							reason: "Host disconnected",
-						});
+						broadCastToRoom(
+							gameId,
+							roomName,
+							{
+								type: "roomDeleted",
+								reason: "Host disconnected",
+							},
+							{ excludeWs: ws },
+						);
 					}
 					deleteRoom(gameId, roomName);
 					console.log(`Room ${roomName} deleted due to timeout`);
@@ -555,11 +579,16 @@ function handlePlayerDisconnectWithGrace(ws) {
 
 				// 게임 중이었다면 게임 상태 처리
 				if (room.status === "active") {
-					broadCastToRoom(gameId, roomName, {
-						type: "gameInterrupted",
-						reason: "playerDisconnected",
-						disconnectedPlayer: player.username,
-					});
+					broadCastToRoom(
+						gameId,
+						roomName,
+						{
+							type: "gameInterrupted",
+							reason: "playerDisconnected",
+							disconnectedPlayer: player.username,
+						},
+						{ excludeWs: ws },
+					);
 					updateRoomStatus(gameId, roomName, "interrupted");
 				}
 			}, 30000); // 30초 유예 기간

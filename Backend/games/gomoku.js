@@ -205,7 +205,7 @@ class GomokuGame {
 	 * @param {Object} action - 액션 객체 { type, payload }
 	 * @param {string} userId - 액션을 수행하는 사용자 ID
 	 * @param {Object} room - 방 정보 (플레이어 목록 등)
-	 * @returns {Object} - { success: boolean, response?: Object, shouldBroadcast?: boolean }
+	 * @returns {import('../websockets/socket.js').GameActionResult} 게임 액션 처리 결과
 	 */
 	handleAction(action, userId, room) {
 		// 플레이어 색상을 room.playerColors에서 가져옴 (더 정확함)
@@ -217,10 +217,10 @@ class GomokuGame {
 			case "game:move": {
 				const { row, col } = action.payload;
 				console.log(
-					`Move attempt: ${userId} (${playerColor}) -> (${row}, ${col})`
+					`Move attempt: ${userId} (${playerColor}) -> (${row}, ${col})`,
 				);
 				console.log(
-					`Current game state: player=${this.currentPlayer}, gameOver=${this.gameOver}`
+					`Current game state: player=${this.currentPlayer}, gameOver=${this.gameOver}`,
 				);
 
 				// 플레이어 색상이 없으면 실패
@@ -239,7 +239,7 @@ class GomokuGame {
 				if (this.placeStone(row, col, playerColor)) {
 					console.log(`Move successful: Game state updated`);
 					console.log(
-						`New state: player=${this.currentPlayer}, gameOver=${this.gameOver}`
+						`New state: player=${this.currentPlayer}, gameOver=${this.gameOver}`,
 					);
 
 					return {
@@ -478,10 +478,10 @@ class GomokuGame {
 
 				// 이미 다른 플레이어가 선택한 색상인지 확인 (null이 아닌 경우만)
 				const existingPlayerWithColor = Array.from(
-					room.playerColors.entries()
+					room.playerColors.entries(),
 				).find(
 					([playerId, playerColor]) =>
-						playerId !== userId && playerColor === color
+						playerId !== userId && playerColor === color,
 				);
 
 				if (existingPlayerWithColor) {
@@ -542,7 +542,7 @@ class GomokuGame {
 									},
 								},
 								gameStartResponse,
-						  ]
+							]
 						: [
 								{
 									type: "game:selectColor",
@@ -551,7 +551,7 @@ class GomokuGame {
 										color: color,
 									},
 								},
-						  ],
+							],
 					shouldBroadcast: true,
 				};
 			}

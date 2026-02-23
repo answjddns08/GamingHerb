@@ -59,7 +59,7 @@ class WaitingMiniGame {
 		}, this.TICK_INTERVAL);
 
 		console.log(
-			`Game tick started at ${this.TICK_RATE}Hz for room: ${this.roomName}`
+			`Game tick started at ${this.TICK_RATE}Hz for room: ${this.roomName}`,
 		);
 	}
 
@@ -88,7 +88,7 @@ class WaitingMiniGame {
 				y: player.y,
 				dirX: player.dirX || 0,
 				dirY: player.dirY || 1,
-			})
+			}),
 		);
 
 		broadCastToRoom(
@@ -98,7 +98,7 @@ class WaitingMiniGame {
 				type: "playerMove",
 				payload: playersState,
 			},
-			null // 모든 플레이어에게 전송
+			null, // 모든 플레이어에게 전송
 		);
 	}
 
@@ -112,7 +112,7 @@ class WaitingMiniGame {
 	 */
 	joinPlayer(id, userName, x, y, ws) {
 		console.log(
-			`Player ${id} joined the waiting mini-game at position (${x}, ${y}).`
+			`Player ${id} joined the waiting mini-game at position (${x}, ${y}).`,
 		);
 
 		this.players.set(id, { x, y, userName, dirX: 0, dirY: 1 });
@@ -129,7 +129,7 @@ class WaitingMiniGame {
 					y: y,
 				},
 			},
-			ws
+			{ excludeWs: ws },
 		);
 
 		ws.send(
@@ -138,7 +138,7 @@ class WaitingMiniGame {
 				payload: {
 					players: this.GetPlayersCoordinates(),
 				},
-			})
+			}),
 		);
 	}
 
@@ -151,7 +151,7 @@ class WaitingMiniGame {
 	exitPlayer(id, ws) {
 		if (!this.players.has(id)) {
 			console.warn(
-				`Player ${id} tried to exit, but was not found in the waiting mini-game.`
+				`Player ${id} tried to exit, but was not found in the waiting mini-game.`,
 			);
 			return;
 		}
@@ -169,7 +169,7 @@ class WaitingMiniGame {
 					userId: id,
 				},
 			},
-			ws
+			{ excludeWs: ws },
 		);
 	}
 
@@ -245,7 +245,7 @@ class WaitingMiniGame {
 							dirY: dirY,
 						},
 					},
-					ws
+					{ excludeWs: ws },
 				);
 				break;
 			case "knockback":
@@ -261,7 +261,7 @@ class WaitingMiniGame {
 							knockbackY: knockbackY,
 						},
 					},
-					ws
+					{ excludeWs: ws },
 				);
 				break;
 			case "respawn":
@@ -277,7 +277,7 @@ class WaitingMiniGame {
 							y: y,
 						},
 					},
-					ws
+					{ excludeWs: ws },
 				);
 				break;
 			default:

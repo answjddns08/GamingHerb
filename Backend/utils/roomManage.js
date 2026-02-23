@@ -179,27 +179,30 @@ function leaveRoom(gameId, roomName, userId) {
  * @param {string} gameId - The ID of the game
  * @param {string} roomName - The name of the room to which the message will be sent
  * @param {object} message - don't need to stringify, it will be done in the function
- * @param {WebSocket} ws - The WebSocket connection of the user sending the message (To exclude from broadcast)
+ * @param {Object} [options] - Optional parameters
+ * @param {WebSocket} [options.excludeWs] - The WebSocket connection to exclude from broadcast (typically the sender)
  */
-function broadCastToRoom(gameId, roomName, message, ws = null) {
+function broadCastToRoom(gameId, roomName, message, options = {}) {
+	const { excludeWs = null } = options || {};
+
 	const room = getRoomDetails(gameId, roomName);
 
 	if (!room) return;
 
 	room.players.forEach((player) => {
-		if (ws && player.ws === ws) return; // Skip sending to the sender
+		if (excludeWs && player.ws === excludeWs) return; // Skip sending to the sender
 		if (!player.ws || player.ws.readyState !== 1) return; // Skip disconnected players
 
 		try {
 			console.log(
 				`Broadcasting to ${player.userId} in room ${roomName}:`,
-				message
+				message,
 			);
 			player.ws.send(JSON.stringify(message));
 		} catch (error) {
 			console.error(
 				`Failed to send message to player ${player.userId}:`,
-				error
+				error,
 			);
 			// Mark player as disconnected if send fails
 			player.disconnected = true;

@@ -25,14 +25,7 @@
     </header>
     <div class="grid grid-cols-4 gap-5 p-4">
       <div v-for="game in games" :key="game.id" class="bg-gray-300 p-4 rounded-lg shadow-md">
-        <img
-          :src="
-            game.thumbnail ||
-            'https://i.namu.wiki/i/Z4ZyjNsQ1Fvlz8QQHhfcrrTo4xgEyAf_D4S7J1p3LGT7wh-zIo_74MpSFAM0PUwyPOy5qpnQZGXM-bbqCKtJTA.webp'
-          "
-          :alt="game.name"
-          class="w-full object-cover rounded-lg mb-2"
-        />
+        <img :src="game.thumbnail" :alt="game.name" class="w-full object-cover rounded-lg mb-2" />
         <h2 class="text-lg font-semibold mb-1">{{ game.name }}</h2>
         <p class="text-gray-700 mb-2">
           {{ game.summary }}

@@ -12,67 +12,75 @@ import { GameManager } from "./gameManager.js";
  * @param {GameManager} manager - 게임 매니저 객체 (캐릭터 데이터와 상호작용하기 위해 필요)
  * @returns {Promise<void>}
  */
-export function makeTeams(friendlyTeam, enemyTeam, scene, manager) {
+export async function makeTeams(friendlyTeam, enemyTeam, scene, manager) {
   const friendGroup = new Group();
   const enemyGroup = new Group();
 
-  // friendlyTeam
-  Teams[friendlyTeam].characters.forEach(async (char) => {
-    const characterMesh = await createCharacter(char.animation, 64, 64, "idle");
+  // friendlyTeam - Promise.all로 모든 캐릭터 생성 완료 대기
+  await Promise.all(
+    Teams[friendlyTeam].characters.map(async (char) => {
+      const characterMesh = await createCharacter(char.animation, 64, 64, "idle");
 
-    characterMesh.position.copy(char.position);
-    characterMesh.scale.copy(char.scale);
+      const friendlyPos = char.position.clone();
+      friendlyPos.x = -Math.abs(friendlyPos.x); // 아군 팀 캐릭터들은 x값이 음수로 배치되도록 조정
 
-    friendGroup.add(characterMesh);
+      characterMesh.position.copy(friendlyPos);
+      characterMesh.scale.copy(char.scale);
 
-    const characterData = new GameCharacter(
-      char.name,
-      char.health,
-      char.defense,
-      char.damage,
-      char.speed,
-      characterMesh,
-      true, // isFriendly
-      char.spritePath,
-    );
+      friendGroup.add(characterMesh);
 
-    char.skills.forEach((skillFactory) => {
-      characterData.addSkill(skillFactory(scene));
-    });
+      const characterData = new GameCharacter(
+        char.name,
+        char.health,
+        char.defense,
+        char.damage,
+        char.speed,
+        characterMesh,
+        true, // isFriendly
+        char.spritePath,
+      );
 
-    manager.addCharacter(characterData, true);
-  });
+      char.skills.forEach((skillFactory) => {
+        characterData.addSkill(skillFactory(scene));
+      });
 
-  // enemyTeam
-  Teams[enemyTeam].characters.forEach(async (char) => {
-    const characterMesh = await createCharacter(char.animation, 64, 64, "idle");
+      manager.addCharacter(characterData, true);
+    }),
+  );
 
-    const enemyPos = char.position.clone();
-    enemyPos.x = Math.abs(enemyPos.x); // 적 팀 캐릭터들은 x값이 양수로 배치되도록 조정
+  // enemyTeam - Promise.all로 모든 캐릭터 생성 완료 대기
+  await Promise.all(
+    Teams[enemyTeam].characters.map(async (char) => {
+      const characterMesh = await createCharacter(char.animation, 64, 64, "idle");
 
-    characterMesh.position.copy(enemyPos);
-    characterMesh.scale.copy(char.scale);
+      const enemyPos = char.position.clone();
+      enemyPos.x = Math.abs(enemyPos.x); // 적 팀 캐릭터들은 x값이 양수로 배치되도록 조정
 
-    enemyGroup.add(characterMesh);
+      characterMesh.position.copy(enemyPos);
+      characterMesh.scale.copy(char.scale);
 
-    const characterData = new GameCharacter(
-      char.name,
-      char.health,
-      char.defense,
-      char.damage,
-      char.speed,
-      characterMesh,
-      false, // isFriendly
-      char.spritePath,
-    );
+      enemyGroup.add(characterMesh);
 
-    char.skills.forEach((skillFactory) => {
-      characterData.addSkill(skillFactory(scene));
-    });
+      const characterData = new GameCharacter(
+        char.name,
+        char.health,
+        char.defense,
+        char.damage,
+        char.speed,
+        characterMesh,
+        false, // isFriendly
+        char.spritePath,
+      );
 
-    manager.addCharacter(characterData, false);
-  });
+      char.skills.forEach((skillFactory) => {
+        characterData.addSkill(skillFactory(scene));
+      });
 
+      manager.addCharacter(characterData, false);
+    }),
+  );
+
+  // 모든 캐릭터 생성이 완료된 후 씬에 추가
   scene.add(friendGroup);
   scene.add(enemyGroup);
 }
