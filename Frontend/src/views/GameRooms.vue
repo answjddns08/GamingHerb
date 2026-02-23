@@ -1,106 +1,106 @@
 <template>
-  <main>
-    <header class="flex justify-between items-center p-4">
-      <div class="flex items-center">
-        <SettingIcon />
+  <main class="game-rooms-main">
+    <header class="header-container">
+      <div class="header-left">
+        <!-- <SettingIcon /> -->
         <userBoard />
       </div>
-      <div class="flex flex-col items-center gap-4">
-        <span class="text-4xl font-bold">Game Rooms</span>
-        <!-- <div>
-          <input
-            type="text"
-            placeholder="search game rooms"
-            class="border border-gray-300 rounded px-3 py-2 mr-2"
-          />
-          <button
-            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-            type="submit"
-            @click.prevent
-          >
-            search
-          </button>
-        </div> -->
-      </div>
-      <div>
-        <div class="flex flex-col items-end gap-4">
-          <RouterLink :to="{ name: 'make-room', params: { gameId: props.gameId } }">
-            <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">
-              Make New Room
-            </button>
-          </RouterLink>
-          <button
-            @click="refreshRooms"
-            :disabled="isRefreshing"
-            class="refresh-button text-white px-4 py-2 rounded transition relative overflow-hidden min-w-[120px]"
-            :class="{
-              'bg-gray-500 hover:bg-gray-600': !isRefreshing,
-              'cursor-not-allowed cooldown-active': isRefreshing,
-            }"
-          >
-            <!-- CSS 애니메이션으로 처리되는 쿨타임 오버레이 -->
-            <div v-if="isRefreshing" class="cooldown-overlay"></div>
-
-            <!-- 버튼 내용 -->
-            <div class="relative flex items-center justify-center gap-2" style="z-index: 3">
-              <span>{{ isRefreshing ? "새로고침 중..." : "Refresh" }}</span>
-            </div>
-          </button>
-        </div>
+      <span class="header-title">Game Rooms</span>
+      <div class="header-actions">
+        <RouterLink :to="{ name: 'make-room', params: { gameId: props.gameId } }">
+          <button class="btn-create">Create Room</button>
+        </RouterLink>
+        <button
+          @click="refreshRooms"
+          :disabled="isRefreshing"
+          class="btn-refresh"
+          :class="{ refreshing: isRefreshing }"
+        >
+          <div v-if="isRefreshing" class="cooldown-overlay"></div>
+          <span>{{ isRefreshing ? "Refreshing..." : "Refresh" }}</span>
+        </button>
       </div>
     </header>
-    <div class="grid grid-cols-4 gap-5 p-4">
-      <div
-        v-for="roomName in Object.keys(rooms)"
-        :key="roomName"
-        class="bg-gray-300 p-4 rounded-lg shadow-md"
-      >
-        <img :src="gameThumbnail" :alt="props.gameId" class="w-full object-cover rounded-lg mb-2" />
-        <h2 class="text-2xl font-semibold mb-1">{{ roomName }}</h2>
-        <div>
-          <p class="text-gray-500 text-sm">
-            Players: {{ Object.keys(rooms[roomName].players || {}).length }} /
-            {{ rooms[roomName].settings.maxPlayerCount }}
-          </p>
-          <p class="text-gray-500 text-sm">Status: {{ rooms[roomName].status }}</p>
-          <p class="text-gray-500 text-sm">Created by: {{ rooms[roomName].host }}</p>
+
+    <div class="content-wrapper">
+      <!-- 왼쪽: 게임 설명 -->
+      <aside class="description-panel">
+        <div class="description-card">
+          <h2 class="description-title">{{ gameName }}</h2>
+          <div class="description-content">
+            <!-- GameDescription.md 렌더링 -->
+          </div>
         </div>
-        <RouterLink
-          :to="{ name: 'waiting-room', params: { gameId: props.gameId, roomId: roomName } }"
-        >
-          <button
-            v-if="
-              rooms[roomName].status === 'waiting' &&
-              Object.keys(rooms[roomName].players || {}).length <
-                rooms[roomName].settings.maxPlayerCount
-            "
-            class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition mt-2"
+      </aside>
+
+      <!-- 오른쪽: 게임 방 목록 -->
+      <section class="rooms-section">
+        <div v-if="Object.keys(rooms).length === 0" class="empty-state">
+          <p>흠.... 방이 없네요. 새로운 방을 만들어보세요!</p>
+        </div>
+        <div v-else class="rooms-list">
+          <RouterLink
+            v-for="roomName in Object.keys(rooms)"
+            :key="roomName"
+            :to="{ name: 'waiting-room', params: { gameId: props.gameId, roomId: roomName } }"
+            class="room-card-link"
           >
-            참가 하기
-          </button>
-          <button
-            v-else
-            class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition mt-2"
-          >
-            관전 하기
-          </button>
-        </RouterLink>
-      </div>
-      <div
-        v-show="Object.keys(rooms).length === 0"
-        class="col-span-4 text-center text-2xl font-bold text-gray-500"
-      >
-        흠.... 방이 없네요. 새로운 방을 만들어보세요!
-      </div>
+            <div class="room-card">
+              <div class="room-header">
+                <h3 class="room-name">{{ roomName }}</h3>
+              </div>
+              <div class="room-info">
+                <div class="info-item">
+                  <span class="info-label">Host:</span>
+                  <span class="info-value">{{ rooms[roomName].host }}</span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Players:</span>
+                  <span class="info-value">
+                    {{ Object.keys(rooms[roomName].players || {}).length }} /
+                    {{ rooms[roomName].settings.maxPlayerCount }}
+                  </span>
+                </div>
+                <div class="info-item">
+                  <span class="info-label">Status:</span>
+                  <span class="info-value">{{ rooms[roomName].status }}</span>
+                </div>
+              </div>
+              <button
+                class="room-action-button"
+                :class="{
+                  'btn-join':
+                    rooms[roomName].status === 'waiting' &&
+                    Object.keys(rooms[roomName].players || {}).length <
+                      rooms[roomName].settings.maxPlayerCount,
+                  'btn-spectate': !(
+                    rooms[roomName].status === 'waiting' &&
+                    Object.keys(rooms[roomName].players || {}).length <
+                      rooms[roomName].settings.maxPlayerCount
+                  ),
+                }"
+                @click.prevent
+              >
+                {{
+                  rooms[roomName].status === "waiting" &&
+                  Object.keys(rooms[roomName].players || {}).length <
+                    rooms[roomName].settings.maxPlayerCount
+                    ? "Join"
+                    : "Spectate"
+                }}
+              </button>
+            </div>
+          </RouterLink>
+        </div>
+      </section>
+    </div>
+
+    <div class="goback-container">
+      <RouterLink :to="{ name: 'home' }">
+        <button class="btn-goback">Go Back</button>
+      </RouterLink>
     </div>
   </main>
-  <div class="goBack-card">
-    <RouterLink :to="{ name: 'home' }">
-      <button class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition">
-        Go Back
-      </button>
-    </RouterLink>
-  </div>
 </template>
 
 <script setup>
@@ -136,6 +136,12 @@ const props = defineProps({
     default: "GomokuGame",
     required: true,
   },
+});
+
+/** @type {import('vue').ComputedRef<string>} 현재 게임의 이름 */
+const gameName = computed(() => {
+  const gameInfo = getGameById(props.gameId);
+  return gameInfo?.name || "Game Rooms";
 });
 
 /** @type {import('vue').ComputedRef<string>} 현재 게임의 썸네일 이미지 URL */
@@ -188,97 +194,293 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.goBack-card {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  padding: 10px;
+.game-rooms-main {
+  background: linear-gradient(135deg, #f5e6d3 0%, #e8dcc8 100%);
+  min-height: 100vh;
+  padding-bottom: 80px;
 }
 
-/* 리프레시 버튼 기본 스타일 */
-.refresh-button {
+.header-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px;
+  background-color: rgba(255, 248, 240, 0.95);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border-bottom: 2px solid #d4c9b8;
+  backdrop-filter: blur(10px);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-title {
+  font-size: 36px;
+  font-weight: 700;
+  color: #5a4a3a;
+  letter-spacing: -0.5px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.btn-create,
+.btn-refresh {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.3s ease;
+}
+
+.btn-create {
+  background: linear-gradient(135deg, #c9a86a 0%, #b8956f 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-create:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.btn-refresh {
+  background-color: #d4c9b8;
+  color: #5a4a3a;
+  min-width: 100px;
   position: relative;
-  z-index: 1; /* 낮은 z-index로 모달 아래에 위치 */
+  overflow: hidden;
 }
 
-/* 쿨타임 활성화 상태 */
-.cooldown-active {
-  background-color: #9ca3af !important; /* 어두운 회색 */
+.btn-refresh:hover:not(.refreshing) {
+  background-color: #c9b8a8;
+  transform: translateY(-2px);
 }
 
-/* CSS로만 처리되는 쿨타임 오버레이 */
+.btn-refresh.refreshing {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .cooldown-overlay {
   position: absolute;
   top: 0;
   left: 0;
   height: 100%;
-  width: 100%;
-  background-color: #6b7280; /* 원래 회색 */
-  transform-origin: left;
+  background-color: rgba(92, 74, 58, 0.2);
   animation: cooldown-progress 5s ease-out forwards;
-  z-index: 2; /* 버튼 내용보다는 위에, 모달보다는 아래에 */
 }
 
-/* 쿨타임 프로그레스 애니메이션 */
 @keyframes cooldown-progress {
   0% {
-    transform: scaleX(0);
+    width: 0%;
   }
   100% {
-    transform: scaleX(1);
+    width: 100%;
   }
 }
 
-/* 추가 시각적 효과 - 펄스 */
-.cooldown-active::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.1);
-  animation: pulse-subtle 2s ease-in-out infinite;
-  border-radius: inherit;
-  z-index: 1; /* 낮은 z-index */
+.content-wrapper {
+  display: flex;
+  gap: 32px;
+  padding: 32px;
+  max-width: 1600px;
+  margin: 0 auto;
 }
 
-@keyframes pulse-subtle {
-  0%,
-  100% {
-    opacity: 0;
+.description-panel {
+  flex-shrink: 0;
+  width: 280px;
+}
+
+.description-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  height: fit-content;
+  position: sticky;
+  top: 32px;
+}
+
+.description-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #5a4a3a;
+  margin: 0 0 16px 0;
+}
+
+.description-content {
+  font-size: 14px;
+  color: #5a4a3a;
+  line-height: 1.6;
+}
+
+.rooms-section {
+  flex: 1;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #5a4a3a;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.rooms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.room-card-link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.room-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 24px;
+  background: white;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid #f0e6d8;
+}
+
+.room-card:hover {
+  transform: translateX(8px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-color: #d4c9b8;
+}
+
+.room-header {
+  flex-shrink: 0;
+  min-width: 180px;
+}
+
+.room-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #5a4a3a;
+  margin: 0;
+}
+
+.room-info {
+  flex: 1;
+  display: flex;
+  gap: 32px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #a89968;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #5a4a3a;
+}
+
+.room-action-button {
+  flex-shrink: 0;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-join {
+  background: linear-gradient(135deg, #c9a86a 0%, #b8956f 100%);
+  color: white;
+}
+
+.btn-join:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(184, 149, 111, 0.3);
+}
+
+.btn-spectate {
+  background-color: #e8dcc8;
+  color: #5a4a3a;
+}
+
+.btn-spectate:hover {
+  background-color: #dcc9b3;
+}
+
+.goback-container {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 50;
+}
+
+.btn-goback {
+  padding: 10px 20px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, #f5a5a5 0%, #e88888 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.btn-goback:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 1024px) {
+  .content-wrapper {
+    flex-direction: column;
   }
-  50% {
-    opacity: 1;
+
+  .description-panel {
+    width: 100%;
+  }
+
+  .description-card {
+    position: static;
   }
 }
 
-/* 버튼 호버 효과 */
-button:not(:disabled):hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-button:not(:disabled):active {
-  transform: translateY(0);
-}
-
-/* 쿨타임 완료 시 글로우 효과 */
-.cooldown-overlay {
-  animation:
-    cooldown-progress 5s ease-out forwards,
-    cooldown-glow 5s ease-out forwards;
-}
-
-@keyframes cooldown-glow {
-  0% {
-    box-shadow: inset 0 0 0 rgba(59, 130, 246, 0);
+@media (max-width: 768px) {
+  .room-card {
+    flex-direction: column;
+    align-items: flex-start;
   }
-  80% {
-    box-shadow: inset 0 0 0 rgba(59, 130, 246, 0);
-  }
-  100% {
-    box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.5);
+
+  .room-info {
+    flex-direction: column;
+    gap: 12px;
   }
 }
 </style>

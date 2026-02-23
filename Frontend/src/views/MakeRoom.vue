@@ -157,139 +157,191 @@ async function StartGame() {
 <style scoped>
 .layout {
   height: 100vh;
-
-  gap: 1rem;
-
+  gap: 24px;
   display: grid;
   grid-template-columns: 2fr 1fr;
+  background: linear-gradient(135deg, #f5e6d3 0%, #e8dcc8 100%);
+  padding: 24px;
 }
 
 h1 {
-  font-size: 2rem;
-
-  font-weight: bold;
-
-  margin-bottom: 1rem;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: #5a4a3a;
 }
 
 .desc {
-  padding: 1rem;
-
+  padding: 24px;
   height: inherit;
-
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-
-  border: 1px solid #000000;
+  gap: 12px;
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f0e6d8;
 }
 
 .game-description {
   flex-grow: 1;
-
   word-break: normal;
   word-wrap: break-word;
   overflow-wrap: break-word;
-
   overflow-y: auto;
-  padding-right: 8px; /* 스크롤바 공간 확보(선택) */
+  padding-right: 8px;
+  color: #5a4a3a;
+  line-height: 1.6;
 }
 
 .game-description :deep(h1) {
-  color: #2196f3;
-
-  font-size: 2rem;
-  font-weight: bold;
-
-  margin-bottom: 1rem;
+  color: #b8956f;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  margin-top: 0;
 }
 
 .game-description :deep(h2) {
-  color: #2196f3;
-
-  font-size: 1.5rem;
-  font-weight: bold;
-
-  margin-bottom: 1rem;
+  color: #b8956f;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 12px;
 }
 
 .game-description :deep(h3) {
-  color: #2196f3;
-
-  font-size: 1.25rem;
-  font-weight: bold;
-
-  margin-bottom: 1rem;
+  color: #b8956f;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 12px;
 }
 
 .game-description :deep(p) {
-  font-size: 1.1rem;
+  font-size: 14px;
   line-height: 1.6;
-  word-break: normal;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+  margin: 0 0 12px 0;
 }
 
 .game-description :deep(ul) {
-  padding-left: 1.5rem;
+  padding-left: 20px;
   list-style-type: disc;
 }
 
 .game-description :deep(strong) {
-  color: #e91e63;
+  color: #3d2f23;
+  font-weight: 700;
 }
 
 .settings {
-  border: 1px solid #000000;
-
+  border-radius: 16px;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-
+  gap: 16px;
   flex: 1;
-
-  padding: 1rem;
+  padding: 24px;
+  background: white;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f0e6d8;
 }
 
 .setting-item {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 0.5rem;
+  gap: 12px;
+  margin-bottom: 8px;
+  color: #5a4a3a;
 }
 
-.toggle-btn.active {
-  background: #4caf50;
-  color: #fff;
+.setting-item label {
+  font-weight: 600;
+  font-size: 14px;
 }
 
 .toggle-btn {
-  background: #ccc;
-  color: #333;
+  background: #d4c9b8;
+  color: #5a4a3a;
   border: none;
-  border-radius: 5px;
-  padding: 0.3rem 1rem;
+  border-radius: 10px;
+  padding: 6px 12px;
   cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.toggle-btn:hover {
+  background: #c9b8a8;
+}
+
+.toggle-btn.active {
+  background: linear-gradient(135deg, #c9a86a 0%, #b8956f 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .start-btn {
-  background-color: #4caf50;
+  background: linear-gradient(135deg, #c9a86a 0%, #b8956f 100%);
   color: white;
-  padding: 10px 20px;
+  padding: 12px 20px;
   border: none;
-  border-radius: 5px;
+  border-radius: 12px;
   cursor: pointer;
-
   width: 100%;
-
-  transition: background-color 0.3s ease;
+  font-weight: 700;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .start-btn:hover {
-  background-color: #2c7930;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.start-btn:active {
+  transform: translateY(0);
 }
 
 .goBack-btn {
   margin-top: auto;
+}
+
+input[type="text"],
+input[type="range"],
+input[type="number"] {
+  padding: 8px 12px;
+  border: 2px solid #d4c9b8;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #5a4a3a;
+  transition: all 0.2s ease;
+  background-color: #fffbf3;
+}
+
+input[type="text"]:focus,
+input[type="range"]:focus,
+input[type="number"]:focus {
+  outline: none;
+  border-color: #b8956f;
+  box-shadow: 0 0 0 3px rgba(184, 149, 111, 0.1);
+}
+
+/* 스크롤바 스타일 */
+.game-description::-webkit-scrollbar {
+  width: 6px;
+}
+
+.game-description::-webkit-scrollbar-track {
+  background: #f1e5d1;
+  border-radius: 3px;
+}
+
+.game-description::-webkit-scrollbar-thumb {
+  background: #b8956f;
+  border-radius: 3px;
+}
+
+.game-description::-webkit-scrollbar-thumb:hover {
+  background: #a17958;
 }
 </style>

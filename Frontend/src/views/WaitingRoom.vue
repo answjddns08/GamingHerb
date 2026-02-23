@@ -532,6 +532,8 @@ onUnmounted(() => {
 <style scoped>
 .waiting-room {
   margin: 0 auto;
+  background: linear-gradient(135deg, #f5e6d3 0%, #e8dcc8 100%);
+  min-height: 100vh;
 }
 
 .waiting-content,
@@ -566,96 +568,135 @@ onUnmounted(() => {
 
 button {
   cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
 }
 
 .player-card {
   position: absolute;
-
   top: 20px;
   left: 20px;
-
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 8px;
+  z-index: 10;
+  background-color: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border: 1px solid #d4c9b8;
+  min-width: 200px;
+}
 
-  z-index: 10; /* 플레이어 카드가 게임 위에 표시되도록 */
-  background-color: rgba(255, 255, 255, 0.8);
-  border: 1px solid #ccc;
-  padding: 10px;
-  border-radius: 5px;
+.player-card p {
+  color: #5a4a3a;
+  margin: 0;
+  font-size: 13px;
+}
+
+.player-card .flex {
+  color: #5a4a3a;
+}
+
+.player-card .flex p {
+  color: #5a4a3a;
 }
 
 .start-card {
   position: fixed;
   bottom: 20px;
   right: 20px;
+  z-index: 20;
 }
 
 .start-card button {
-  background-color: #28a745;
+  background: linear-gradient(135deg, #c9a86a 0%, #b8956f 100%);
   color: white;
-  padding: 10px 20px;
-  border-radius: 5px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
 
-  cursor: pointer;
-
-  transition: background-color 0.3s ease;
+.start-card button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .start-card button:disabled {
-  background-color: #ccc;
+  background: #d4c9b8;
+  color: #5a4a3a;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .ready-btn {
   position: fixed;
   bottom: 20px;
   right: 20px;
-
+  z-index: 20;
   color: white;
-  background-color: rgb(40, 236, 40);
-
-  padding: 10px 20px;
-  border-radius: 5px;
-
-  cursor: pointer;
-
-  transition: background-color 0.3s ease;
+  background: linear-gradient(135deg, #a8d96f 0%, #8cc940 100%);
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .ready-btn:hover {
-  background-color: #26c235;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .ready-btn.active {
-  background-color: rgb(208, 28, 28);
+  background: linear-gradient(135deg, #f5a5a5 0%, #e88888 100%);
 }
 
 .ready-btn.active:hover {
-  background-color: #dc3545;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .kick-btn {
-  color: white;
-  border-radius: 5px;
-
-  cursor: pointer;
-
-  transition: all 0.3s ease;
+  background: none;
+  color: #5a4a3a;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: all 0.2s ease;
 }
 
 .kick-btn:hover {
-  fill: #dc3545;
-
-  scale: 1.25;
+  background-color: rgba(244, 165, 165, 0.2);
+  color: #d32f2f;
+  transform: scale(1.1);
 }
 
 .goBack-card {
   position: fixed;
-
   bottom: 20px;
   left: 20px;
-  padding: 10px;
+  padding: 0;
+  z-index: 20;
+}
+
+.goBack-card button {
+  background: linear-gradient(135deg, #f5a5a5 0%, #e88888 100%);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.goBack-card button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .chat-card {
@@ -663,9 +704,10 @@ button {
   bottom: 100px;
   left: 20px;
   z-index: 10;
-  background-color: rgba(255, 255, 255, 0.8);
-  border: 1px solid #ccc;
-  padding: 10px;
-  border-radius: 5px;
+  background-color: white;
+  border: 1px solid #d4c9b8;
+  padding: 12px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 </style>

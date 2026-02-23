@@ -4,55 +4,25 @@
 			"id": "GomokuGame",
 			"name": "오목 게임",
 			"summary": "5개의 돌을 연속으로 놓아 승리하는 게임",
-			"icon": "⚫",
 			"thumbnail": "https://i.namu.wiki/i/Z4ZyjNsQ1Fvlz8QQHhfcrrTo4xgEyAf_D4S7J1p3LGT7wh-zIo_74MpSFAM0PUwyPOy5qpnQZGXM-bbqCKtJTA.webp",
 			"componentPath": "@/games/GomokuGame/GomokuGame.vue",
 			"configPath": "@/games/GomokuGame/settings.js",
 			"descriptionPath": "@/games/GomokuGame/Description.md",
-			"minPlayers": 2,
-			"maxPlayers": 2,
-			"category": ["보드게임", "전략"],
-			"platform": ["web(PC)", "mobile"],
-			"difficulty": "Easy",
-			"estimatedTime": "10-30분",
-			"version": "1.0.0",
-			"author": "Redeyes",
-			"features": {
-				"chat": true,
-				"timer": true
-			},
-			"controls": {
-				"mouse": true,
-				"keyboard": false,
-				"touch": true
-			}
+			"gameDescriptionPath": "@/games/GomokuGame/GameDescription.md",
+			"settingDescriptionPath": "@/games/GomokuGame/SettingDescription.md",
+			"minPlayers": 2
 		},
 		"HD2DGame": {
 			"id": "HD2DGame",
 			"name": "HD2D 턴제 전략 게임",
 			"summary": "2.5D 그래픽의 턴제 전략 RPG 게임",
-			"icon": "⚔️",
 			"thumbnail": "https://data.wovn.io/ImageValue/production/62038afaa77e4860c6870267/ko/a2ecc350ea8f5458c1bfb98c63a42a7b/ot1_ss04_kr.jpg",
 			"componentPath": "@/games/HD2DGame/HD2DGame.vue",
 			"configPath": "@/games/HD2DGame/settings.js",
 			"descriptionPath": "@/games/HD2DGame/Description.md",
-			"minPlayers": 2,
-			"maxPlayers": 2,
-			"category": ["전략", "RPG", "턴제"],
-			"platform": ["web(PC)"],
-			"difficulty": "Medium",
-			"estimatedTime": "10-15분",
-			"version": "1.0.0",
-			"author": "Redeyes",
-			"features": {
-				"chat": true,
-				"timer": false
-			},
-			"controls": {
-				"mouse": true,
-				"keyboard": false,
-				"touch": false
-			}
+			"gameDescriptionPath": "@/games/HD2DGame/GameDescription.md",
+			"settingDescriptionPath": "@/games/HD2DGame/SettingDescription.md",
+			"minPlayers": 2
 		}
 	}
 }
