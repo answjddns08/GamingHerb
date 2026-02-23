@@ -648,6 +648,7 @@ onUnmounted(() => {
       class="menu"
       @open-race-modal="handleOpenRaceModal"
       @open-result-modal="handleOpenResultModal"
+      @give-up="multi.giveUp"
     />
 
     <characterStat

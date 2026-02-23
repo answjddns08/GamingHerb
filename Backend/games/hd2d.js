@@ -408,6 +408,42 @@ class HD2DGame {
 				};
 			}
 
+			case "game:surrender": {
+				if (!this.players.has(userId)) {
+					return { success: false };
+				}
+
+				const surrenderingPlayer = this.players.get(userId);
+				const surrenderingTeam = surrenderingPlayer.team;
+
+				// 항복한 팀의 모든 캐릭터를 사망 처리
+				this.charactersByName.forEach((character) => {
+					if (character.team === surrenderingTeam) {
+						character.health = 0;
+					}
+				});
+
+				const snapshot = this.buildSnapshot();
+				this.characters = snapshot.characters;
+				const gameOverState = this.getGameOverState();
+
+				return {
+					success: true,
+					response: {
+						type: "game:turnResolved",
+						payload: {
+							turnId: this.turnId,
+							actions: [],
+							snapshot,
+							gameOver: gameOverState.gameOver,
+							winner: gameOverState.winner,
+							loser: gameOverState.loser,
+						},
+					},
+					shouldBroadcast: true,
+				};
+			}
+
 			default:
 				return { success: false };
 		}

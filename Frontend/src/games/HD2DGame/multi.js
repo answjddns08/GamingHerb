@@ -5,6 +5,7 @@
 
 import { useSocketStore } from "@/stores/socket";
 import { useUserStore } from "@/stores/user.js";
+import { wsh } from "globals";
 
 function useMulti() {
   const socketStore = useSocketStore();
@@ -153,6 +154,10 @@ function useMulti() {
     opponentLeftCallback(payload);
   }
 
+  function giveUp() {
+    SendGameAction("game:surrender");
+  }
+
   /**
    * 팀 선택 콜백 등록
    * @param {(myTeam: string|null, opponentTeam: string|null, done: boolean) => void} callback
@@ -203,6 +208,7 @@ function useMulti() {
     setRestartRequestedCallback,
     setRestartConfirmedCallback,
     setOpponentLeftCallback,
+    giveUp,
   };
 }
 

@@ -6,11 +6,11 @@
         <span>Sound</span>
         <input type="range" min="0" max="100" />
       </div>
-      <div class="test-actions">
+      <!-- <div class="test-actions">
         <button class="test-btn" @click="openRaceModal">종족 선택 모달</button>
         <button class="test-btn" @click="openResultModal">결과 모달</button>
-      </div>
-      <button class="giveUp-btn" @click="() => console.log('test')">기권</button>
+      </div> -->
+      <button class="giveUp-btn" @click="giveUp">기권</button>
     </div>
   </button>
 </template>
@@ -32,6 +32,10 @@ function openRaceModal() {
 
 function openResultModal() {
   emit("open-result-modal");
+}
+
+function giveUp() {
+  emit("give-up");
 }
 </script>
 
