@@ -110,6 +110,7 @@ const {
   friendlyCount,
   executeActionsSequentially,
   setActions,
+  updateCharacterCounts,
 } = useBattleActions();
 
 const {
@@ -533,6 +534,7 @@ onMounted(async () => {
       mySelectedTeam.value = myTeam;
       enemySelectedTeam.value = opponentTeam;
       await makeTeams(mySelectedTeam.value, enemySelectedTeam.value, sceneRef.value, gameManager);
+      updateCharacterCounts(gameManager); // 캐릭터 수 업데이트
       showRaceSelection.value = false;
     } else {
       // 상대만 선택: UI에 표시만
