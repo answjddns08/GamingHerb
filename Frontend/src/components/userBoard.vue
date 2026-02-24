@@ -15,66 +15,68 @@
     </div>
 
     <!-- 닉네임 수정 모달 -->
-    <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
-      <div class="modal-content">
-        <h4 class="modal-title">프로필 관리</h4>
+    <teleport to="body">
+      <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+        <div class="modal-content">
+          <h4 class="modal-title">프로필 관리</h4>
 
-        <!-- 사용자 정보 -->
-        <div class="user-info-section">
-          <p class="info-label">
-            ID: <span>{{ userStore.id }}</span>
-          </p>
-          <p class="info-label">
-            {{ userStore.isDiscordUser ? "Discord 사용자" : "일반 사용자" }}
-          </p>
-        </div>
-
-        <!-- 닉네임 수정 -->
-        <div class="nickname-section">
-          <label class="input-label">닉네임</label>
-          <input
-            v-model="newNickname"
-            type="text"
-            placeholder="새 닉네임 입력"
-            class="nickname-input"
-            @keyup.enter="updateNickname"
-            autofocus
-          />
-        </div>
-
-        <div class="modal-actions">
-          <!-- 프로필 초기화 버튼 -->
-          <button v-show="!userStore.isDiscordUser" @click="resetProfile" class="btn-reset">
-            프로필 초기화
-          </button>
-
-          <!-- 취소/저장 버튼 -->
-          <div class="button-group">
-            <button @click="closeModal" class="btn-cancel">취소</button>
-            <button @click="updateNickname" :disabled="!newNickname.trim()" class="btn-save">
-              저장
-            </button>
+          <!-- 사용자 정보 -->
+          <div class="user-info-section">
+            <p class="info-label">
+              ID: <span>{{ userStore.id }}</span>
+            </p>
+            <p class="info-label">
+              {{ userStore.isDiscordUser ? "Discord 사용자" : "일반 사용자" }}
+            </p>
           </div>
-        </div>
 
-        <button @click="closeModal" class="btn-close">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M6 18L18 6M6 6l12 12"
+          <!-- 닉네임 수정 -->
+          <div class="nickname-section">
+            <label class="input-label">닉네임</label>
+            <input
+              v-model="newNickname"
+              type="text"
+              placeholder="새 닉네임 입력"
+              class="nickname-input"
+              @keyup.enter="updateNickname"
+              autofocus
             />
-          </svg>
-        </button>
+          </div>
+
+          <div class="modal-actions">
+            <!-- 프로필 초기화 버튼 -->
+            <button v-show="!userStore.isDiscordUser" @click="resetProfile" class="btn-reset">
+              프로필 초기화
+            </button>
+
+            <!-- 취소/저장 버튼 -->
+            <div class="button-group">
+              <button @click="closeModal" class="btn-cancel">취소</button>
+              <button @click="updateNickname" :disabled="!newNickname.trim()" class="btn-save">
+                저장
+              </button>
+            </div>
+          </div>
+
+          <button @click="closeModal" class="btn-close">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
       </div>
-    </div>
+    </teleport>
   </div>
 </template>
 
