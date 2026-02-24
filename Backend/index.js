@@ -27,9 +27,10 @@ app.use(
 			"http://localhost:3454",
 			"https://redeyes.dev",
 			"https://code.redeyes.dev",
+			"https://static.cloudflareinsights.com", // cloudflare tunnel 때문에 추가
 		],
 		methods: ["GET", "POST", "DELETE", "PUT"],
-	})
+	}),
 );
 
 // JSON body parser with increased limit
