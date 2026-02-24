@@ -73,6 +73,7 @@ import {
   SPRITE_PATHS,
 } from "../constants/gameConfig.js";
 import { addMouseEvent, removeMouseEvent } from "../composables/useRaycasting.js";
+import router from "@/router";
 
 const canvasRef = ref(null);
 
@@ -212,6 +213,7 @@ function handleResultClose() {
   console.log("결과 모달 닫기");
   showResultModal.value = false;
   multi.SendGameAction("game:leaveMatch");
+  router.push({ name: "game-rooms", params: { gameId: props.gameId } });
 }
 
 function handleResultRestart() {
