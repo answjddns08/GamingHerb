@@ -1,12 +1,10 @@
 <template>
   <main class="layout">
     <div class="desc" v-if="gameId">
-      <h1 class="text-3xl font-bold">{{ gameId }}</h1>
+      <h1>{{ gameName }}</h1>
       <div v-html="gameDes" class="game-description"></div>
-      <RouterLink :to="{ name: 'game-rooms' }" class="goBack-btn">
-        <button class="bg-red-300 text-black px-4 py-2 rounded hover:bg-red-400 transition">
-          Go Back
-        </button>
+      <RouterLink :to="{ name: 'game-rooms', params: { gameId: gameId } }" class="goBack-btn">
+        <button class="btn-goback">Go Back</button>
       </RouterLink>
     </div>
     <div class="desc" v-else>
@@ -14,9 +12,9 @@
     </div>
     <div class="settings" v-if="gameSetting">
       <h1>Settings</h1>
-      <div class="flex gap-2">
+      <div class="room-name-input">
         <label for="roomName">Room Name</label>
-        <input class="border rounded-lg p-1" type="text" id="roomName" v-model="roomName" />
+        <input type="text" id="roomName" v-model="roomName" />
       </div>
       <div v-for="(value, key) in gameSetting.settings" :key="key" class="setting-item">
         <label :for="key">{{ key }}</label>
@@ -33,7 +31,10 @@
         </div>
         <!-- Number: 슬라이더 -->
         <!-- 숫자형: 객체로 min/max/step 접근 -->
-        <div v-else-if="typeof value === 'object' && value !== null && 'value' in value">
+        <div
+          v-else-if="typeof value === 'object' && value !== null && 'value' in value"
+          class="flex items-center"
+        >
           <input
             type="range"
             :id="key"
@@ -42,13 +43,17 @@
             :max="value.max"
             :step="value.step"
           />
-          <input type="number" v-model.number="gameSetting.settings[key].value" class="w-15" />
-          <span>{{ value.unit || "seconds" }}</span>
+          <input
+            type="number"
+            v-model.number="gameSetting.settings[key].value"
+            style="width: 60px; margin-left: 8px"
+          />
+          <span style="margin-left: 8px">{{ value.unit || "seconds" }}</span>
         </div>
         <!-- 기타 타입은 필요시 추가 -->
       </div>
-      <div class="mt-auto flex flex-col gap-2 items-center">
-        <p class="text-red-500 font-bold text-2xl">
+      <div class="actions-container">
+        <p class="alarm-message">
           {{ alarm }}
         </p>
         <button class="start-btn" @click="StartGame">Start Game</button>
@@ -63,9 +68,9 @@
  * @description 새로운 게임 방을 생성하는 페이지 컴포넌트입니다.
  *              게임 설명 표시, 방 이름 및 게임별 세부 설정 기능을 제공합니다.
  */
-import { onMounted, ref } from "vue";
+import { onMounted, ref, computed } from "vue";
 import { useRoute, RouterLink, useRouter } from "vue-router";
-import { getGameDescription, getGameSettings } from "@/games/index.js";
+import { getSettingDescription, getGameSettings, getGameById } from "@/games/index.js";
 import { useUserStore } from "../stores/user.js";
 
 /**
@@ -89,14 +94,21 @@ const gameDes = ref("");
 /** @type {import('vue').Ref<String>} 생성할 방의 이름 */
 const roomName = ref("");
 
+/** @type {import('vue').ComputedRef<string>} 현재 게임의 이름 */
+const gameName = computed(() => {
+  if (!gameId.value) return "Loading...";
+  const gameInfo = getGameById(gameId.value);
+  return gameInfo?.name || gameId.value;
+});
+
 onMounted(async () => {
   gameId.value = route.params.gameId;
 
   try {
     // games/index.js의 getGameSettings 함수 사용
     gameSetting.value = await getGameSettings(route.params.gameId);
-    // games/index.js의 getGameDescription 함수 사용
-    gameDes.value = await getGameDescription(route.params.gameId);
+    // games/index.js의 getSettingDescription 함수 사용
+    gameDes.value = await getSettingDescription(route.params.gameId);
   } catch (error) {
     console.error("게임 데이터 로드 실패:", error);
     alarm.value = "게임 데이터를 불러오는 중 오류가 발생했습니다.";
@@ -162,6 +174,7 @@ async function StartGame() {
   grid-template-columns: 2fr 1fr;
   background: linear-gradient(135deg, #f5e6d3 0%, #e8dcc8 100%);
   padding: 24px;
+  box-sizing: border-box;
 }
 
 h1 {
@@ -181,6 +194,7 @@ h1 {
   background: white;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   border: 1px solid #f0e6d8;
+  box-sizing: border-box;
 }
 
 .game-description {
@@ -242,6 +256,20 @@ h1 {
   background: white;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   border: 1px solid #f0e6d8;
+  box-sizing: border-box;
+}
+
+.room-name-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.room-name-input label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #5a4a3a;
 }
 
 .setting-item {
@@ -279,6 +307,23 @@ h1 {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+.alarm-message {
+  color: #d32f2f;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+  min-height: 20px;
+  margin: 0;
+}
+
+.actions-container {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
 .start-btn {
   background: linear-gradient(135deg, #c9a86a 0%, #b8956f 100%);
   color: white;
@@ -306,6 +351,25 @@ h1 {
   margin-top: auto;
 }
 
+.btn-goback {
+  background: linear-gradient(135deg, #f5a5a5 0%, #e88888 100%);
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-goback:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
 input[type="text"],
 input[type="range"],
 input[type="number"] {
@@ -324,6 +388,11 @@ input[type="number"]:focus {
   outline: none;
   border-color: #b8956f;
   box-shadow: 0 0 0 3px rgba(184, 149, 111, 0.1);
+}
+
+input[type="range"] {
+  cursor: pointer;
+  accent-color: #b8956f;
 }
 
 /* 스크롤바 스타일 */

@@ -27,9 +27,7 @@
       <aside class="description-panel">
         <div class="description-card">
           <h2 class="description-title">{{ gameName }}</h2>
-          <div class="description-content">
-            <!-- GameDescription.md 렌더링 -->
-          </div>
+          <div v-html="gameDescription" class="description-content"></div>
         </div>
       </aside>
 
@@ -111,8 +109,7 @@
  */
 import { onMounted, ref, computed } from "vue";
 import { RouterLink } from "vue-router";
-import { getGameById } from "@/games/index.js";
-import SettingIcon from "../components/settingIcon.vue";
+import { getGameById, getGameDescription } from "@/games/index.js";
 import userBoard from "../components/userBoard.vue";
 
 /**
@@ -125,6 +122,9 @@ const rooms = ref([]);
 
 /** @type {import('vue').Ref<boolean>} 리프레시 진행 중 여부 */
 const isRefreshing = ref(false);
+
+/** @type {import('vue').Ref<string>} 게임 설명 HTML */
+const gameDescription = ref("");
 
 /** @type {number} 쿨타임 지속 시간 (밀리초) - CSS 애니메이션과 동기화 */
 const COOLDOWN_DURATION = 5000;
@@ -142,15 +142,6 @@ const props = defineProps({
 const gameName = computed(() => {
   const gameInfo = getGameById(props.gameId);
   return gameInfo?.name || "Game Rooms";
-});
-
-/** @type {import('vue').ComputedRef<string>} 현재 게임의 썸네일 이미지 URL */
-const gameThumbnail = computed(() => {
-  const gameInfo = getGameById(props.gameId);
-  return (
-    gameInfo?.thumbnail ||
-    "https://i.namu.wiki/i/Z4ZyjNsQ1Fvlz8QQHhfcrrTo4xgEyAf_D4S7J1p3LGT7wh-zIo_74MpSFAM0PUwyPOy5qpnQZGXM-bbqCKtJTA.webp"
-  );
 });
 
 async function refreshRooms() {
@@ -188,6 +179,14 @@ async function refreshRooms() {
 
 onMounted(async () => {
   console.log("Game ID:", props.gameId);
+
+  // 게임 설명 로드
+  try {
+    gameDescription.value = await getGameDescription(props.gameId);
+  } catch (error) {
+    console.error("게임 설명 로드 실패:", error);
+    gameDescription.value = "<p>게임 설명을 불러올 수 없습니다.</p>";
+  }
 
   await refreshRooms();
 });
@@ -291,14 +290,14 @@ onMounted(async () => {
 .content-wrapper {
   display: flex;
   gap: 32px;
-  padding: 32px;
-  max-width: 1600px;
+  padding: 20px 100px;
+  /* max-width: 1600px; */
   margin: 0 auto;
 }
 
 .description-panel {
   flex-shrink: 0;
-  width: 280px;
+  width: 750px;
 }
 
 .description-card {
@@ -322,6 +321,69 @@ onMounted(async () => {
   font-size: 14px;
   color: #5a4a3a;
   line-height: 1.6;
+  overflow-y: auto;
+  max-height: 600px;
+}
+
+.description-content :deep(h1) {
+  color: #b8956f;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+}
+
+.description-content :deep(h2) {
+  color: #b8956f;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 12px 0 8px 0;
+}
+
+.description-content :deep(h3) {
+  color: #b8956f;
+  font-size: 16px;
+  font-weight: 700;
+  margin: 12px 0 8px 0;
+}
+
+.description-content :deep(p) {
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 12px 0;
+}
+
+.description-content :deep(ul) {
+  padding-left: 20px;
+  list-style-type: disc;
+  margin: 0 0 12px 0;
+}
+
+.description-content :deep(li) {
+  margin-bottom: 4px;
+}
+
+.description-content :deep(strong) {
+  color: #3d2f23;
+  font-weight: 700;
+}
+
+/* 스크롤바 스타일 */
+.description-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.description-content::-webkit-scrollbar-track {
+  background: #f1e5d1;
+  border-radius: 3px;
+}
+
+.description-content::-webkit-scrollbar-thumb {
+  background: #b8956f;
+  border-radius: 3px;
+}
+
+.description-content::-webkit-scrollbar-thumb:hover {
+  background: #a17958;
 }
 
 .rooms-section {
@@ -360,7 +422,7 @@ onMounted(async () => {
 }
 
 .room-card:hover {
-  transform: translateX(8px);
+  /* transform: translateY(-2px); */
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   border-color: #d4c9b8;
 }

@@ -1,5 +1,3 @@
-# HD2D 턴제 전략 게임
-
 ## 게임 소개
 
 HD2D(High Definition 2D)는 Three.js 기반의 2.5D 그래픽을 활용한 턴제 전략 RPG 게임입니다.

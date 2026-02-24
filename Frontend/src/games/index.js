@@ -61,11 +61,26 @@ Object.entries(gamesConfig.games).forEach(([gameId, config]) => {
      * 게임 설명(마크다운)을 비동기적으로 로드합니다.
      * @returns {Promise<string>|undefined}
      */
-    ...(config.descriptionPath && {
-      description: () => {
-        const path = Object.keys(markdownModules).find((p) => p.includes(gameId));
+    ...(config.gameDescriptionPath && {
+      gameDescription: () => {
+        const path = Object.keys(markdownModules).find(
+          (p) => p.includes(gameId) && p.includes("GameDescription.md"),
+        );
         if (path) return markdownModules[path]();
-        return Promise.resolve(`# ${config.name}\n\nDescription not available.`);
+        return Promise.resolve(`# ${config.name}\n\nGame description not available.`);
+      },
+    }),
+    /**
+     * 게임 세팅 설명(마크다운)을 비동기적으로 로드합니다.
+     * @returns {Promise<string>|undefined}
+     */
+    ...(config.settingDescriptionPath && {
+      settingDescription: () => {
+        const path = Object.keys(markdownModules).find(
+          (p) => p.includes(gameId) && p.includes("SettingDescription.md"),
+        );
+        if (path) return markdownModules[path]();
+        return Promise.resolve(`# ${config.name} Settings\n\nSetting description not available.`);
       },
     }),
   };
@@ -150,14 +165,38 @@ export async function getGameDescription(gameId) {
   if (!gameConfig) {
     return `<h2>Game Not Found</h2><p>Cannot find a game with ID "${gameId}".</p>`;
   }
-  if (!gameConfig.description) {
-    return `<h2>${gameConfig.name}</h2><p>No description available.</p>`;
+  if (!gameConfig.gameDescription) {
+    return `<h2>${gameConfig.name}</h2><p>No game description available.</p>`;
   }
   try {
-    const markdownContent = await gameConfig.description();
+    const markdownContent = await gameConfig.gameDescription();
     return markdownToHtml(markdownContent);
   } catch (error) {
     console.error("Failed to load game description:", error);
+    return `<h2>${gameConfig.name}</h2><p>Failed to load description.</p>`;
+  }
+}
+
+/**
+ * 지정된 ID의 게임 세팅 설명을 마크다운에서 HTML로 변환하여 비동기적으로 가져옵니다.
+ * @param {string} gameId - 가져올 게임의 ID
+ * @returns {Promise<string>} HTML로 변환된 세팅 설명
+ */
+export async function getSettingDescription(gameId) {
+  const gameConfig = getGameConfig(gameId);
+  if (!gameConfig) {
+    return `<h2>Game Not Found</h2><p>Cannot find a game with ID "${gameId}".</p>`;
+  }
+  // 먼저 settingDescription을 확인하고, 없으면 기존 description 사용 (호환성)
+  const descriptionLoader = gameConfig.settingDescription || gameConfig.description;
+  if (!descriptionLoader) {
+    return `<h2>${gameConfig.name}</h2><p>No setting description available.</p>`;
+  }
+  try {
+    const markdownContent = await descriptionLoader();
+    return markdownToHtml(markdownContent);
+  } catch (error) {
+    console.error("Failed to load setting description:", error);
     return `<h2>${gameConfig.name}</h2><p>Failed to load description.</p>`;
   }
 }
