@@ -186,7 +186,7 @@ h1 {
 
 .desc {
   padding: 24px;
-  height: inherit;
+  height: 95vh;
   display: flex;
   flex-direction: column;
   gap: 12px;
