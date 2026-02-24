@@ -1,0 +1,38 @@
+# Node
+node_modules
+npm-debug.log
+yarn-error.log
+# package-lock.json은 npm ci를 위해 필요하므로 포함
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 로그
+logs
+*.log
+
+# PM2
+.pm2
+ecosystem.config.js
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 문서
+README.md
