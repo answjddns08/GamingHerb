@@ -3,7 +3,7 @@ services:
     build: ./Backend
     container_name: Gamingherb_backend
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3001:3001"
     environment:
       - NODE_ENV=production
     restart: unless-stopped
